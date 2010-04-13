@@ -36,6 +36,43 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Deveel.Data.Net\DataAddress.cs" />
+    <Compile Include="Deveel.Data.Net\ErrorMessage.cs" />
+    <Compile Include="Deveel.Data.Net\IMessageProcessor.cs" />
+    <Compile Include="Deveel.Data.Net\INode.cs" />
+    <Compile Include="Deveel.Data.Net\INodeSet.cs" />
+    <Compile Include="Deveel.Data.Net\Message.cs" />
+    <Compile Include="Deveel.Data.Net\Service.cs" />
+    <Compile Include="Deveel.Data.Net\ServiceAddress.cs" />
+    <Compile Include="Deveel.Data.Net\ServiceException.cs" />
+    <Compile Include="Deveel.Data.Net\ServiceType.cs" />
+    <Compile Include="Deveel.Data.Store\DataFile.cs" />
+    <Compile Include="Deveel.Data.Store\DataFileStream.cs" />
+    <Compile Include="Deveel.Data.Store\ITreeNode.cs" />
+    <Compile Include="Deveel.Data.Store\ITreeStorageSystem.cs" />
+    <Compile Include="Deveel.Data.Store\TreeBranch.cs" />
+    <Compile Include="Deveel.Data.Store\TreeConfigKeys.cs" />
+    <Compile Include="Deveel.Data.Store\TreeLeaf.cs" />
+    <Compile Include="Deveel.Data.Store\TreeNodeHeap.cs" />
+    <Compile Include="Deveel.Data.Store\TreeSystemTransaction.cs" />
+    <Compile Include="Deveel.Data.Store\TreeWrite.cs" />
+    <Compile Include="Deveel.Data.Util\ByteBuffer.cs" />
+    <Compile Include="Deveel.Data\DataKey.cs" />
+    <Compile Include="Deveel.Data\IDatabase.cs" />
+    <Compile Include="Deveel.Data\IIndexedObjectComparer_T.cs" />
+    <Compile Include="Deveel.Data\IInteractiveEnumerator.cs" />
+    <Compile Include="Deveel.Data\INumberEnumerator.cs" />
+    <Compile Include="Deveel.Data\ISortedCollection_T.cs" />
+    <Compile Include="Deveel.Data\ISortedList_T.cs" />
+    <Compile Include="Deveel.Data\ITransaction.cs" />
+    <Compile Include="Deveel.Data\Key.cs" />
+    <Compile Include="Deveel.Data\KeyBase.cs" />
+    <Compile Include="Deveel.Data\NumberList.cs" />
+    <Compile Include="Deveel.Data\Properties.cs" />
+    <Compile Include="Deveel.Data\StringCollection.cs" />
+    <Compile Include="Deveel.Data\StringData.cs" />
+    <Compile Include="Deveel.Data\StringDataReader.cs" />
+    <Compile Include="Deveel.Data\StringDataWriter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
