@@ -36,16 +36,19 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Deveel.Data.Net\CompressedNodeSet.cs" />
     <Compile Include="Deveel.Data.Net\DataAddress.cs" />
     <Compile Include="Deveel.Data.Net\ErrorMessage.cs" />
     <Compile Include="Deveel.Data.Net\IMessageProcessor.cs" />
-    <Compile Include="Deveel.Data.Net\INode.cs" />
-    <Compile Include="Deveel.Data.Net\INodeSet.cs" />
     <Compile Include="Deveel.Data.Net\Message.cs" />
+    <Compile Include="Deveel.Data.Net\MessageStream.cs" />
+    <Compile Include="Deveel.Data.Net\Node.cs" />
+    <Compile Include="Deveel.Data.Net\NodeSet.cs" />
     <Compile Include="Deveel.Data.Net\Service.cs" />
     <Compile Include="Deveel.Data.Net\ServiceAddress.cs" />
     <Compile Include="Deveel.Data.Net\ServiceException.cs" />
     <Compile Include="Deveel.Data.Net\ServiceType.cs" />
+    <Compile Include="Deveel.Data.Net\SingleNodeSet.cs" />
     <Compile Include="Deveel.Data.Store\DataFile.cs" />
     <Compile Include="Deveel.Data.Store\DataFileStream.cs" />
     <Compile Include="Deveel.Data.Store\ITreeNode.cs" />

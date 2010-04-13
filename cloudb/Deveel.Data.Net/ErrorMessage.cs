@@ -6,6 +6,10 @@ namespace Deveel.Data.Net {
 			: base("E", new object[] { error }) {
 		}
 
+		internal ErrorMessage()
+			: this(null) {
+		}
+
 		public ServiceException Error {
 			get { return (ServiceException) this[0]; }
 		}
