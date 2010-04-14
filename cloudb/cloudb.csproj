@@ -36,10 +36,16 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Deveel.Data.Caching\Cache.cs" />
+    <Compile Include="Deveel.Data.Caching\ICache.cs" />
+    <Compile Include="Deveel.Data.Net\BlockServerTable.cs" />
     <Compile Include="Deveel.Data.Net\CompressedNodeSet.cs" />
     <Compile Include="Deveel.Data.Net\DataAddress.cs" />
     <Compile Include="Deveel.Data.Net\ErrorMessage.cs" />
     <Compile Include="Deveel.Data.Net\IMessageProcessor.cs" />
+    <Compile Include="Deveel.Data.Net\PathProfile.cs" />
+    <Compile Include="Deveel.Data.Net\PathRootTable.cs" />
+    <Compile Include="Deveel.Data.Store\ITreeNodeCache.cs" />
     <Compile Include="Deveel.Data.Net\Message.cs" />
     <Compile Include="Deveel.Data.Net\MessageStream.cs" />
     <Compile Include="Deveel.Data.Net\Node.cs" />
@@ -61,6 +67,7 @@
     <Compile Include="Deveel.Data.Store\TreeWrite.cs" />
     <Compile Include="Deveel.Data.Util\ByteBuffer.cs" />
     <Compile Include="Deveel.Data\DataKey.cs" />
+    <Compile Include="Deveel.Data\FixedSizeCollection.cs" />
     <Compile Include="Deveel.Data\IDatabase.cs" />
     <Compile Include="Deveel.Data\IIndexedObjectComparer_T.cs" />
     <Compile Include="Deveel.Data\IInteractiveEnumerator.cs" />
@@ -70,6 +77,7 @@
     <Compile Include="Deveel.Data\ITransaction.cs" />
     <Compile Include="Deveel.Data\Key.cs" />
     <Compile Include="Deveel.Data\KeyBase.cs" />
+    <Compile Include="Deveel.Data.Caching\MemoryCache.cs" />
     <Compile Include="Deveel.Data\NumberList.cs" />
     <Compile Include="Deveel.Data\Properties.cs" />
     <Compile Include="Deveel.Data\StringCollection.cs" />

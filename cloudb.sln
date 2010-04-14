@@ -3,6 +3,8 @@ Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudb", "cloudb\cloudb.csproj", "{A18511ED-5BA6-4811-B44F-F730FAD84CE8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudb-nunit", "cloudb-nunit\cloudb-nunit.csproj", "{05D455D6-1EA4-4C27-A4F2-797A518FE00A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -13,6 +15,10 @@ Global
 		{A18511ED-5BA6-4811-B44F-F730FAD84CE8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A18511ED-5BA6-4811-B44F-F730FAD84CE8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A18511ED-5BA6-4811-B44F-F730FAD84CE8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{05D455D6-1EA4-4C27-A4F2-797A518FE00A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{05D455D6-1EA4-4C27-A4F2-797A518FE00A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{05D455D6-1EA4-4C27-A4F2-797A518FE00A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{05D455D6-1EA4-4C27-A4F2-797A518FE00A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

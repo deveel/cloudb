@@ -1,11 +1,11 @@
 ﻿using System;
-using System.Collections;
+using System.Collections.Generic;
 
 namespace Deveel.Data.Net {
 	public class Message {
 		public Message(string name, object[] args) {
 			this.name = name;
-			this.args = args == null ? new ArrayList(8) : new ArrayList(args);
+			this.args = args == null ? new List<object>(8) : new List<object>(args);
 		}
 
 		public Message(string name)
@@ -13,7 +13,7 @@ namespace Deveel.Data.Net {
 		}
 
 		private readonly string name;
-		private readonly ArrayList args;
+		private readonly List<object> args;
 
 		public string Name {
 			get { return name; }
