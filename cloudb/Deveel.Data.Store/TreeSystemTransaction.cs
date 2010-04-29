@@ -1549,6 +1549,10 @@ namespace Deveel.Data.Store {
 				Leaf.Write(position, buf, off, len);
 			}
 
+			public override void WriteTo(IAreaWriter writer) {
+				Leaf.WriteTo(writer);
+			}
+
 			public override void SetLength(int size) {
 				Leaf.SetLength(size);
 			}

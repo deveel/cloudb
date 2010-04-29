@@ -327,6 +327,10 @@ namespace Deveel.Data.Store {
 				}
 			}
 
+			public override void WriteTo(IAreaWriter writer) {
+				writer.Write(data, 0, Length);
+			}
+
 			public override void SetLength(int value) {
 				if (value< 0 || value > Capacity)
 					throw new ArgumentException("Specified leaf size is out of range.");

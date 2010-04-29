@@ -28,6 +28,15 @@ namespace Deveel.Data.Store {
 			childCount = branch.childCount;
 		}
 
+		public TreeBranch(long id, long[] children, int node_data_size) {
+			if (id < 0)
+				throw new ArgumentException("id < 0.  Only store nodes permitted.");
+
+			this.id = id;
+			this.children = children;
+			childCount = (node_data_size + 2) / 4;
+		}
+
 		public int ChildCount {
 			get { return childCount; }
 		}
@@ -57,6 +66,14 @@ namespace Deveel.Data.Store {
 				int n = children.Length / 2;
 				return new Key(children[n - 1], children[n]);
 			}
+		}
+
+		internal long [] ChildPointers {
+			get { return children; }
+		}
+
+		public int DataSize {
+			get { return (childCount*4) - 2; }
 		}
 
 		private void CheckReadOnly() {

@@ -38,6 +38,8 @@ namespace Deveel.Data.Store {
 
 		public abstract void Write(int position, byte[] buffer, int offset, int count);
 
+		public abstract void WriteTo(IAreaWriter area);
+
 		public abstract void Shift(int position, int offset);
 
 		void IDisposable.Dispose() {
