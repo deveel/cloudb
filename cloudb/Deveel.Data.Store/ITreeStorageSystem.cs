@@ -3,11 +3,18 @@ using System.Collections.Generic;
 
 namespace Deveel.Data.Store {
 	public interface ITreeStorageSystem {
-		T GetConfigValue<T>(string key);
+		int MaxBranchSize { get; }
+
+		int MaxLeafByteSize { get; }
+		
+		long NodeHeapMaxSize { get; }
+		
 
 		void CheckPoint();
 
 		IList<T> FetchNodes<T>(long[] nids) where T : ITreeNode;
+		
+		bool LinkLeaf(Key key, long reference);
 
 		void DisposeNode(long nid);
 

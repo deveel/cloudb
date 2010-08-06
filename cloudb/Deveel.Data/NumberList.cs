@@ -16,10 +16,11 @@ namespace Deveel.Data {
 		}
 
 		private readonly DataFile file;
-		private readonly IIndexedObjectComparer<long> comparer = new KeyComparer();
 		private readonly bool immutable;
+		
+		public static readonly IIndexedObjectComparer<long> KeyComparer = new KeyComparerImpl();
 
-		private class KeyComparer : IIndexedObjectComparer<long> {
+		private class KeyComparerImpl : IIndexedObjectComparer<long> {
 			public int Compare(long reference, long value) {
 				if (reference > value)
 					return 1;
@@ -274,7 +275,7 @@ namespace Deveel.Data {
 		}
 
 		public bool RemoveSort(long item) {
-			return Remove(item, item, comparer);
+			return Remove(item, item, KeyComparer);
 		}
 
 		public bool Remove(long value, long reference, IIndexedObjectComparer<long> c) {
@@ -411,7 +412,7 @@ namespace Deveel.Data {
 		}
 
 		public void InsertSort(long item) {
-			Insert(item, item, comparer);
+			Insert(item, item, KeyComparer);
 		}
 
 		public void Insert(long index, long item) {
@@ -489,7 +490,7 @@ namespace Deveel.Data {
 		}
 
 		public bool ContainsSort(long item) {
-			return SearchFirst(item, comparer) >= 0;
+			return SearchFirst(item, KeyComparer) >= 0;
 		}
 	}
 }

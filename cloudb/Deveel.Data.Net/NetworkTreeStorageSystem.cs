@@ -27,6 +27,13 @@ namespace Deveel.Data.Net {
 		private readonly Dictionary<string, ServiceAddress> pathToRoot;
 		private readonly Dictionary<ServiceAddress, int> proximityMap = new Dictionary<ServiceAddress, int>();
 
+		private readonly Object reachability_lock = new Object();
+		private int reachability_tree_depth;
+
+		private long max_transaction_node_heap_size;
+
+		private Exception errorState;
+
 		private const short LeafType = 0x019EC;
 		private const short BranchType = 0x022EB;
 
@@ -48,13 +55,11 @@ namespace Deveel.Data.Net {
 
 			IMessageProcessor manager = connector.Connect(managerAddress, ServiceType.Manager);
 			MessageStream message_out = new MessageStream(16);
-			message_out.StartMessage("notifyBlockServerFailure");
-			message_out.AddMessageArgument(address);
-			message_out.CloseMessage();
+			message_out.AddMessage(new Message("notifyBlockServerFailure", new object[] { address }));
 			// Process the failure report message on the manager server,
 			MessageStream message_in = manager.Process(message_out);
 			foreach (Message m in message_in) {
-				if (m is ErrorMessage) {
+				if (m.IsError) {
 					//TODO: ERROR log ...
 				}
 			}
@@ -97,28 +102,27 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		private IDictionary<long, IList<BlockServerElement>> GetServersForBlock(List<long> block_ids) {
+		private IDictionary<long, IList<BlockServerElement>> GetServersForBlock(IList<long> blockIds) {
 			// The result map,
-			Dictionary<long, IList<BlockServerElement>> result_map = new Dictionary<long, IList<BlockServerElement>>();
+			Dictionary<long, IList<BlockServerElement>> resultMap = new Dictionary<long, IList<BlockServerElement>>();
 
-			List<long> none_cached = new List<long>(block_ids.Count);
-			foreach (long block_id in block_ids) {
-				IList<BlockServerElement> v = networkCache.GetServers(block_id);
+			List<long> noneCached = new List<long>(blockIds.Count);
+			foreach (long blockId in blockIds) {
+				IList<BlockServerElement> v = networkCache.GetServers(blockId);
 				// If it's cached (and the cache is current),
 				if (v != null) {
-					result_map.Add(block_id, v);
+					resultMap.Add(blockId, v);
 				}
 					// If not cached, add to the list of none cached entries,
 				else {
-					none_cached.Add(block_id);
+					noneCached.Add(blockId);
 				}
 			}
 
 			// If there are no 'none_cached' blocks,
-			if (none_cached.Count == 0) {
+			if (noneCached.Count == 0)
 				// Return the result,
-				return result_map;
-			}
+				return resultMap;
 
 			// Otherwise, we query the manager server for current records on the given
 			// blocks.
@@ -126,77 +130,175 @@ namespace Deveel.Data.Net {
 			IMessageProcessor manager = connector.Connect(managerAddress, ServiceType.Manager);
 			MessageStream message_out = new MessageStream(15);
 
-			foreach (long block_id in none_cached) {
-				message_out.StartMessage("getServerList");
-				message_out.AddMessageArgument(block_id);
-				message_out.CloseMessage();
+			foreach (long block_id in noneCached) {
+				message_out.AddMessage(new Message("getServerList", new object[] { block_id }));
 			}
 
 			MessageStream message_in = manager.Process(message_out);
 
 			int n = 0;
 			foreach (Message m in message_in) {
-				if (m is ErrorMessage) {
-					ErrorMessage errMsg = (ErrorMessage) m;
-					throw new Exception(errMsg.Error.Message, errMsg.Error);
-				} else {
-					int sz = (int)m[0];
-					List<BlockServerElement> srvs = new List<BlockServerElement>(sz);
-					for (int i = 0; i < sz; ++i) {
-						ServiceAddress address = (ServiceAddress)m[1 + (i * 2)];
-						string status = (string)m[1 + (i * 2) + 1];
-						srvs.Add(new BlockServerElement(address, status));
-					}
+				if (m.IsError)
+					throw new Exception(m.ErrorMessage, m.Error);
 
-					// Shuffle the list
-					CollectionsUtil.Shuffle(srvs);
-
-					// Move the server closest to this node to the start of the list,
-					int closest = 0;
-					int cur_close_factor = Int32.MaxValue;
-					for (int i = 0; i < sz; ++i) {
-						BlockServerElement elem = srvs[i];
-						int closeness_factor = GetProximity(elem.Address);
-						if (closeness_factor < cur_close_factor) {
-							cur_close_factor = closeness_factor;
-							closest = i;
-						}
-					}
-
-					// Swap if necessary,
-					if (closest > 0) {
-						CollectionsUtil.Swap(srvs, 0, closest);
-					}
-
-					// Put it in the result map,
-					long block_id = none_cached[n];
-					result_map.Add(block_id, srvs);
-					// Add it to the cache,
-					// NOTE: TTL hard-coded to 15 minute
-					networkCache.SetServers(block_id, srvs, 15 * 60 * 1000);
-
+				int sz = (int) m[0];
+				List<BlockServerElement> srvs = new List<BlockServerElement>(sz);
+				for (int i = 0; i < sz; ++i) {
+					ServiceAddress address = (ServiceAddress) m[1 + (i*2)];
+					string status = (string) m[1 + (i*2) + 1];
+					srvs.Add(new BlockServerElement(address, status));
 				}
+
+				// Shuffle the list
+				CollectionsUtil.Shuffle(srvs);
+
+				// Move the server closest to this node to the start of the list,
+				int closest = 0;
+				int cur_close_factor = Int32.MaxValue;
+				for (int i = 0; i < sz; ++i) {
+					BlockServerElement elem = srvs[i];
+					int closeness_factor = GetProximity(elem.Address);
+					if (closeness_factor < cur_close_factor) {
+						cur_close_factor = closeness_factor;
+						closest = i;
+					}
+				}
+
+				// Swap if necessary,
+				if (closest > 0) {
+					CollectionsUtil.Swap(srvs, 0, closest);
+				}
+
+				// Put it in the result map,
+				long block_id = noneCached[n];
+				resultMap.Add(block_id, srvs);
+				// Add it to the cache,
+				// NOTE: TTL hard-coded to 15 minute
+				networkCache.SetServers(block_id, srvs, 15*60*1000);
+
 				++n;
 			}
 
 			// Return the list
-			return result_map;
+			return resultMap;
 		}
 
-		private List<long> DoPersist(TreeWrite sequence, int try_count) {
+		private static bool IsInNodeList(long reference, IList<ITreeNode> nodes) {
+			foreach (ITreeNode node in nodes) {
+				if (reference == node.Id)
+					return true;
+			}
+			return false;
+		}
+
+		private static byte[] ReadNodeAsBuffer(Node node) {
+			Stream input = node.Input;
+			MemoryStream outputStream = new MemoryStream();
+			int readCount;
+			byte[] buffer = new byte[1024];
+			while ((readCount = input.Read(buffer, 0, 1024)) != 0) {
+				outputStream.Write(buffer, 0, readCount);
+			}
+
+			return outputStream.ToArray();
+		}
+
+		private TreeReportNode CreateDiagnosticRootGraph(Key left_key, long reference) {
+
+			// The node being returned
+			TreeReportNode node;
+
+			// Fetch the node,
+			ITreeNode tree_node = FetchNodes(new long[] { reference })[0];
+
+			if (tree_node is TreeLeaf) {
+				TreeLeaf leaf = (TreeLeaf)tree_node;
+				// The number of bytes in the leaf
+				int leaf_size = leaf.Length;
+
+				// Set up the leaf node object
+				node = new TreeReportNode("leaf", reference);
+				node.SetProperty("key", left_key.ToString());
+				node.SetProperty("leaf_size", leaf_size);
+
+			} else if (tree_node is TreeBranch) {
+				TreeBranch branch = (TreeBranch)tree_node;
+				// Set up the branch node object
+				node = new TreeReportNode("branch", reference);
+				node.SetProperty("key", left_key.ToString());
+				node.SetProperty("branch_size", branch.ChildCount);
+				// Recursively add each child into the tree
+				for (int i = 0; i < branch.ChildCount; ++i) {
+					long child_ref = branch.GetChild(i);
+					// If the ref is a special node, skip it
+					if ((child_ref & 0x01000000000000000L) != 0) {
+						// Should we record special nodes?
+					} else {
+						Key new_left_key = (i > 0) ? branch.GetKey(i) : left_key;
+						TreeReportNode bn = new TreeReportNode("child_meta", reference);
+						bn.SetProperty("extent", branch.GetChildLeafElementCount(i));
+						node.AddChild(bn);
+						node.AddChild(CreateDiagnosticRootGraph(new_left_key, child_ref));
+					}
+				}
+			} else {
+				throw new IOException("Unknown node class: " + tree_node);
+			}
+
+			return node;
+		}
+
+		private void DoReachCheck(TextWriter warning_log, long node, NumberList node_list, int cur_depth) {
+			// Is the node in the list?
+			bool inserted = node_list.InsertUnique(node, node, NumberList.KeyComparer);
+
+			if (inserted) {
+				// Fetch the node,
+				try {
+					ITreeNode tree_node = FetchNodes(new long[] { node })[0];
+					if (tree_node is TreeBranch) {
+						// Get the child nodes,
+						TreeBranch branch = (TreeBranch)tree_node;
+						int children_count = branch.ChildCount;
+						for (int i = 0; i < children_count; ++i) {
+							long child_node_ref = branch.GetChild(i);
+							// Recurse,
+							if (cur_depth + 1 == reachability_tree_depth) {
+								// It's a known leaf node, so insert now without traversing
+								node_list.InsertUnique(child_node_ref, child_node_ref, NumberList.KeyComparer);
+							} else {
+								// Recurse,
+								DoReachCheck(warning_log, child_node_ref, node_list, cur_depth + 1);
+							}
+						}
+					} else if (tree_node is TreeLeaf) {
+						reachability_tree_depth = cur_depth;
+					} else {
+						throw new IOException("Unknown node class: " + tree_node);
+					}
+				} catch (InvalidDataState e) {
+					// Report the error,
+					warning_log.WriteLine("Invalid Data Set (msg: " + e.Message + ")");
+					warning_log.WriteLine("Block: " + e.Address.BlockId);
+					warning_log.WriteLine("Data:  " + e.Address.DataId);
+				}
+			}
+		}
+
+		private List<long> DoPersist(TreeWrite sequence, int tryCount) {
 			// NOTE: nodes are written in order of branches and then leaf nodes. All
 			//   branch nodes and leafs are grouped together.
 
 			// The list of nodes to be allocated,
-			IList<ITreeNode> all_branches = sequence.BranchNodes;
-			IList<ITreeNode> all_leafs = sequence.LeafNodes;
-			List<ITreeNode> nodes = new List<ITreeNode>(all_branches.Count + all_leafs.Count);
-			nodes.AddRange(all_branches);
-			nodes.AddRange(all_leafs);
+			IList<ITreeNode> allBranches = sequence.BranchNodes;
+			IList<ITreeNode> allLeafs = sequence.LeafNodes;
+			List<ITreeNode> nodes = new List<ITreeNode>(allBranches.Count + allLeafs.Count);
+			nodes.AddRange(allBranches);
+			nodes.AddRange(allLeafs);
 			int sz = nodes.Count;
 			// The list of allocated referenced for the nodes,
 			DataAddress[] refs = new DataAddress[sz];
-			List<long> out_refs = new List<long>(sz);
+			long[] outRefs = new long[sz];
 
 			MessageStream allocate_message = new MessageStream((sz * 3) + 16);
 
@@ -209,16 +311,10 @@ namespace Deveel.Data.Net {
 				// Is it a branch node?
 				if (node is TreeBranch) {
 					// Branch nodes are 1K in size,
-					allocate_message.StartMessage("allocateNode");
-					allocate_message.AddMessageArgument(1024);
-					allocate_message.CloseMessage();
-				}
-					// Otherwise, it must be a leaf node,
-				else {
+					allocate_message.AddMessage(new Message("allocateNode", new object[] { 1024 }));
+				} else {
 					// Leaf nodes are 4k in size,
-					allocate_message.StartMessage("allocateNode");
-					allocate_message.AddMessageArgument(4096);
-					allocate_message.CloseMessage();
+					allocate_message.AddMessage(new Message("allocateNode", new object[] { 4096 }));
 				}
 			}
 
@@ -233,8 +329,8 @@ namespace Deveel.Data.Net {
 			// order of the allocation messages,
 			int n = 0;
 			foreach (Message m in result_stream) {
-				if (m is ErrorMessage)
-					throw ((ErrorMessage) m).Error;
+				if (m.IsError)
+					throw m.Error;
 
 				DataAddress addr = (DataAddress) m[0];
 				refs[n] = addr;
@@ -310,8 +406,8 @@ namespace Deveel.Data.Net {
 
 					node_buf = new byte[lfsz + 6];
 					// Technically, we could comment these next two lines out.
-					Util.ByteBuffer.WriteInt2(LeafType, node_buf, 0);
-					Util.ByteBuffer.WriteInteger(lfsz, node_buf, 2);
+					ByteBuffer.WriteInt2(LeafType, node_buf, 0);
+					ByteBuffer.WriteInteger(lfsz, node_buf, 2);
 					leaf.Read(0, node_buf, 6, lfsz);
 
 					// Put this leaf into the local cache,
@@ -323,8 +419,8 @@ namespace Deveel.Data.Net {
 				// The DataAddress this node is being written to,
 				DataAddress address = refs[i];
 				// Get the block id,
-				long block_id = address.BlockId;
-				int bid = unique_blocks.IndexOf(block_id);
+				long blockId = address.BlockId;
+				int bid = unique_blocks.IndexOf(blockId);
 				ubid_stream[bid].StartMessage("writeToBlock");
 				ubid_stream[bid].AddMessageArgument(address);
 				ubid_stream[bid].AddMessageArgument(node_buf);
@@ -333,7 +429,7 @@ namespace Deveel.Data.Net {
 				ubid_stream[bid].CloseMessage();
 
 				// Update 'out_refs' array,
-				out_refs[i] = refs[i].Value;
+				outRefs[i] = refs[i].Value;
 
 			}
 
@@ -358,7 +454,7 @@ namespace Deveel.Data.Net {
 					//DEBUG: ++network_comm_count;
 
 					foreach (Message m in message_in) {
-						if (m is ErrorMessage) {
+						if (m.IsError) {
 							// If this is an error, we need to report the failure to the
 							// manager server,
 							ReportBlockServerFailure(address);
@@ -387,19 +483,17 @@ namespace Deveel.Data.Net {
 								foreach (Message rbm in msg_in) {
 									// If rollback generated an error we throw the error now
 									// because this likely is a serious network error.
-									if (rbm is ErrorMessage) {
-										throw new NetworkException("Rollback wrote failed: " + ((ErrorMessage) rbm).Error.Message);
-									}
+									if (rbm.IsError)
+										throw new NetworkException("Rollback wrote failed: " + rbm.ErrorMessage);
 								}
-
 							}
 
 							// Retry,
-							if (try_count > 0)
-								return DoPersist(sequence, try_count - 1);
+							if (tryCount > 0)
+								return DoPersist(sequence, tryCount - 1);
 								
 							// Otherwise we fail the write
-							throw new NetworkException(((ErrorMessage) m).Error.Message);
+							throw new NetworkException(m.ErrorMessage);
 						}
 					}
 
@@ -411,8 +505,12 @@ namespace Deveel.Data.Net {
 			}
 
 			// Return the references,
-			return out_refs;
+			return new List<long>(outRefs);
 
+		}
+
+		internal void SetMaxNodeCacheHeapSize(long value) {
+			max_transaction_node_heap_size = value;
 		}
 
 		public DataAddress CreateEmptyDatabase() {
@@ -433,7 +531,7 @@ namespace Deveel.Data.Net {
 			IList<long> refs = Persist(seq);
 
 			// Create a branch,
-			int maxBranchSize = GetConfigValue<int>("maxBranchSize");
+			int maxBranchSize = MaxBranchSize;
 			TreeBranch root_branch = node_heap.CreateBranch(null, maxBranchSize);
 			root_branch.Set(refs[0], 4,
 			                Key.Tail.GetEncoded((1)), 
@@ -456,30 +554,401 @@ namespace Deveel.Data.Net {
 			return new DataAddress(root_id);
 		}
 
-		#region Implementation of ITreeStorageSystem
+		public ServiceAddress GetRootServer(string pathName) {
 
-		public T GetConfigValue<T>(string key) {
-			throw new NotImplementedException();
+			// Check if this is stored in the cache first,
+			lock (pathToRoot) {
+				ServiceAddress saddr;
+				if (pathToRoot.TryGetValue(pathName, out saddr))
+					return saddr;
+			}
+
+			// It isn't, so query the manager server on the network
+			IMessageProcessor manager = connector.Connect(managerAddress, ServiceType.Manager);
+			MessageStream message_out = new MessageStream(16);
+			message_out.AddMessage(new Message("getRootFor", new object[] { pathName }));
+			// Process the 'getRootFor' command,
+			MessageStream msg_in = manager.Process(message_out);
+			//DEBUG ++networkCommCount;
+
+			foreach (Message m in msg_in) {
+				if (m.IsError)
+					throw new Exception(m.ErrorMessage, m.Error);
+
+				// Return the service address result,
+				ServiceAddress saddr = (ServiceAddress) m[0];
+				// Put it in the map,
+				lock(pathToRoot) {
+					pathToRoot[pathName] = saddr;
+				}
+
+				return saddr;
+			}
+
+			throw new Exception("Bad formatted message stream");
+
+		}
+
+		public ITransaction CreateTransaction(DataAddress rootNode) {
+			return new Transaction(this, 0, rootNode);
+		}
+
+		public ITransaction CreateEmptyTransaction() {
+			return new Transaction(this, 0);
+		}
+
+		public DataAddress FlushTransaction(ITransaction transaction) {
+			Transaction net_transaction = (Transaction)transaction;
+
+			try {
+				net_transaction.CheckOut();
+				return new DataAddress(net_transaction.RootNodeId);
+			} catch (IOException e) {
+				throw new Exception(e.Message, e);
+			}
+		}
+
+		public void DisposeTransaction(ITransaction transaction) {
+			((Transaction)transaction).Dispose();
+		}
+
+		public DataAddress Commit(ServiceAddress root_server, String path_name, DataAddress proposal) {
+			IMessageProcessor processor = connector.Connect(root_server, ServiceType.Root);
+			MessageStream msg_out = new MessageStream(16);
+			msg_out.AddMessage(new Message("commit", new object[] { path_name, proposal }));
+			MessageStream msg_in = processor.Process(msg_out);
+
+			foreach (Message m in msg_in) {
+				if (m.IsError) {
+					ServiceException et = m.Error;
+					// If it's a commit fault exception, wrap it locally.
+					if (et.Source.Equals("Deveel.Data.Net.CommitFaultException"))
+						throw new CommitFaultException(et.Message);
+
+					throw new Exception(et.Message);
+				}
+
+				// Return the DataAddress of the result transaction,
+				return (DataAddress) m[0];
+			}
+
+			throw new Exception("Bad formatted message stream");
+		}
+
+		public string[] FindAllPaths() {
+			IMessageProcessor processor = connector.Connect(managerAddress, ServiceType.Manager);
+			MessageStream msg_out = new MessageStream(16);
+			msg_out.AddMessage(new Message("getAllPaths"));
+			MessageStream msg_in = processor.Process(msg_out);
+			foreach (Message m in msg_in) {
+				if (m.IsError)
+					//TODO: ERROR log ...
+					throw new Exception(m.ErrorMessage);
+
+				return (string[])m[0];
+			}
+
+			throw new Exception("Bad formatted message stream");
+		}
+
+		public DataAddress GetPathNow(ServiceAddress root_server, String name) {
+			IMessageProcessor processor = connector.Connect(root_server, ServiceType.Root);
+			MessageStream msg_out = new MessageStream(16);
+			msg_out.AddMessage(new Message("getPathNow", new object[] { name }));
+			MessageStream msg_in = processor.Process(msg_out);
+			foreach (Message m in msg_in) {
+				if (m.IsError)
+					throw new Exception(m.ErrorMessage);
+				
+				return (DataAddress)m[0];
+			}
+			throw new Exception("Bad formatted message stream");
+		}
+
+		public DataAddress[] GetPathHistorical(ServiceAddress rootServer, string name, DateTime timeStart, DateTime timeEnd) {
+			IMessageProcessor processor = connector.Connect(rootServer, ServiceType.Root);
+			MessageStream msg_out = new MessageStream(16);
+			msg_out.AddMessage(new Message("getPathHistorical", new object[] { name, timeStart.Ticks, timeEnd.Ticks }));
+			MessageStream msg_in = processor.Process(msg_out);
+			foreach (Message m in msg_in) {
+				if (m.IsError)
+					throw new Exception(m.ErrorMessage);
+				
+				return (DataAddress[])m[0];
+			}
+
+			throw new Exception("Bad formatted message stream");
+		}
+
+		#region Implementation of ITreeStorageSystem
+		
+		public int MaxLeafByteSize {
+			get { return 6134; }
+		}
+		
+		public int MaxBranchSize {
+			get { return 14; }
+		}
+		
+		public long NodeHeapMaxSize {
+			get { return max_transaction_node_heap_size; }
 		}
 
 		public void CheckPoint() {
-			throw new NotImplementedException();
+			// This is a 'no-op' for the network system. This is called when a cache
+			// flush occurs, so one idea might be to use this as some sort of hint?
 		}
 
-		public IList<T> FetchNodes<T>(long[] nids) where T : ITreeNode {
-			throw new NotImplementedException();
+		IList<T> ITreeStorageSystem.FetchNodes<T>(long[] nids) {
+			return (IList<T>) FetchNodes(nids);
+		}
+
+		public IList<ITreeNode> FetchNodes(long[] nids) {
+			// The number of nodes,
+			int node_count = nids.Length;
+			// The array of read nodes,
+			ITreeNode[] result_nodes = new ITreeNode[node_count];
+
+			// Resolve special nodes first,
+			{
+				int i = 0;
+				foreach (long nodeId in nids) {
+					if ((nodeId & 0x01000000000000000L) != 0)
+						result_nodes[i] = StoreTreeStorageSystem.SpecialStaticNode(nodeId);
+
+					++i;
+				}
+			}
+
+			// Group all the nodes to the same block,
+			List<long> uniqueBlocks = new List<long>();
+			List<List<long>> uniqueBlockList = new List<List<long>>();
+			{
+				int i = 0;
+				foreach (long node_ref in nids) {
+					// If it's not a special node,
+					if ((node_ref & 0x01000000000000000L) == 0) {
+						// Get the block id and add it to the list of unique blocks,
+						DataAddress address = new DataAddress(node_ref);
+						// Check if the node is in the local cache,
+						ITreeNode node = networkCache.GetNode(address);
+						if (node != null) {
+							result_nodes[i] = node;
+						} else {
+							// Not in the local cache so we need to bundle this up in a node
+							// request on the block servers,
+							// Group this node request by the block identifier
+							long blockId = address.BlockId;
+							int ind = uniqueBlocks.IndexOf(blockId);
+							if (ind == -1) {
+								ind = uniqueBlocks.Count;
+								uniqueBlocks.Add(blockId);
+								uniqueBlockList.Add(new List<long>());
+							}
+							List<long> blist = uniqueBlockList[ind];
+							blist.Add(node_ref);
+						}
+					}
+					++i;
+				}
+			}
+
+			// Exit early if no blocks,
+			if (uniqueBlocks.Count == 0)
+				return result_nodes;
+
+			// Resolve server records for the given block identifiers,
+			IDictionary<long, IList<BlockServerElement>> servers_map = GetServersForBlock(uniqueBlocks);
+
+			// The result nodes list,
+			List<ITreeNode> nodes = new List<ITreeNode>();
+
+			// For each unique block list,
+			foreach (List<long> blist in uniqueBlockList) {
+				// Make a block server request for each node in the block,
+				MessageStream block_server_msg = new MessageStream((4 * blist.Count) + 4);
+				long block_id = -1;
+				foreach (long node_ref in blist) {
+					DataAddress address = new DataAddress(node_ref);
+					block_server_msg.AddMessage(new Message("readFromBlock", new object[] { address }));
+					block_id = address.BlockId;
+				}
+
+				if (block_id == -1)
+					throw new ApplicationException("block_id == -1");
+
+				// Get the shuffled list of servers the block is stored on,
+				IList<BlockServerElement> servers = servers_map[block_id];
+
+				// Go through the servers one at a time to fetch the block,
+				bool success = false;
+				for (int z = 0; z < servers.Count && !success; ++z) {
+					BlockServerElement server = servers[z];
+
+					// If the server is up,
+					if (server.IsStatusUp) {
+						// Open a connection with the block server,
+						IMessageProcessor block_server_proc = connector.Connect(server.Address, ServiceType.Block);
+						MessageStream message_in = block_server_proc.Process(block_server_msg);
+						// DEBUG: ++networkCommCount;
+						// DEBUG: ++networkFetchCommCount;
+
+						bool is_error = false;
+						bool severe_error = false;
+						// Turn each none-error message into a node
+						foreach (Message m in message_in) {
+							if (m.IsError) {
+								// See if this error is a block read error. If it is, we don't
+								// tell the manager server to lock this server out completely.
+								bool is_block_read_error = m.Error.Source.Equals("Deveel.Data.Net.BlockReadException");
+								if (!is_block_read_error) {
+									// If it's something other than a block read error, we mark
+									// this error as severe,
+									severe_error = true;
+								}
+								is_error = true;
+							} else if (!is_error) {
+								// The reply contains the block of data read.
+								NodeSet node_set = (NodeSet)m[0];
+
+								// Decode the node items into node objects,
+								IEnumerator<Node> item_iterator = node_set.GetEnumerator();
+
+								while (item_iterator.MoveNext()) {
+									// Get the node item,
+									Node node_item = item_iterator.Current;
+
+									long node_ref = node_item.Id;
+
+									DataAddress address = new DataAddress(node_ref);
+									// Wrap around a buffered DataInputStream for reading values
+									// from the store.
+									BinaryReader input = new BinaryReader(node_item.Input);
+									short node_type = input.ReadInt16();
+
+									ITreeNode read_node;
+
+									// Is the node type a leaf node?
+									if (node_type == LeafType) {
+										// Read the key
+										int leaf_size = input.ReadInt32();
+
+										byte[] buf = ReadNodeAsBuffer(node_item);
+										if (buf == null) {
+											buf = new byte[leaf_size + 6];
+											input.Read(buf, 6, leaf_size);
+											// Technically, we could comment these next two lines out.
+											ByteBuffer.WriteInt2(node_type, buf, 0);
+											ByteBuffer.WriteInteger(leaf_size, buf, 2);
+										}
+
+										// Create a leaf that's mapped to this data
+										read_node = new ByteArrayTreeLeaf(node_ref, buf); ;
+
+									}
+										// Is the node type a branch node?
+									else if (node_type == BranchType) {
+										// Note that the entire branch is loaded into memory,
+										int child_data_size = input.ReadInt32();
+										long[] data_arr = new long[child_data_size];
+										for (int n = 0; n < child_data_size; ++n) {
+											data_arr[n] = input.ReadInt64();
+										}
+										// Create the branch node,
+										read_node = new TreeBranch(node_ref, data_arr, child_data_size);
+									} else {
+										throw new InvalidDataState("Unknown node type: " + node_type, address);
+									}
+
+									// Is the node already in the list? If so we don't add it.
+									if (!IsInNodeList(node_ref, nodes)) {
+										// Put the read node in the cache and add it to the 'nodes'
+										// list.
+										networkCache.SetNode(address, read_node);
+										nodes.Add(read_node);
+									}
+								}
+							}
+						}
+
+						// If there was no error while reading the result, we assume the node
+						// requests were successfully read.
+						if (is_error == false) {
+							success = true;
+						} else {
+							if (severe_error) {
+								// If this is an error, we need to report the failure to the
+								// manager server,
+								ReportBlockServerFailure(server.Address);
+								// Remove the block id from the server list cache,
+								networkCache.RemoveServers(block_id);
+							} else {
+								// Otherwise, not a severe error (probably a corrupt block on a
+								// server), so shuffle the server list for this block_id so next
+								// time there's less chance of hitting this bad block.
+								IList<BlockServerElement> srvs = networkCache.GetServers(block_id);
+								List<BlockServerElement> server_list = new List<BlockServerElement>();
+								server_list.AddRange(srvs);
+								CollectionsUtil.Shuffle(server_list);
+								networkCache.SetServers(block_id, server_list, 15 * 60 * 1000);
+							}
+						}
+
+					}
+				}
+
+				// If the nodes were not successfully read, we generate an exception,
+				if (!success) {
+					// Remove from the cache,
+					networkCache.RemoveServers(block_id);
+					throw new ApplicationException("Unable to fetch node from block server");
+				}
+			}
+
+			int sz = nodes.Count;
+			if (sz == 0)
+				throw new ApplicationException("Empty nodes list");
+
+			for (int i = 0; i < sz; ++i) {
+				ITreeNode node = nodes[i];
+				long node_ref = node.Id;
+				for (int n = 0; n < nids.Length; ++n) {
+					if (nids[n] == node_ref)
+						result_nodes[n] = node;
+				}
+			}
+
+			// Check the result_nodes list is completely populated,
+			for (int n = 0; n < result_nodes.Length; ++n) {
+				if (result_nodes[n] == null)
+					throw new ApplicationException("Assertion failed: result_nodes not completely populated.");
+			}
+
+			return result_nodes;
+		}
+
+		public bool LinkLeaf(Key key, long reference) {
+			// NO-OP: A network tree system does not perform reference counting.
+			//   Instead performs reachability testing and garbage collection through
+			//   an external process.
+			return true;
 		}
 
 		public void DisposeNode(long nid) {
-			throw new NotImplementedException();
+			// NO-OP: Nodes can not be easily disposed, therefore this can do nothing
+			//   except provide a hint to the garbage collector to reclaim resources
+			//   on this node in the next cycle.
 		}
 
 		public Exception SetErrorState(Exception error) {
-			throw new NotImplementedException();
+			//TODO: ERROR log ...
+			errorState = new Exception(error.Message, error);
+			return errorState;
 		}
 
 		public void CheckErrorState() {
-			throw new NotImplementedException();
+			if (errorState != null)
+				throw errorState;
 		}
 
 		public IList<long> Persist(TreeWrite write) {
@@ -487,6 +956,26 @@ namespace Deveel.Data.Net {
 		}
 
 		#endregion
+
+		public void CreateReachabilityList(TextWriter warning_log, long node, NumberList node_list) {
+			CheckErrorState();
+
+			lock (reachability_lock) {
+				reachability_tree_depth = -1;
+				DoReachCheck(warning_log, node, node_list, 1);
+			}
+		}
+
+		public TreeReportNode CreateDiagnosticGraph(ITransaction t) {
+			CheckErrorState();
+
+			// The key object transaction
+			Transaction ts = (Transaction)t;
+			// Get the root node ref
+			long root_node_ref = ts.RootNodeId;
+			// Add the child node (the root node of the version graph).
+			return CreateDiagnosticRootGraph(Key.Head, root_node_ref);
+		}
 
 		#region MemoryTreeLeaf
 
@@ -536,6 +1025,40 @@ namespace Deveel.Data.Net {
 
 			public override long MemoryAmount {
 				get { return 8 + buffer.Length + 64; }
+			}
+
+		}
+
+		#endregion
+
+		#region Transaction
+
+		private class Transaction : TreeSystemTransaction {
+			internal Transaction(ITreeStorageSystem storeSystem, long versionId, DataAddress rootNode)
+				: base(storeSystem, versionId, rootNode.Value, false) {
+			}
+
+			public Transaction(ITreeStorageSystem tree_system, long version_id)
+				: base(tree_system, version_id, -1, false) {
+				SetToEmpty();
+			}
+		}
+
+		#endregion
+
+		#region InvalidDataState
+
+		private sealed class InvalidDataState : ApplicationException {
+
+			private readonly DataAddress address;
+
+			public InvalidDataState(string message, DataAddress address)
+				: base(message) {
+				this.address = address;
+			}
+
+			public DataAddress Address {
+				get { return address; }
 			}
 
 		}

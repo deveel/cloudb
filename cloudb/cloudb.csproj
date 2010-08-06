@@ -38,18 +38,34 @@
   <ItemGroup>
     <Compile Include="Deveel.Data.Caching\Cache.cs" />
     <Compile Include="Deveel.Data.Caching\ICache.cs" />
+    <Compile Include="Deveel.Data.Diagnostics\Analytics.cs" />
+    <Compile Include="Deveel.Data.Diagnostics\AnalyticsRecord.cs" />
     <Compile Include="Deveel.Data.Net\BlockServerElement.cs" />
     <Compile Include="Deveel.Data.Net\BlockServerTable.cs" />
+    <Compile Include="Deveel.Data.Net\CommitFaultException.cs" />
     <Compile Include="Deveel.Data.Net\CompressedNodeSet.cs" />
     <Compile Include="Deveel.Data.Net\DataAddress.cs" />
     <Compile Include="Deveel.Data.Net\ErrorMessage.cs" />
     <Compile Include="Deveel.Data.Net\IMessageProcessor.cs" />
     <Compile Include="Deveel.Data.Net\INetworkCache.cs" />
     <Compile Include="Deveel.Data.Net\IServiceConnector.cs" />
+    <Compile Include="Deveel.Data.Net\MachineProfile.cs" />
+    <Compile Include="Deveel.Data.Net\ManagerCacheState.cs" />
+    <Compile Include="Deveel.Data.Net\MemoryNetworkCache.cs" />
+    <Compile Include="Deveel.Data.Net\MessageStreamSerializer.cs" />
+    <Compile Include="Deveel.Data.Net\NetworkAdminException.cs" />
+    <Compile Include="Deveel.Data.Net\NetworkClient.cs" />
+    <Compile Include="Deveel.Data.Net\NetworkConfiguration.cs" />
+    <Compile Include="Deveel.Data.Net\NetworkConfigurationSource.cs" />
     <Compile Include="Deveel.Data.Net\NetworkException.cs" />
+    <Compile Include="Deveel.Data.Net\NetworkProfile.cs" />
     <Compile Include="Deveel.Data.Net\NetworkTreeStorageSystem.cs" />
+    <Compile Include="Deveel.Data.Net\NetworkWriteException.cs" />
     <Compile Include="Deveel.Data.Net\PathProfile.cs" />
     <Compile Include="Deveel.Data.Net\PathRootTable.cs" />
+    <Compile Include="Deveel.Data.Net\ProxyServiceConnector.cs" />
+    <Compile Include="Deveel.Data.Net\TcpServiceconnector.cs" />
+    <Compile Include="Deveel.Data.Net\TreeReportNode.cs" />
     <Compile Include="Deveel.Data.Store\IAreaWriter.cs" />
     <Compile Include="Deveel.Data.Store\ITreeNodeCache.cs" />
     <Compile Include="Deveel.Data.Net\Message.cs" />
@@ -66,13 +82,13 @@
     <Compile Include="Deveel.Data.Store\ITreeNode.cs" />
     <Compile Include="Deveel.Data.Store\ITreeStorageSystem.cs" />
     <Compile Include="Deveel.Data.Store\TreeBranch.cs" />
-    <Compile Include="Deveel.Data.Store\TreeConfigKeys.cs" />
     <Compile Include="Deveel.Data.Store\TreeLeaf.cs" />
     <Compile Include="Deveel.Data.Store\TreeNodeHeap.cs" />
     <Compile Include="Deveel.Data.Store\TreeSystemTransaction.cs" />
     <Compile Include="Deveel.Data.Store\TreeWrite.cs" />
     <Compile Include="Deveel.Data.Util\ByteBuffer.cs" />
     <Compile Include="Deveel.Data.Util\CollectionsUtil.cs" />
+    <Compile Include="Deveel.Data.Util\Properties.cs" />
     <Compile Include="Deveel.Data\DataKey.cs" />
     <Compile Include="Deveel.Data\FixedSizeCollection.cs" />
     <Compile Include="Deveel.Data\IDatabase.cs" />
@@ -92,6 +108,9 @@
     <Compile Include="Deveel.Data\StringDataReader.cs" />
     <Compile Include="Deveel.Data\StringDataWriter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Deveel.Data.Diagnostics" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

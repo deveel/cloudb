@@ -1,62 +1,20 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
 namespace Deveel.Data.Net {
-	public sealed class MessageStream : IEnumerable<Message> {
-		public MessageStream(int size) {
-			items = new List<object>(size);
-		}
+	public sealed class MessageStreamSerializer {
+		public void Serialize(MessageStream messageStream, BinaryWriter writer) {
+			if (messageStream == null)
+				throw new ArgumentNullException("messageStream");
 
-		private readonly List<object> items;
-
-		internal const string MessageOpen = "[";
-		internal const string MessageClose = "]";
-		
-		internal IList Items {
-			get { return items; }
-		}
-
-		public void StartMessage(string messageName) {
-			items.Add(messageName);
-			items.Add(MessageOpen);
-		}
-
-		public void CloseMessage() {
-			items.Add(MessageClose);
-		}
-
-		public void AddErrorMessage(ServiceException error) {
-			StartMessage("E");
-			AddMessageArgument(error);
-			CloseMessage();
-		}
-
-		public void AddMessageArgument(object value) {
-			items.Add(value);
-		}
-
-		public void AddMessage(Message message) {
-			StartMessage(message.Name);
-			for (int i = 0; i < message.ArgumentCount; i++) {
-				AddMessageArgument(message[i]);
-			}
-			CloseMessage();
-		}
-
-		internal void WriteTo(Stream output) {
-			BinaryWriter writer = new BinaryWriter(output, Encoding.Unicode);
-			writer.Write(items.Count);
-			foreach (object item in items) {
+			writer.Write(messageStream.Items.Count);
+			foreach (object item in messageStream.Items) {
 				// Null value handling,
 				if (item == null) {
 					writer.Write((byte)16);
 				} else if (item is String) {
-					if (item.Equals(MessageOpen))
-						continue;
-					if (item.Equals(MessageClose)) {
+					if (item.Equals(MessageStream.MessageClose)) {
 						writer.Write((byte)7);
 					} else {
 						writer.Write((byte)1);
@@ -74,9 +32,9 @@ namespace Deveel.Data.Net {
 					byte[] buf = (byte[])item;
 					writer.Write(buf.Length);
 					writer.Write(buf);
-				} else if (item is StringArgument) {
+				} else if (item is MessageStream.StringArgument) {
 					writer.Write((byte)5);
-					StringArgument str_arg = (StringArgument)item;
+					MessageStream.StringArgument str_arg = (MessageStream.StringArgument)item;
 					writer.Write(str_arg.Value);
 				} else if (item is long[]) {
 					writer.Write((byte)6);
@@ -97,7 +55,7 @@ namespace Deveel.Data.Net {
 					NodeSet nset = (NodeSet)item;
 					// Write the node set,
 					// Write the binary encoding,
-					nset.WriteTo(output);
+					nset.WriteTo(writer.BaseStream);
 				} else if (item is DataAddress) {
 					writer.Write((byte)9);
 					DataAddress data_addr = (DataAddress)item;
@@ -149,30 +107,39 @@ namespace Deveel.Data.Net {
 			writer.Write((byte)8);
 		}
 
-		internal static MessageStream ReadFrom(Stream input) {
-			BinaryReader reader = new BinaryReader(input, Encoding.Unicode);
-			int message_sz = reader.ReadInt32();
-			MessageStream message_str = new MessageStream(message_sz);
-			for (int i = 0; i < message_sz; ++i) {
+		public void Serialize(MessageStream messageStream, Stream outputStream) {
+			if (outputStream == null)
+				throw new ArgumentNullException("outputStream");
+			if (!outputStream.CanWrite)
+				throw new ArgumentException("The output stream is not writeable");
+
+			BinaryWriter writer = new BinaryWriter(outputStream, Encoding.Unicode);
+			Serialize(messageStream, writer);
+		}
+
+		public MessageStream Deserialize(BinaryReader reader) {
+			int messageSz = reader.ReadInt32();
+			MessageStream messageStream = new MessageStream(messageSz);
+			for (int i = 0; i < messageSz; ++i) {
 				byte type = reader.ReadByte();
 				if (type == 16) {
 					// Nulls
-					message_str.AddMessageArgument(null);
+					messageStream.AddMessageArgument(null);
 				} else if (type == 1) {
 					// Open message,
-					string message_name = reader.ReadString();
-					message_str.StartMessage(message_name);
+					string messageName = reader.ReadString();
+					messageStream.StartMessage(messageName);
 				} else if (type == 2) {
-					message_str.AddMessageArgument(reader.ReadInt64());
+					messageStream.AddMessageArgument(reader.ReadInt64());
 				} else if (type == 3) {
-					message_str.AddMessageArgument(reader.ReadInt32());
+					messageStream.AddMessageArgument(reader.ReadInt32());
 				} else if (type == 4) {
 					int sz = reader.ReadInt32();
 					byte[] buf = new byte[sz];
 					reader.Read(buf, 0, sz);
-					message_str.AddMessageArgument(buf);
+					messageStream.AddMessageArgument(buf);
 				} else if (type == 5) {
-					message_str.AddMessageArgument(reader.ReadString());
+					messageStream.AddMessageArgument(reader.ReadString());
 				} else if (type == 6) {
 					// Long array
 					int sz = reader.ReadInt32();
@@ -180,25 +147,25 @@ namespace Deveel.Data.Net {
 					for (int n = 0; n < sz; ++n) {
 						arr[n] = reader.ReadInt64();
 					}
-					message_str.AddMessageArgument(arr);
+					messageStream.AddMessageArgument(arr);
 				} else if (type == 7) {
-					message_str.CloseMessage();
+					messageStream.CloseMessage();
 				} else if (type == 9) {
 					int data_id = reader.ReadInt32();
 					long block_id = reader.ReadInt64();
-					message_str.AddMessageArgument(new DataAddress(block_id, data_id));
+					messageStream.AddMessageArgument(new DataAddress(block_id, data_id));
 				} else if (type == 10) {
 					string source = reader.ReadString();
 					string message = reader.ReadString();
 					string stackTrace = reader.ReadString();
-					message_str.AddMessageArgument(new ServiceException(source, message, stackTrace));
+					messageStream.AddMessageArgument(new ServiceException(source, message, stackTrace));
 				} else if (type == 11) {
 					int sz = reader.ReadInt32();
 					ServiceAddress[] arr = new ServiceAddress[sz];
 					for (int n = 0; n < sz; ++n) {
 						arr[n] = ServiceAddress.ReadFrom(reader);
 					}
-					message_str.AddMessageArgument(arr);
+					messageStream.AddMessageArgument(arr);
 				} else if (type == 12) {
 					int sz = reader.ReadInt32();
 					DataAddress[] arr = new DataAddress[sz];
@@ -207,9 +174,9 @@ namespace Deveel.Data.Net {
 						long block_id = reader.ReadInt64();
 						arr[n] = new DataAddress(block_id, data_id);
 					}
-					message_str.AddMessageArgument(arr);
+					messageStream.AddMessageArgument(arr);
 				} else if (type == 13) {
-					message_str.AddMessageArgument(ServiceAddress.ReadFrom(reader));
+					messageStream.AddMessageArgument(ServiceAddress.ReadFrom(reader));
 				} else if (type == 14) {
 					int sz = reader.ReadInt32();
 					String[] arr = new String[sz];
@@ -217,14 +184,14 @@ namespace Deveel.Data.Net {
 						String str = reader.ReadString();
 						arr[n] = str;
 					}
-					message_str.AddMessageArgument(arr);
+					messageStream.AddMessageArgument(arr);
 				} else if (type == 15) {
 					int sz = reader.ReadInt32();
 					int[] arr = new int[sz];
 					for (int n = 0; n < sz; ++n) {
 						arr[n] = reader.ReadInt32();
 					}
-					message_str.AddMessageArgument(arr);
+					messageStream.AddMessageArgument(arr);
 				} else if (type == 17) {
 					byte node_set_type = reader.ReadByte();
 					// The node_ids list,
@@ -241,10 +208,10 @@ namespace Deveel.Data.Net {
 					// Make the node_set object type,
 					if (node_set_type == 1) {
 						// Uncompressed single,
-						message_str.AddMessageArgument(new SingleNodeSet(arr, buf));
+						messageStream.AddMessageArgument(new SingleNodeSet(arr, buf));
 					} else if (node_set_type == 2) {
 						// Compressed group,
-						message_str.AddMessageArgument(new CompressedNodeSet(arr, buf));
+						messageStream.AddMessageArgument(new CompressedNodeSet(arr, buf));
 					} else {
 						throw new Exception("Unknown node set type: " + node_set_type);
 					}
@@ -252,99 +219,23 @@ namespace Deveel.Data.Net {
 					throw new Exception("Unknown message type on stream " + type);
 				}
 			}
+
 			// Consume the last byte type,
 			byte v = reader.ReadByte();
-			if (v != 8) {
+			if (v != 8)
 				throw new Exception("Expected '8' to end message stream");
-			}
-			// Return the message str
-			return message_str;
+
+			return messageStream;
 		}
 
+		public MessageStream Deserialize(Stream inputStream) {
+			if (inputStream == null)
+				throw new ArgumentNullException("inputStream");
+			if (!inputStream.CanRead)
+				throw new ArgumentException("The input stream is not readable.", "inputStream");
 
-		#region Implementation of IEnumerable
-
-		public IEnumerator<Message> GetEnumerator() {
-			return new MessageEnumerator(this);
+			BinaryReader reader = new BinaryReader(inputStream, Encoding.Unicode);
+			return Deserialize(reader);
 		}
-
-		IEnumerator IEnumerable.GetEnumerator() {
-			return GetEnumerator();
-		}
-
-		#endregion
-
-		#region MessageEnumerator
-
-		private class MessageEnumerator : IEnumerator<Message> {
-			public MessageEnumerator(MessageStream stream) {
-				this.stream = stream;
-			}
-
-			private readonly MessageStream stream;
-			private int index = -1;
-
-			#region Implementation of IDisposable
-
-			public void Dispose() {
-			}
-
-			#endregion
-
-			#region Implementation of IEnumerator
-
-			public bool MoveNext() {
-				return ++index < stream.items.Count;
-			}
-
-			public void Reset() {
-				index = -1;
-			}
-
-			public Message Current {
-				get {
-					string msgName = (string)stream.items[index];
-					Message message = msgName.Equals("E") ? new ErrorMessage() : new Message(msgName);
-					while (++index < stream.items.Count) {
-						object v = stream.items[index];
-						if (v == null) {
-							message.AddArgument(v);
-						} else if (v is string) {
-							if (v.Equals(MessageOpen))
-								continue;
-							if (v.Equals(MessageClose))
-								return message;
-							throw new FormatException("Invalid message format");
-						} else if (v is StringArgument) {
-							message.AddArgument(((StringArgument)v).Value);
-						} else {
-							message.AddArgument(v);
-						}
-					}
-
-					throw new FormatException("No termination found in the message.");
-				}
-			}
-
-			object IEnumerator.Current {
-				get { return Current; }
-			}
-
-			#endregion
-		}
-
-		#endregion
-
-		#region StringArgument
-
-		internal class StringArgument {
-			public StringArgument(string value) {
-				Value = value;
-			}
-
-			public readonly string Value;
-		}
-
-		#endregion
 	}
 }

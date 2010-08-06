@@ -18,6 +18,26 @@ namespace Deveel.Data.Net {
 		public string Name {
 			get { return name; }
 		}
+		
+				public bool IsError {
+			get { return name.Equals("E"); }
+		}
+
+		public string ErrorMessage {
+			get { return !IsError ? null : Error.Message; }
+		}
+
+		public string ErrorStackTrace {
+			get { return !IsError ? null : Error.StackTrace; }
+		}
+
+		public string ErrorSource {
+			get { return !IsError ? null : Error.Source; }
+		}
+
+		public ServiceException Error {
+			get { return !IsError ? null : (ServiceException) args[0]; }
+		}
 
 		public int ArgumentCount {
 			get { return args.Count; }
