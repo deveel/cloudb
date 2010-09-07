@@ -15,6 +15,8 @@ namespace Deveel.Data.Store {
 		private Key lowestSizeChangedKey = Key.Tail;
 		private int treeHeight = -1;
 
+		private readonly Dictionary<Key, String> prefetch_keymap = new Dictionary<Key, string>();
+
 		private bool readOnly;
 		private bool disposed;
 		private bool committed;
@@ -111,7 +113,7 @@ namespace Deveel.Data.Store {
 			if (IsFrozen(node_ref)) {
 				// Return a copy of the node
 				ITreeNode new_copy = NodeHeap.Copy(node, storeSystem.MaxBranchSize,
-				                                   storeSystem.MaxLeafByteSize, this, false);
+												   storeSystem.MaxLeafByteSize, this, false);
 				// Delete the old node,
 				DeleteNode(node_ref);
 				return new_copy;
@@ -127,8 +129,144 @@ namespace Deveel.Data.Store {
 					throw new NullReferenceException();
 				return n;
 			}
+
+			// If there's nothing in the prefetch keymap,
+			if (prefetch_keymap.Count == 0) {
+				return storeSystem.FetchNodes<ITreeNode>(new long[] { nodeId })[0];
+			}
+
+			List<long> prefetch_nodeset = new List<long>();
+			prefetch_nodeset.Add(nodeId);
+			DiscoverPrefetchNodeSet(prefetch_nodeset);
+
+			int len = prefetch_nodeset.Count;
+			long[] node_refs = new long[len];
+			for (int i = 0; i < len; ++i) {
+				node_refs[i] = prefetch_nodeset[i];
+			}
+
 			// Otherwise fetch the node from the tree store
-			return storeSystem.FetchNodes<ITreeNode>(new long[] { nodeId })[0];
+			return storeSystem.FetchNodes<ITreeNode>(node_refs)[0];
+		}
+
+		private static Key PreviousKeyOrder(Key key) {
+			short type = key.Type;
+			int secondary = key.Secondary;
+			long primary = key.Primary;
+			return new Key(type, secondary, primary - 1);
+		}
+
+
+		private ITreeNode FetchNodeIfLocallyAvailable(long node_ref) {
+			// If it's a heap node,
+			if (IsHeapNode(node_ref)) {
+				return FetchNode(node_ref);
+			}
+
+			// If the node is locally available, return it,
+			if (storeSystem.IsNodeAvailable(node_ref)) {
+				return storeSystem.FetchNodes<ITreeNode>(new long[] { node_ref })[0];
+			}
+			// Otherwise return null
+			return null;
+		}
+
+		private long LastUncachedNode(Key key) {
+			int cur_height = 1;
+			long child_node_ref = rootNodeId;
+			TreeBranch last_branch = null;
+			int child_i = -1;
+
+			// How this works;
+			// * Descend through the tree and try to find the last node of the
+			//   previous key.
+			// * If a node is encoutered that is not cached locally, return it.
+			// * If a leaf is reached, return the next leaf entry from the previous
+			//   branch (this should be the first node of key).
+
+			// This does not perform completely accurately for tree edges but this
+			// should not present too much of a problem.
+
+			key = PreviousKeyOrder(key);
+
+			// Try and fetch the node, if it's not available locally then return the
+			// child node ref
+			ITreeNode node = FetchNodeIfLocallyAvailable(child_node_ref);
+			if (node == null) {
+				return child_node_ref;
+			}
+
+			while (true) {
+				// Is the node a leaf?
+				if (node is TreeLeaf) {
+					treeHeight = cur_height;
+					break;
+				}
+					// Must be a branch,
+				else {
+					TreeBranch branch = (TreeBranch)node;
+					last_branch = branch;
+					// We ask the node for the child sub-tree that will contain this node
+					child_i = branch.SearchLast(key);
+					// Child will be in this subtree
+					child_node_ref = branch.GetChild(child_i);
+
+					// Ok, if we know child_node_ref is a leaf,
+					if (cur_height + 1 == treeHeight) {
+						break;
+					}
+
+					// Try and fetch the node, if it's not available locally then return
+					// the child node ref
+					node = FetchNodeIfLocallyAvailable(child_node_ref);
+					if (node == null) {
+						return child_node_ref;
+					}
+					// Otherwise, descend to the child and repeat
+					++cur_height;
+				}
+			}
+
+			// Ok, we've reached the end of the tree,
+
+			// Fetch the next child_i if we are not at the end already,
+			if (child_i + 1 < last_branch.ChildCount) {
+				child_node_ref = last_branch.GetChild(child_i);
+			}
+
+			// If the child node is not a heap node, and is not available locally then
+			// return it.
+			if (!IsHeapNode(child_node_ref) &&
+				!storeSystem.IsNodeAvailable(child_node_ref)) {
+				return child_node_ref;
+			}
+			// The key is available locally,
+			return -1;
+		}
+
+		private void DiscoverPrefetchNodeSet(IList<long> node_set) {
+			// If the map is empty, return
+			if (prefetch_keymap.Count == 0) {
+				return;
+			}
+
+			List<Key> toRemove = new List<Key>();
+			foreach (Key key in prefetch_keymap.Keys) {
+				long node_ref = LastUncachedNode(key);
+
+				if (node_ref != -1) {
+					if (!node_set.Contains(node_ref)) {
+						node_set.Add(node_ref);
+					}
+				} else {
+					// Remove the key from the prefetch map
+					toRemove.Add(key);
+				}
+			}
+
+			for (int i = toRemove.Count - 1; i >= 0; i--) {
+				prefetch_keymap.Remove(toRemove[i]);
+			}
 		}
 
 		private static bool IsHeapNode(long nodeId) {
@@ -141,7 +279,7 @@ namespace Deveel.Data.Store {
 			target.Shift(size);
 			target.Position = pos;
 			// Set a 1k buffer
-			byte [] buf = new byte[1024];
+			byte[] buf = new byte[1024];
 			// While there is data to copy,
 			while (size > 0) {
 				// Read an amount of data from the source
@@ -186,7 +324,7 @@ namespace Deveel.Data.Store {
 				// Return the id of the branch in the sequence,
 				return branch_id;
 			}
-			
+
 			throw new ApplicationException("Unknown node type.");
 		}
 
@@ -271,107 +409,6 @@ namespace Deveel.Data.Store {
 			}
 		}
 
-		private long KeyStartPosition(Key left_key, Key key, long relative_offset, long reference, long node_total_size, int cur_height) {
-			// If we know this is a leaf,
-			if (cur_height == treeHeight) {
-				// If the key matches,
-				int c = key.CompareTo(left_key);
-				if (c == 0) {
-					return relative_offset;
-				}
-					// If the searched for key is less than this
-				if (c < 0)
-					return -(relative_offset + 1);
-					// If this key is greater, relative offset is at the end of this node.
-				if (c > 0)
-					return -((relative_offset + node_total_size) + 1);
-			
-				// Shouldn't be possible to get here!
-				throw new SystemException();
-			}
-
-			// Fetch the node
-			ITreeNode node = FetchNode(reference);
-			// If the node is a branch node
-			if (node is TreeBranch) {
-				TreeBranch branch = (TreeBranch)node;
-				// We ask the node for the child sub-tree that will contain this node
-				int child_i = branch.SearchFirst(key);
-				if (child_i >= 0) {
-					// Child will be in this subtree
-					long child_offset = branch.GetChildOffset(child_i);
-					long child_ref = branch.GetChild(child_i);
-					long total_size = branch.GetChildLeafElementCount(child_i);
-					// Set up the left key
-					Key new_left_key = (child_i > 0) ? branch.GetKey(child_i) : left_key;
-					// Recurse,
-					return KeyStartPosition(new_left_key, key, relative_offset + child_offset, child_ref, total_size, cur_height + 1);
-				} else {
-					// A negative child_i means that the key_ref is equal to the key being
-					// searched, so we must walk the left child then the right child to
-					// find the position.
-					child_i = -(child_i + 1);
-					// We must search left first because that is where the first occurance
-					// we be.
-					long child_offset = branch.GetChildOffset(child_i);
-					long child_ref = branch.GetChild(child_i);
-					long total_size = branch.GetChildLeafElementCount(child_i);
-					// Set up the left key
-					Key new_left_key = (child_i > 0) ? branch.GetKey(child_i) : left_key;
-					// Recurse,
-					long pos = KeyStartPosition(new_left_key, key,
-												relative_offset + child_offset, child_ref,
-												total_size, cur_height + 1);
-					// If we didn't find first down the left, then try the right
-					if (pos < 0) {
-						// Increment child_i
-						++child_i;
-						child_offset = branch.GetChildOffset(child_i);
-						child_ref = branch.GetChild(child_i);
-						total_size = branch.GetChildLeafElementCount(child_i);
-						pos = KeyStartPosition(branch.GetKey(child_i), key, relative_offset + child_offset, child_ref, total_size, cur_height + 1);
-					}
-					if (pos < 0) {
-						// Assertion failed, we didn't find it down the right route either!
-						//  This means the B+tree has lost integrity.
-						throw new ApplicationException("Assertion failed: " +
-										 "value not found in left or right branch of tree.");
-					}
-					// Return the reference position
-					return pos;
-				}
-			} else {
-				// If the node is a leaf,
-				TreeLeaf leaf = (TreeLeaf)node;
-
-				// Assertion
-				if (leaf.Length != node_total_size) {
-					throw new SystemException();
-				}
-
-				// Set the tree_height var
-				treeHeight = cur_height;
-
-				// If the key matches,
-				int c = key.CompareTo(left_key);
-				if (c == 0)
-					return relative_offset;
-					// If the searched for key is less than this 
-				if (c < 0)
-					return -(relative_offset + 1);
-					// If this key is greater, relative offset is at the end of this node.
-				if (c > 0)
-					return -((relative_offset + leaf.Length) + 1);
-
-				// Shouldn't be possible to get here!
-				throw new SystemException();
-			}
-		}
-
-		private long KeyStartPosition(Key key) {
-			return KeyStartPosition(Key.Head, key, 0, rootNodeId, -1, 1);
-		}
-
 		private long KeyEndPosition(Key key) {
 			Key left_key = Key.Head;
 			int cur_height = 1;
@@ -387,7 +424,7 @@ namespace Deveel.Data.Store {
 				}
 
 				// Must be a branch,
-				TreeBranch branch = (TreeBranch) node;
+				TreeBranch branch = (TreeBranch)node;
 				// We ask the node for the child sub-tree that will contain this node
 				int child_i = branch.SearchLast(key);
 				// Child will be in this subtree
@@ -422,11 +459,121 @@ namespace Deveel.Data.Store {
 			// If the searched for key is less than this
 			if (c < 0)
 				return -(left_offset + 1);
+
 			// If this key is greater, relative offset is at the end of this node.
-			if (c > 0)
-				return -((left_offset + node_total_size) + 1);
-			
-			throw new SystemException();
+			return -((left_offset + node_total_size) + 1);
+		}
+
+		private long[] GetDataFileBounds(Key key) {
+
+			Key left_key = Key.Head;
+			int cur_height = 1;
+			long left_offset = 0;
+			long node_total_size = -1;
+			ITreeNode node = FetchNode(rootNodeId);
+			TreeBranch last_branch = (TreeBranch) node;
+			int child_i = -1;
+
+			while (true) {
+				// Is the node a leaf?
+				if (node is TreeLeaf) {
+					treeHeight = cur_height;
+					break;
+				}
+					// Must be a branch,
+				else {
+					TreeBranch branch = (TreeBranch) node;
+					// We ask the node for the child sub-tree that will contain this node
+					child_i = branch.SearchLast(key);
+					// Child will be in this subtree
+					long child_offset = branch.GetChildOffset(child_i);
+					node_total_size = branch.GetChildLeafElementCount(child_i);
+					// Get the left key of the branch if we can
+					if (child_i > 0) {
+						left_key = branch.GetKey(child_i);
+					}
+					// Update left_offset
+					left_offset += child_offset;
+					last_branch = branch;
+
+					// Ok, if we know child_node_ref is a leaf,
+					if (cur_height + 1 == treeHeight) {
+						break;
+					}
+
+					// Otherwise, descend to the child and repeat
+					long child_node_ref = branch.GetChild(child_i);
+					node = FetchNode(child_node_ref);
+					++cur_height;
+				}
+			}
+
+			// Ok, we've reached the leaf node on the search,
+			// 'left_key' will be the key of the node we are on,
+			// 'node_total_size' will be the size of the node,
+			// 'last_branch' will be the branch immediately above the leaf
+			// 'child_i' will be the offset into the last branch we searched
+
+			long end_pos;
+
+			// If the key matches,
+			int c = key.CompareTo(left_key);
+			if (c == 0) {
+				end_pos = left_offset + node_total_size;
+			}
+				// If the searched for key is less than this
+			else if (c < 0) {
+				end_pos = -(left_offset + 1);
+			}
+				// If this key is greater, relative offset is at the end of this node.
+			else {
+				//if (c > 0) {
+				end_pos = -((left_offset + node_total_size) + 1);
+			}
+
+			// If the key doesn't exist return the bounds as the position data is
+			// entered.
+			if (end_pos < 0) {
+				long p = -(end_pos + 1);
+				return new long[] {p, p};
+			}
+
+			// Now we have the end position of a key that definitely exists, we can
+			// query the parent branch and see if we can easily find the record
+			// start.
+
+			// Search back through the keys until we find a key that is different,
+			// which is the start bounds of the key,
+			long predicted_start_pos = end_pos - node_total_size;
+			for (int i = child_i - 1; i > 0; --i) {
+				Key k = last_branch.GetKey(i);
+				if (key.CompareTo(k) == 0) {
+					// Equal,
+					predicted_start_pos = predicted_start_pos -
+					                      last_branch.GetChildLeafElementCount(i);
+				} else {
+					// Not equal
+					if (predicted_start_pos > end_pos) {
+						throw new ApplicationException("Assertion failed: (1) start_pos > end_pos");
+					}
+					return new long[] {predicted_start_pos, end_pos};
+				}
+			}
+
+			// Otherwise, find the end position of the previous key through a tree
+			// search
+			Key previous_key = PreviousKeyOrder(key);
+			long start_pos = KeyEndPosition(previous_key);
+
+			if (start_pos < 0) {
+				start_pos = -(start_pos + 1);
+			}
+
+			if (start_pos > end_pos) {
+				throw new ApplicationException("Assertion failed: (2) start_pos > end_pos");
+			}
+			return new long[] {start_pos, end_pos};
+
 		}
 
 		private DataFile UnsafeGetDataFile(Key key, FileAccess access) {
@@ -461,7 +608,7 @@ namespace Deveel.Data.Store {
 				DeleteNode(reference);
 				// And return,
 				return;
-			} 
+			}
 			if (node is TreeBranch) {
 				// This is a branch, so we need to dipose the children if they are heap
 				TreeBranch branch = (TreeBranch)node;
@@ -476,7 +623,7 @@ namespace Deveel.Data.Store {
 				// And return,
 				return;
 			}
-				
+
 			throw new ApplicationException("Unknown node type.");
 		}
 
@@ -495,7 +642,7 @@ namespace Deveel.Data.Store {
 			// If the node is a leaf, return the ref,
 			if (node is TreeLeaf)
 				return;
-			
+
 			// If the node is a branch,
 			if (node is TreeBranch) {
 				// Cast to a branch
@@ -539,7 +686,7 @@ namespace Deveel.Data.Store {
 						Key right_left_key = branch.GetKey(i1 + 1);
 						// Attempt to merge the nodes,
 						int node_result = MergeNodes(branch.GetKey(i1 + 1), left_child_ref, right_child_ref, left_left_key, right_left_key,
-						                             merge_buffer);
+													 merge_buffer);
 						// If we merged into a single node then we update the left left and
 						// delete the right
 						if (node_result == 1) {
@@ -555,7 +702,7 @@ namespace Deveel.Data.Store {
 							// size)
 							branch.SetChild(i1, merge_buffer[0]);
 							branch.SetChildLeafElementCount(i1, merge_buffer[1]);
-							branch.SetKeyValueToLeft(i1 + 1, merge_buffer[2], merge_buffer[3]);
+							branch.SetKeyValueToLeft(merge_buffer[2], merge_buffer[3], i1 + 1);
 							branch.SetChild(i1 + 1, merge_buffer[4]);
 							branch.SetChildLeafElementCount(i1 + 1, merge_buffer[5]);
 							++i1;
@@ -707,7 +854,7 @@ namespace Deveel.Data.Store {
 				if (node is TreeBranch) {
 					// This is a branch, so we need to write out any children that are on
 					// the heap before we write out the branch itself,
-					TreeBranch branch = (TreeBranch) node;
+					TreeBranch branch = (TreeBranch)node;
 
 					int sz = branch.ChildCount;
 
@@ -738,7 +885,7 @@ namespace Deveel.Data.Store {
 			ITreeNode node = FetchNode(reference);
 			// If the node is a branch node
 			if (node is TreeBranch) {
-				TreeBranch branch = (TreeBranch) node;
+				TreeBranch branch = (TreeBranch)node;
 				// We ask the node for the child sub-tree that will contain this node
 				int child_i = branch.SearchLast(key);
 				// Child will be in this subtree
@@ -768,6 +915,14 @@ namespace Deveel.Data.Store {
 				return UnsafeGetDataFile(key, access);
 			} catch (Exception e) {
 				throw SetErrorState(e);
+			}
+		}
+
+		public void PreFetchKeys(Key[] keys) {
+			CheckErrorState();
+
+			foreach(Key k in keys) {
+				prefetch_keymap[k] = "";
 			}
 		}
 
@@ -868,7 +1023,7 @@ namespace Deveel.Data.Store {
 		public long FastSizeCalculate() {
 			ITreeNode node = FetchNode(rootNodeId);
 			if (node is TreeBranch) {
-				TreeBranch branch = (TreeBranch) node;
+				TreeBranch branch = (TreeBranch)node;
 				int sz = branch.ChildCount;
 				// Add up the sizes of the children in the branch
 				long r_size = 0;
@@ -878,7 +1033,7 @@ namespace Deveel.Data.Store {
 				return r_size;
 			}
 
-			TreeLeaf leaf = (TreeLeaf) node;
+			TreeLeaf leaf = (TreeLeaf)node;
 			return leaf.Length;
 		}
 
@@ -988,13 +1143,13 @@ namespace Deveel.Data.Store {
 
 				// Otherwise, update the references,
 				stack[stack_size - 1] = new_ref;
-				current_leaf = (TreeLeaf) tnx.FetchNode(new_ref);
+				current_leaf = (TreeLeaf)tnx.FetchNode(new_ref);
 				// Walk back up the stack and update the reference as necessary
 				for (int i = stack_size - 4; i >= 1; i -= 3) {
 					long old_branch_ref = stack[i];
-					TreeBranch branch = (TreeBranch) tnx.UnfreezeNode(tnx.FetchNode(old_branch_ref));
+					TreeBranch branch = (TreeBranch)tnx.UnfreezeNode(tnx.FetchNode(old_branch_ref));
 					// Get the child_i from the stack,
-					int changed_child_i = (int) stack[i + 1];
+					int changed_child_i = (int)stack[i + 1];
 					branch.SetChild(changed_child_i, new_ref);
 
 					// Change the stack entry
@@ -1038,7 +1193,7 @@ namespace Deveel.Data.Store {
 				// If we are inserting the new leaf after,
 				if (!before) {
 					Key k = new_leaf_key;
-					nfo = new long[] { current_leaf.Id, current_leaf.Length, k.GetEncoded(1), k.GetEncoded(2), new_leaf.Id, new_leaf.Length};
+					nfo = new long[] { current_leaf.Id, current_leaf.Length, k.GetEncoded(1), k.GetEncoded(2), new_leaf.Id, new_leaf.Length };
 					left_key = null;
 					cur_absolute_pos = stack[stack_size - 2] + current_leaf.Length;
 				}
@@ -1050,7 +1205,7 @@ namespace Deveel.Data.Store {
 						throw new ApplicationException("Can't insert different new key before.");
 					}
 					Key k = current_leaf_key;
-					nfo = new long[] { new_leaf.Id, new_leaf.Length, k.GetEncoded(1), k.GetEncoded(2), current_leaf.Id, current_leaf.Length};
+					nfo = new long[] { new_leaf.Id, new_leaf.Length, k.GetEncoded(1), k.GetEncoded(2), current_leaf.Id, current_leaf.Length };
 					left_key = new_leaf_key;
 					cur_absolute_pos = stack[stack_size - 2] - 1;
 				}
@@ -1757,14 +1912,9 @@ namespace Deveel.Data.Store {
 					// when the file is created or it undergoes a large structural change
 					// such as a copy.
 					if (version == -1 || key.CompareTo(tnx.lowestSizeChangedKey) >= 0) {
-						end = tnx.KeyEndPosition(key);
-						if (end < 0) {
-							// When end is less than 0, the key was not found in the tree
-							end = -(end + 1);
-							start = end;
-						} else {
-							start = tnx.KeyStartPosition(key);
-						}
+						long[] bounds = tnx.GetDataFileBounds(key);
+						start = bounds[0];
+						end = bounds[1];
 					}
 					// Reset the stack and set the version to the most recent
 					stack.Reset();
@@ -1941,7 +2091,7 @@ namespace Deveel.Data.Store {
 						use_byte_buffer_copy_for_next = false;
 						int to_copy = (int)Math.Min(size, current_leaf.Length);
 						// Read into a buffer
-						byte [] buf = new byte[to_copy];
+						byte[] buf = new byte[to_copy];
 						current_leaf.Read(0, buf, 0, to_copy);
 						// Make enough room in the target
 						target_stack.ShiftData(target_key, target_position, to_copy);
@@ -2198,7 +2348,7 @@ namespace Deveel.Data.Store {
 			private TreeLeaf Leaf {
 				get {
 					if (leaf == null)
-						leaf = (TreeLeaf) tnx.FetchNode(Id);
+						leaf = (TreeLeaf)tnx.FetchNode(Id);
 					return leaf;
 				}
 			}

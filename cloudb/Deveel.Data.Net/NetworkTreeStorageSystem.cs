@@ -927,6 +927,16 @@ namespace Deveel.Data.Net {
 			return result_nodes;
 		}
 
+		public bool IsNodeAvailable(long node_ref) {
+			// Special node ref,
+			if ((node_ref & 0x01000000000000000L) != 0) {
+				return true;
+			}
+			// Check if it's in the local network cache
+			DataAddress address = new DataAddress(node_ref);
+			return (networkCache.GetNode(address) != null);
+		}
+
 		public bool LinkLeaf(Key key, long reference) {
 			// NO-OP: A network tree system does not perform reference counting.
 			//   Instead performs reachability testing and garbage collection through

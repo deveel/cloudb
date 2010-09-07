@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Text;
 
+using Deveel.Data.Store;
+
 namespace Deveel.Data {
 	/// <summary>
 	/// A reference that uniquely identifies a defined <see cref="DataFile" /> 
@@ -16,7 +18,7 @@ namespace Deveel.Data {
 	/// </remarks>
 	[Serializable]
 	public sealed class Key : KeyBase {
-		public Key(short type, long primary, int secondary)
+		public Key(short type, int secondary, long primary)
 			: base(type, secondary, primary) {
 		}
 

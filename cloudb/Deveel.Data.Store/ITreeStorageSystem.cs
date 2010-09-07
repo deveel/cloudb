@@ -13,6 +13,8 @@ namespace Deveel.Data.Store {
 		void CheckPoint();
 
 		IList<T> FetchNodes<T>(long[] nids) where T : ITreeNode;
+
+		bool IsNodeAvailable(long node_ref);
 		
 		bool LinkLeaf(Key key, long reference);
 
