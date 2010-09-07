@@ -1,6 +1,9 @@
 ﻿using System;
 
 namespace Deveel.Data {
+	/// <summary>
+	/// The base abstract definition of a key.
+	/// </summary>
 	[Serializable]
 	public abstract class KeyBase : IComparable {
 		protected KeyBase(short type, int secondary, long primary) {
@@ -19,14 +22,23 @@ namespace Deveel.Data {
 		private readonly long primary;
 		private readonly int secondary;
 
+		/// <summary>
+		/// Gets the secondary component of the key.
+		/// </summary>
 		public int Secondary {
 			get { return secondary; }
 		}
 
+		/// <summary>
+		/// Gets the primary component of the key.
+		/// </summary>
 		public long Primary {
 			get { return primary; }
 		}
 
+		/// <summary>
+		/// Gets the type of the key.
+		/// </summary>
 		public short Type {
 			get { return type; }
 		}

@@ -2,6 +2,18 @@
 using System.Text;
 
 namespace Deveel.Data {
+	/// <summary>
+	/// A reference that uniquely identifies a defined <see cref="DataFile" /> 
+	/// within a given context.
+	/// </summary>
+	/// <remarks>
+	/// Keys are composed by three fundamental components:
+	/// <list type="bullet">
+	/// <item>a 16-bit long type;</item>
+	/// <item>a 64-bit primary component;</item>
+	/// <item>a 32-bit secondary component</item>
+	/// </list>
+	/// </remarks>
 	[Serializable]
 	public sealed class Key : KeyBase {
 		public Key(short type, long primary, int secondary)
@@ -12,9 +24,19 @@ namespace Deveel.Data {
 			: base(encoded_v1, encoded_v2) {
 		}
 
+		/// <summary>
+		/// The type that identifies a special system key.
+		/// </summary>
 		internal const short SpecialKeyType = 0x07F80;
 
-		public static readonly Key Head = new Key(SpecialKeyType, -1, -2);
+		/// <summary>
+		/// The special key that delimitates the head of a file.
+		/// </summary>
+		public static readonly Key Head = new Key(SpecialKeyType, -2, -1);
+		
+		/// <summary>
+		/// The special key that delimitates the tail of a file. 
+		/// </summary>
 		public static readonly Key Tail = new Key(SpecialKeyType, -1, -1);
 
 		public override int CompareTo(object obj) {
@@ -60,6 +82,7 @@ namespace Deveel.Data {
 				return "HEAD";
 			if (Equals(Tail))
 				return "TAIL";
+			
 			StringBuilder buf = new StringBuilder();
 			buf.Append("(");
 			buf.Append(Secondary);
