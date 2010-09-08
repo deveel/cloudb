@@ -38,8 +38,19 @@
   <ItemGroup>
     <Compile Include="Deveel.Data.Caching\Cache.cs" />
     <Compile Include="Deveel.Data.Caching\ICache.cs" />
+    <Compile Include="Deveel.Data.Control\ConfigProperty.cs" />
+    <Compile Include="Deveel.Data.Control\DbConfig.cs" />
+    <Compile Include="Deveel.Data.Control\DefaultDbConfig.cs" />
+    <Compile Include="Deveel.Data.Control\IDbConfig.cs" />
     <Compile Include="Deveel.Data.Diagnostics\Analytics.cs" />
     <Compile Include="Deveel.Data.Diagnostics\AnalyticsRecord.cs" />
+    <Compile Include="Deveel.Data.Diagnostics\DebugLevel.cs" />
+    <Compile Include="Deveel.Data.Diagnostics\DefaultDebugLogger.cs" />
+    <Compile Include="Deveel.Data.Diagnostics\EmptyDebugLogger.cs" />
+    <Compile Include="Deveel.Data.Diagnostics\IDebugLogger.cs" />
+    <Compile Include="Deveel.Data.Diagnostics\Log.cs" />
+    <Compile Include="Deveel.Data.Diagnostics\LogEntry.cs" />
+    <Compile Include="Deveel.Data.Diagnostics\LogWriter.cs" />
     <Compile Include="Deveel.Data.Net\BlockServerElement.cs" />
     <Compile Include="Deveel.Data.Net\BlockServerTable.cs" />
     <Compile Include="Deveel.Data.Net\CommitFaultException.cs" />
@@ -66,8 +77,18 @@
     <Compile Include="Deveel.Data.Net\ProxyServiceConnector.cs" />
     <Compile Include="Deveel.Data.Net\TcpServiceconnector.cs" />
     <Compile Include="Deveel.Data.Net\TreeReportNode.cs" />
+    <Compile Include="Deveel.Data.Store\AbstractStore.cs" />
+    <Compile Include="Deveel.Data.Store\AreaInputStream.cs" />
+    <Compile Include="Deveel.Data.Store\FSync.cs" />
+    <Compile Include="Deveel.Data.Store\HeapStore.cs" />
+    <Compile Include="Deveel.Data.Store\IArea.cs" />
     <Compile Include="Deveel.Data.Store\IAreaWriter.cs" />
-    <Compile Include="Deveel.Data.Store\ITreeNodeCache.cs" />
+    <Compile Include="Deveel.Data.Store\IFSync.cs" />
+    <Compile Include="Deveel.Data.Store\IJournalledResource.cs" />
+    <Compile Include="Deveel.Data.Store\IMutableArea.cs" />
+    <Compile Include="Deveel.Data.Store\IOStoreDataAccessor.cs" />
+    <Compile Include="Deveel.Data.Store\IStore.cs" />
+    <Compile Include="Deveel.Data.Store\IStoreDataAccessor.cs" />
     <Compile Include="Deveel.Data.Net\Message.cs" />
     <Compile Include="Deveel.Data.Net\MessageStream.cs" />
     <Compile Include="Deveel.Data.Net\Node.cs" />
@@ -79,17 +100,19 @@
     <Compile Include="Deveel.Data.Net\SingleNodeSet.cs" />
     <Compile Include="Deveel.Data.Store\DataFile.cs" />
     <Compile Include="Deveel.Data.Store\DataFileStream.cs" />
-    <Compile Include="Deveel.Data.Store\ITreeNode.cs" />
-    <Compile Include="Deveel.Data.Store\ITreeStorageSystem.cs" />
-    <Compile Include="Deveel.Data.Store\TreeBranch.cs" />
-    <Compile Include="Deveel.Data.Store\TreeLeaf.cs" />
-    <Compile Include="Deveel.Data.Store\TreeNodeHeap.cs" />
+    <Compile Include="Deveel.Data.Store\JournalledFileStore.cs" />
+    <Compile Include="Deveel.Data.Store\JournalledSystem.cs" />
+    <Compile Include="Deveel.Data.Store\LoggingBufferManager.cs" />
+    <Compile Include="Deveel.Data.Store\ScatteringStoreDataAccessor.cs" />
+    <Compile Include="Deveel.Data.Store\StreamFile.cs" />
+    <Compile Include="Deveel.Data.Store\SyncFailedException.cs" />
     <Compile Include="Deveel.Data.Store\TreeSystemTransaction.cs" />
     <Compile Include="Deveel.Data.Store\TreeWrite.cs" />
     <Compile Include="Deveel.Data.Util\ByteBuffer.cs" />
     <Compile Include="Deveel.Data.Util\CollectionsUtil.cs" />
+    <Compile Include="Deveel.Data.Util\IInputStream.cs" />
     <Compile Include="Deveel.Data.Util\Properties.cs" />
-    <Compile Include="Deveel.Data\DataKey.cs" />
+    <Compile Include="Deveel.Data\ErrorStateException.cs" />
     <Compile Include="Deveel.Data\FixedSizeCollection.cs" />
     <Compile Include="Deveel.Data\IDatabase.cs" />
     <Compile Include="Deveel.Data\IIndexedObjectComparer_T.cs" />
@@ -98,19 +121,28 @@
     <Compile Include="Deveel.Data\ISortedCollection_T.cs" />
     <Compile Include="Deveel.Data\ISortedList_T.cs" />
     <Compile Include="Deveel.Data\ITransaction.cs" />
+    <Compile Include="Deveel.Data\ITreeNode.cs" />
+    <Compile Include="Deveel.Data\ITreeNodeCache.cs" />
+    <Compile Include="Deveel.Data\ITreeSystem.cs" />
     <Compile Include="Deveel.Data\Key.cs" />
     <Compile Include="Deveel.Data\KeyBase.cs" />
     <Compile Include="Deveel.Data.Caching\MemoryCache.cs" />
     <Compile Include="Deveel.Data\NumberList.cs" />
     <Compile Include="Deveel.Data\Properties.cs" />
+    <Compile Include="Deveel.Data\SparseLeafNode.cs" />
+    <Compile Include="Deveel.Data\StoreTreeSystem.cs" />
     <Compile Include="Deveel.Data\StringCollection.cs" />
     <Compile Include="Deveel.Data\StringData.cs" />
     <Compile Include="Deveel.Data\StringDataReader.cs" />
     <Compile Include="Deveel.Data\StringDataWriter.cs" />
+    <Compile Include="Deveel.Data\TreeBranch.cs" />
+    <Compile Include="Deveel.Data\TreeLeaf.cs" />
+    <Compile Include="Deveel.Data\TreeNodeHeap.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Deveel.Data.Diagnostics" />
+    <Folder Include="Deveel.Data.Control" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

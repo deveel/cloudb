@@ -2,7 +2,7 @@
 
 using Deveel.Data.Net;
 
-namespace Deveel.Data.Store {
+namespace Deveel.Data {
 	public interface ITreeNodeCache {
 		void SetNode(DataAddress address, ITreeNode node);
 

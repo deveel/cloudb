@@ -10,7 +10,7 @@ namespace Deveel.Data.Store {
 		private List<long> nodeDeletes;
 		private List<long> nodeInserts;
 		private TreeNodeHeap nodeHeap;
-		private readonly ITreeStorageSystem storeSystem;
+		private readonly ITreeSystem storeSystem;
 		private long updateVersion;
 		private Key lowestSizeChangedKey = Key.Tail;
 		private int treeHeight = -1;
@@ -22,7 +22,7 @@ namespace Deveel.Data.Store {
 		private bool committed;
 		private bool non_committable;
 
-		internal TreeSystemTransaction(ITreeStorageSystem storeSystem, long versionId, long rootNodeId, bool readOnly) {
+		internal TreeSystemTransaction(ITreeSystem storeSystem, long versionId, long rootNodeId, bool readOnly) {
 			this.storeSystem = storeSystem;
 			this.rootNodeId = rootNodeId;
 			this.versionId = versionId;
@@ -132,7 +132,7 @@ namespace Deveel.Data.Store {
 
 			// If there's nothing in the prefetch keymap,
 			if (prefetch_keymap.Count == 0) {
-				return storeSystem.FetchNodes<ITreeNode>(new long[] { nodeId })[0];
+				return storeSystem.FetchNodes(new long[] { nodeId })[0];
 			}
 
 			List<long> prefetch_nodeset = new List<long>();
@@ -146,7 +146,7 @@ namespace Deveel.Data.Store {
 			}
 
 			// Otherwise fetch the node from the tree store
-			return storeSystem.FetchNodes<ITreeNode>(node_refs)[0];
+			return storeSystem.FetchNodes(node_refs)[0];
 		}
 
 		private static Key PreviousKeyOrder(Key key) {
@@ -165,7 +165,7 @@ namespace Deveel.Data.Store {
 
 			// If the node is locally available, return it,
 			if (storeSystem.IsNodeAvailable(node_ref)) {
-				return storeSystem.FetchNodes<ITreeNode>(new long[] { node_ref })[0];
+				return storeSystem.FetchNodes(new long[] { node_ref })[0];
 			}
 			// Otherwise return null
 			return null;
@@ -1897,7 +1897,7 @@ namespace Deveel.Data.Store {
 				end = -1;
 			}
 
-			private ITreeStorageSystem TreeSystem {
+			private ITreeSystem TreeSystem {
 				get { return tnx.storeSystem; }
 			}
 

@@ -59,6 +59,16 @@ namespace Deveel.Data {
 			file.SetLength(length * 2);
 		}
 
+		/// <summary>
+		/// Writes the given string starting at the given position.
+		/// </summary>
+		/// <param name="pos">The position within the container where to
+		/// start writing the string.</param>
+		/// <param name="str">The string to write.</param>
+		/// <remarks>
+		/// This method expands where necessary the size of the
+		/// underlying data file to accomodate the given string.
+		/// </remarks>
 		private void DoWriteString(long pos, string str) {
 			int len = str.Length;
 			// Position and write the characters
@@ -67,6 +77,17 @@ namespace Deveel.Data {
 				file.Write(str[i]);
 		}
 
+		/// <summary>
+		/// Reads a string from the container starting at the
+		/// given position, given a number of characters.
+		/// </summary>
+		/// <param name="pos">The position within the container from where
+		/// to start reading.</param>
+		/// <param name="sz">The number of characters to read.</param>
+		/// <returns>
+		/// Returns a <see cref="string" /> object that is the result
+		/// of the read.
+		/// </returns>
 		private string ReadString(long pos, int sz) {
 			StringBuilder buf = new StringBuilder();
 			SetPosition(pos);
@@ -75,6 +96,15 @@ namespace Deveel.Data {
 			return buf.ToString();
 		}
 
+		/// <summary>
+		/// Appends a string to the end of the data.
+		/// </summary>
+		/// <param name="str">The string to apopend</param>
+		/// <remarks>
+		/// This method expands, where necessary, the size of the
+		/// wrapped <see cref="DataFile"/> to accomodate the given
+		/// string appended.
+		/// </remarks>
 		public void Append(string str) {
 			// Set the position to write the string
 			long pos = CharCount;
@@ -83,6 +113,20 @@ namespace Deveel.Data {
 			DoWriteString(pos, str);
 		}
 
+		/// <summary>
+		/// Inserts the given string to the data, starting at the given position.
+		/// </summary>
+		/// <param name="pos">The zero-based character position from where
+		/// to start inserting the given string.</param>
+		/// <param name="str">The string to insert.</param>
+		/// <remarks>
+		/// This method will shift all the data present between the starting position
+		/// of the insert and the length of the string to insert.
+		/// <para>
+		/// Where necessary, the size underlying data file will be increased to
+		/// accomodate the string to insert.
+		/// </para>
+		/// </remarks>
 		public void Insert(long pos, string str) {
 			// The length
 			int len = str.Length;
@@ -93,6 +137,12 @@ namespace Deveel.Data {
 			DoWriteString(pos, str);
 		}
 
+		/// <summary>
+		/// Removes a portion of string data at the given coordinates.
+		/// </summary>
+		/// <param name="pos">The zero-based character position from where to
+		/// start removing the data.</param>
+		/// <param name="size">The number of characters to remove.</param>
 		public void Remove(long pos, long size) {
 			// Some checks
 			long data_size = CharCount;
@@ -102,10 +152,19 @@ namespace Deveel.Data {
 			file.Shift(-(size * 2));
 		}
 
+		/// <summary>
+		/// Gets a substring of the current string data starting at the
+		/// given offset and having the given size.
+		/// </summary>
+		/// <param name="pos">The zero-based character position from where 
+		/// to start extracting the sub-string.</param>
+		/// <param name="size">The length of the desired substring.</param>
+		/// <returns></returns>
 		public string Substring(long pos, int size) {
 			// Some checks
 			long data_size = CharCount;
-			Debug.Assert(pos >= 0 && size >= 0 && pos + size < data_size);
+			if (!(pos >= 0 && size >= 0 && pos + size < data_size))
+				throw new ArgumentOutOfRangeException();
 
 			return ReadString(pos, size);
 		}

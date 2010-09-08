@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Deveel.Data.Store {
+namespace Deveel.Data {
 	public class TreeBranch : ITreeNode {
 		private readonly long id;
 		private int childCount;

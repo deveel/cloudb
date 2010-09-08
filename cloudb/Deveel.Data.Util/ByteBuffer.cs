@@ -120,8 +120,8 @@ namespace Deveel.Data.Util {
 		/// </summary>
 		/// <param name="v"></param>
 		/// <returns></returns>
-		public ByteBuffer WriteInteger(int v) {
-			WriteInteger(v, buf, pos);
+		public ByteBuffer WriteInt4(int v) {
+			WriteInt4(v, buf, pos);
 			pos += 4;
 			return this;
 		}
@@ -178,7 +178,7 @@ namespace Deveel.Data.Util {
 			return v;
 		}
 
-		public static void WriteInteger(int value, byte[] arr, int offset) {
+		public static void WriteInt4(int value, byte[] arr, int offset) {
 			/*
 			TODO: check ...
 		  arr[offset + 0] = (byte) ((value >>> 24) & 0xFF);

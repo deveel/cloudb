@@ -10,7 +10,7 @@ using Deveel.Data.Store;
 using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
-	internal class NetworkTreeStorageSystem : ITreeStorageSystem {
+	internal class NetworkTreeStorageSystem : ITreeSystem {
 		internal NetworkTreeStorageSystem(IServiceConnector connector, ServiceAddress managerAddress, INetworkCache networkCache) {
 			this.connector = connector;
 			this.managerAddress = managerAddress;
@@ -32,7 +32,7 @@ namespace Deveel.Data.Net {
 
 		private long max_transaction_node_heap_size;
 
-		private Exception errorState;
+		private ErrorStateException errorState;
 
 		private const short LeafType = 0x019EC;
 		private const short BranchType = 0x022EB;
@@ -407,7 +407,7 @@ namespace Deveel.Data.Net {
 					node_buf = new byte[lfsz + 6];
 					// Technically, we could comment these next two lines out.
 					ByteBuffer.WriteInt2(LeafType, node_buf, 0);
-					ByteBuffer.WriteInteger(lfsz, node_buf, 2);
+					ByteBuffer.WriteInt4(lfsz, node_buf, 2);
 					leaf.Read(0, node_buf, 6, lfsz);
 
 					// Put this leaf into the local cache,
@@ -699,10 +699,6 @@ namespace Deveel.Data.Net {
 			// flush occurs, so one idea might be to use this as some sort of hint?
 		}
 
-		IList<T> ITreeStorageSystem.FetchNodes<T>(long[] nids) {
-			return (IList<T>) FetchNodes(nids);
-		}
-
 		public IList<ITreeNode> FetchNodes(long[] nids) {
 			// The number of nodes,
 			int node_count = nids.Length;
@@ -714,7 +710,7 @@ namespace Deveel.Data.Net {
 				int i = 0;
 				foreach (long nodeId in nids) {
 					if ((nodeId & 0x01000000000000000L) != 0)
-						result_nodes[i] = StoreTreeStorageSystem.SpecialStaticNode(nodeId);
+						result_nodes[i] = SparseLeafNode.Create(nodeId);
 
 					++i;
 				}
@@ -839,7 +835,7 @@ namespace Deveel.Data.Net {
 											input.Read(buf, 6, leaf_size);
 											// Technically, we could comment these next two lines out.
 											ByteBuffer.WriteInt2(node_type, buf, 0);
-											ByteBuffer.WriteInteger(leaf_size, buf, 2);
+											ByteBuffer.WriteInt4(leaf_size, buf, 2);
 										}
 
 										// Create a leaf that's mapped to this data
@@ -950,9 +946,9 @@ namespace Deveel.Data.Net {
 			//   on this node in the next cycle.
 		}
 
-		public Exception SetErrorState(Exception error) {
+		public ErrorStateException SetErrorState(Exception error) {
 			//TODO: ERROR log ...
-			errorState = new Exception(error.Message, error);
+			errorState = new ErrorStateException(error);
 			return errorState;
 		}
 
@@ -1044,11 +1040,11 @@ namespace Deveel.Data.Net {
 		#region Transaction
 
 		private class Transaction : TreeSystemTransaction {
-			internal Transaction(ITreeStorageSystem storeSystem, long versionId, DataAddress rootNode)
+			internal Transaction(ITreeSystem storeSystem, long versionId, DataAddress rootNode)
 				: base(storeSystem, versionId, rootNode.Value, false) {
 			}
 
-			public Transaction(ITreeStorageSystem tree_system, long version_id)
+			public Transaction(ITreeSystem tree_system, long version_id)
 				: base(tree_system, version_id, -1, false) {
 				SetToEmpty();
 			}

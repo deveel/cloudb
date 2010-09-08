@@ -1,6 +1,8 @@
 ﻿using System;
 
-namespace Deveel.Data.Store {
+using Deveel.Data.Store;
+
+namespace Deveel.Data {
 	public abstract class TreeLeaf : ITreeNode {
 		protected TreeLeaf() {
 		}

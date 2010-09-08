@@ -1,7 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Deveel.Data.Store {
+using Deveel.Data.Store;
+
+namespace Deveel.Data {
+	/// <summary>
+	/// This is a temporary storage for organizing nodes
+	/// during the modification of a tree.
+	/// </summary>
+	/// <remarks>
+	/// <b>Note</b>: This class is not thread-safe, since it is intended
+	/// as a temporary cache for nodes during a tree manipulation: it is
+	/// responsibility of external threads to enforce cuncurrency locks.
+	/// </remarks>
 	public sealed class TreeNodeHeap {
 		private long nodeIdSeq;
 		private readonly IHashNode[] hash;
