@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -108,7 +108,7 @@ namespace Deveel.Data.Net {
 			return storageSystem.FindAllPaths();
 		}
 
-		public TreeReportNode CreateDiagnosticGraph(ITransaction t) {
+		public TreeGraph CreateDiagnosticGraph(ITransaction t) {
 			return storageSystem.CreateDiagnosticGraph(t);
 		}
 

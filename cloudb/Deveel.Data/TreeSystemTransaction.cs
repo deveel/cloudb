@@ -77,18 +77,22 @@ namespace Deveel.Data.Store {
 			get { return versionId; }
 		}
 
+		public ICollection<Key> Keys {
+			get { return new KeyCollection(this); }
+		}
+
 
 		private TreeLeaf CreateSparseLeaf(Key key, byte b, long max_size) {
 			// Make sure the sparse leaf doesn't exceed the maximum leaf size
-			int sparse_size = (int)Math.Min(max_size, (long)MaxLeafByteSize);
+			int sparseSize = (int)Math.Min(max_size, (long)MaxLeafByteSize);
 			// Make sure the sparse leaf doesn't exceed the maximum size of the
 			// sparse leaf object.
-			sparse_size = Math.Min(65535, sparse_size);
+			sparseSize = Math.Min(65535, sparseSize);
 
 			// The byte encoding
 			int byte_code = (((int)b) & 0x0FF) << 16;
 			// Merge all the info into the sparse node reference
-			int sparse_code = sparse_size | byte_code | 0x01000000;
+			int sparse_code = sparseSize | byte_code | 0x01000000;
 			long node_ref = 0x01000000000000000L + sparse_code;
 
 			return (TreeLeaf)FetchNode(node_ref);
@@ -1035,16 +1039,6 @@ namespace Deveel.Data.Store {
 
 			TreeLeaf leaf = (TreeLeaf)node;
 			return leaf.Length;
-		}
-
-		public IEnumerator<Key> GetKeyEnumerator() {
-			CheckErrorState();
-
-			try {
-				return new KeyEnumerator(this);
-			} catch (OutOfMemoryException e) {
-				throw SetErrorState(e);
-			}
 		}
 
 		#region TreeStack
@@ -2392,71 +2386,163 @@ namespace Deveel.Data.Store {
 		}
 
 		#endregion
-		#region KeyEnumerator
 
-		private class KeyEnumerator : IEnumerator<Key> {
-			private Key found_key;
-			private Key last_key;
-			private readonly TreeSystemTransaction tran;
+		#region KeyCollection
 
-			internal KeyEnumerator(TreeSystemTransaction tran) {
-				this.tran = tran;
-				// The last key is the head key, initially
-				last_key = Key.Head;
-				found_key = null;
+		private class KeyCollection : ICollection<Key> {
+			private readonly TreeSystemTransaction transaction;
+			private bool iterating;
+
+			public KeyCollection(TreeSystemTransaction transaction) {
+				this.transaction = transaction;
 			}
 
-			private Key NextKey {
-				get {
-					if (found_key == null) {
-						try {
-							found_key = tran.NextKey(Key.Tail, last_key, tran.rootNodeId);
-						} catch (IOException e) {
-							// PENDING: It's bad to wrap this IO error - an IOException here
-							// should be a critical stop condition.  Perhaps we need to
-							// implement a key iterator that can throw an IOException.
-							throw new Exception(e.Message, e);
-						}
-					}
-					return found_key;
+			#region Implementation of IEnumerable
+
+			public IEnumerator<Key> GetEnumerator() {
+				if (iterating)
+					throw new InvalidOperationException();
+
+				transaction.CheckErrorState();
+
+				try {
+					return new KeyEnumerator(transaction, this);
+				} catch (OutOfMemoryException e) {
+					throw transaction.SetErrorState(e);
 				}
 			}
 
-			#region IEnumerator<Key> Members
-
-			public bool MoveNext() {
-				return !NextKey.Equals(Key.Tail);
+			IEnumerator IEnumerable.GetEnumerator() {
+				return GetEnumerator();
 			}
 
-			public void Reset() {
-				last_key = Key.Head;
-				found_key = null;
+			#endregion
+
+			#region Implementation of ICollection<Key>
+
+			public void Add(Key item) {
+				throw new NotSupportedException();
 			}
 
-			object IEnumerator.Current {
-				get { return Current; }
+			public void Clear() {
+				throw new NotSupportedException();
 			}
 
-			public Key Current {
-				get {
-					Key next_key = NextKey;
-					if (next_key.Equals(Key.Tail))
-						throw new Exception("End of iterator");
+			public bool Contains(Key item) {
+				if (iterating)
+					throw new InvalidOperationException();
 
+				foreach(Key key in this) {
+					if (key.Equals(item))
+						return true;
+				}
+
+				return false;
+			}
+
+			public void CopyTo(Key[] array, int arrayIndex) {
+				if (iterating)
+					throw new InvalidOperationException();
+
+				IEnumerator<Key> en = GetEnumerator();
+				for (int i = arrayIndex; i < array.Length && en.MoveNext(); i++) {
+					array[i] = en.Current;
+				}
+			}
+
+			public bool Remove(Key item) {
+				throw new NotSupportedException();
+			}
+
+			public int Count {
+				get { throw new NotSupportedException(); }
+			}
+
+			public bool IsReadOnly {
+				get { return true; }
+			}
+
+			#endregion
+
+			private void OnIterationEnded() {
+				iterating = false;
+			}
+
+			#region KeyEnumerator
+
+			private class KeyEnumerator : IEnumerator<Key> {
+				private Key found_key;
+				private Key last_key;
+				private readonly TreeSystemTransaction tran;
+				private readonly KeyCollection collection;
+
+				internal KeyEnumerator(TreeSystemTransaction tran, KeyCollection collection) {
+					this.tran = tran;
+					this.collection = collection;
+					// The last key is the head key, initially
+					last_key = Key.Head;
 					found_key = null;
-					last_key = next_key;
-					return next_key;
 				}
+
+				private Key NextKey {
+					get {
+						if (found_key == null) {
+							try {
+								found_key = tran.NextKey(Key.Tail, last_key, tran.rootNodeId);
+							} catch (IOException e) {
+								// PENDING: It's bad to wrap this IO error - an IOException here
+								// should be a critical stop condition.  Perhaps we need to
+								// implement a key iterator that can throw an IOException.
+								throw new Exception(e.Message, e);
+							}
+						}
+						return found_key;
+					}
+				}
+
+				#region IEnumerator<Key> Members
+
+				public bool MoveNext() {
+					if (NextKey.Equals(Key.Tail)) {
+						collection.OnIterationEnded();
+						return false;
+					}
+					return true;
+				}
+
+				public void Reset() {
+					last_key = Key.Head;
+					found_key = null;
+				}
+
+				object IEnumerator.Current {
+					get { return Current; }
+				}
+
+				public Key Current {
+					get {
+						Key next_key = NextKey;
+						if (next_key.Equals(Key.Tail))
+							throw new Exception("End of iterator");
+
+						found_key = null;
+						last_key = next_key;
+						return next_key;
+					}
+				}
+
+				#endregion
+
+				#region Implementation of IDisposable
+
+				void IDisposable.Dispose() {
+				}
+
+				#endregion
 			}
 
 			#endregion
 
-			#region Implementation of IDisposable
-
-			void IDisposable.Dispose() {
-			}
-
-			#endregion
 		}
 
 		#endregion

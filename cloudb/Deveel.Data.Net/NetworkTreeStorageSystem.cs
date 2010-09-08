@@ -203,10 +203,10 @@ namespace Deveel.Data.Net {
 			return outputStream.ToArray();
 		}
 
-		private TreeReportNode CreateDiagnosticRootGraph(Key left_key, long reference) {
+		private TreeGraph CreateDiagnosticRootGraph(Key left_key, long reference) {
 
 			// The node being returned
-			TreeReportNode node;
+			TreeGraph node;
 
 			// Fetch the node,
 			ITreeNode tree_node = FetchNodes(new long[] { reference })[0];
@@ -217,14 +217,14 @@ namespace Deveel.Data.Net {
 				int leaf_size = leaf.Length;
 
 				// Set up the leaf node object
-				node = new TreeReportNode("leaf", reference);
+				node = new TreeGraph("leaf", reference);
 				node.SetProperty("key", left_key.ToString());
 				node.SetProperty("leaf_size", leaf_size);
 
 			} else if (tree_node is TreeBranch) {
 				TreeBranch branch = (TreeBranch)tree_node;
 				// Set up the branch node object
-				node = new TreeReportNode("branch", reference);
+				node = new TreeGraph("branch", reference);
 				node.SetProperty("key", left_key.ToString());
 				node.SetProperty("branch_size", branch.ChildCount);
 				// Recursively add each child into the tree
@@ -235,7 +235,7 @@ namespace Deveel.Data.Net {
 						// Should we record special nodes?
 					} else {
 						Key new_left_key = (i > 0) ? branch.GetKey(i) : left_key;
-						TreeReportNode bn = new TreeReportNode("child_meta", reference);
+						TreeGraph bn = new TreeGraph("child_meta", reference);
 						bn.SetProperty("extent", branch.GetChildLeafElementCount(i));
 						node.AddChild(bn);
 						node.AddChild(CreateDiagnosticRootGraph(new_left_key, child_ref));
@@ -972,7 +972,7 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		public TreeReportNode CreateDiagnosticGraph(ITransaction t) {
+		public TreeGraph CreateDiagnosticGraph(ITransaction t) {
 			CheckErrorState();
 
 			// The key object transaction

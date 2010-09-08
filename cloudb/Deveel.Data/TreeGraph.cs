@@ -1,21 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Deveel.Data.Net {
-	public class TreeReportNode {
-		public TreeReportNode() {
+namespace Deveel.Data {
+	public class TreeGraph {
+		public TreeGraph() {
 			properties = new Dictionary<String, String>(4);
-			children = new List<TreeReportNode>(12);
+			children = new List<TreeGraph>(12);
 		}
 
-		public TreeReportNode(string nodeName, long areaRef)
+		public TreeGraph(string nodeName, long areaRef)
 			: this() {
 			Init(nodeName, areaRef);
 		}
 
 
 		private readonly Dictionary<string, string> properties;
-		private readonly List<TreeReportNode> children;
+		private readonly List<TreeGraph> children;
 
 		public void Init(string nodeName, long areaRef) {
 			SetProperty("name", nodeName);
@@ -35,7 +35,7 @@ namespace Deveel.Data.Net {
 			return properties.TryGetValue(key, out value) ? value : null;
 		}
 
-		public void AddChild(TreeReportNode node) {
+		public void AddChild(TreeGraph node) {
 			children.Add(node);
 		}
 
@@ -43,11 +43,11 @@ namespace Deveel.Data.Net {
 			get { return children.Count; }
 		}
 
-		public TreeReportNode GetChild(int i) {
+		public TreeGraph GetChild(int i) {
 			return children[i];
 		}
 
-		public IEnumerator<TreeReportNode> GetChildrenEnumerator() {
+		public IEnumerator<TreeGraph> GetChildrenEnumerator() {
 			return children.GetEnumerator();
 		}
 

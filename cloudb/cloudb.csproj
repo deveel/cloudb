@@ -76,7 +76,7 @@
     <Compile Include="Deveel.Data.Net\PathRootTable.cs" />
     <Compile Include="Deveel.Data.Net\ProxyServiceConnector.cs" />
     <Compile Include="Deveel.Data.Net\TcpServiceconnector.cs" />
-    <Compile Include="Deveel.Data.Net\TreeReportNode.cs" />
+    <Compile Include="Deveel.Data\TreeGraph.cs" />
     <Compile Include="Deveel.Data.Store\AbstractStore.cs" />
     <Compile Include="Deveel.Data.Store\AreaInputStream.cs" />
     <Compile Include="Deveel.Data.Store\FSync.cs" />
@@ -106,7 +106,8 @@
     <Compile Include="Deveel.Data.Store\ScatteringStoreDataAccessor.cs" />
     <Compile Include="Deveel.Data.Store\StreamFile.cs" />
     <Compile Include="Deveel.Data.Store\SyncFailedException.cs" />
-    <Compile Include="Deveel.Data.Store\TreeSystemTransaction.cs" />
+    <Compile Include="Deveel.Data\FileSystemDatabase.cs" />
+    <Compile Include="Deveel.Data\TreeSystemTransaction.cs" />
     <Compile Include="Deveel.Data.Store\TreeWrite.cs" />
     <Compile Include="Deveel.Data.Util\ByteBuffer.cs" />
     <Compile Include="Deveel.Data.Util\CollectionsUtil.cs" />
@@ -139,10 +140,6 @@
     <Compile Include="Deveel.Data\TreeLeaf.cs" />
     <Compile Include="Deveel.Data\TreeNodeHeap.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Deveel.Data.Diagnostics" />
-    <Folder Include="Deveel.Data.Control" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
