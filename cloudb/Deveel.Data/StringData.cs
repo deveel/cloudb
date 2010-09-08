@@ -7,17 +7,38 @@ using System.Text;
 using Deveel.Data.Store;
 
 namespace Deveel.Data {
+	/// <summary>
+	/// Represents container of characters, to provide mutable string data,
+	/// wrapped on a given <see cref="DataFile"/>.
+	/// </summary>
+	/// <remarks>
+	/// This class provides efficient methods for retrieving and modifying
+	/// strings (seen as sequence of characters).
+	/// <para>
+	/// Each character is stored in the UTF-16 encoding.
+	/// </para>
+	/// </remarks>
 	public sealed class StringData : IEnumerable<char> {
+		/// <summary>
+		/// Constructs the string, wrapped around the given <see cref="DataFile"/>.
+		/// </summary>
+		/// <param name="file">The data file that wraps this string data container.</param>
 		public StringData(DataFile file) {
 			this.file = file;
 		}
 
 		private readonly DataFile file;
 
+		/// <summary>
+		/// Gets the number of characters stored in this string.
+		/// </summary>
 		private long CharCount {
 			get { return file.Length/2; }
 		}
 
+		/// <summary>
+		/// Gets the length of the string.
+		/// </summary>
 		public long Length {
 			get { return CharCount; }
 		}
