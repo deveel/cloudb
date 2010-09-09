@@ -8,7 +8,7 @@ namespace Deveel.Data.Net {
 	public abstract class RootServer : IService {
 		protected RootServer(IServiceConnector connector) {
 			this.connector = connector;
-			pathCache = new Dictionary<string, RootServer.PathAccess>(128);
+			pathCache = new Dictionary<string, PathAccess>(128);
 		}
 		
 		~RootServer() {
@@ -129,6 +129,28 @@ namespace Deveel.Data.Net {
 
 			PathAccess pathAccess = GetPathAccess(pathName);
 			return pathAccess.PathTypeName;
+		}
+
+		private void PathReport(out string[] pathNames, out string[] pathTypes) {
+			IList<PathStatus> pathStatuses;
+
+			lock(pathCache) {
+				pathStatuses = ListPaths();
+			}
+
+			List<string> pathNamesList = new List<string>();
+			foreach(PathStatus pathStatus in pathStatuses) {
+				if (!pathStatus.IsDeleted)
+					pathNamesList.Add(pathStatus.PathName);
+			}
+
+			pathNames = pathNamesList.ToArray();
+			pathTypes = new string[pathNames.Length];
+
+			for (int i = 0; i < pathNames.Length; i++) {
+				PathAccess pathAccess = GetPathAccess(pathNames[i]);
+				pathTypes[i] = pathAccess.PathTypeName;
+			}
 		}
 		
 		private void InitPath(string pathName) {
@@ -408,6 +430,8 @@ namespace Deveel.Data.Net {
 		protected abstract void CreatePath(string pathName, string pathTypeName);
 		
 		protected abstract void DeletePath(string pathName);
+
+		protected abstract IList<PathStatus> ListPaths();
 		
 		public virtual void Init() {
 			if (initialized)
@@ -568,6 +592,12 @@ namespace Deveel.Data.Net {
 								responseStream.AddMessage("R", 1);
 								break;
 							}
+							case "pathReport": {
+								string[] pathNames, pathTypes;
+								server.PathReport(out pathNames, out pathTypes);
+								responseStream.AddMessage("R", pathNames, pathTypes);
+								break;
+							}
 							default:
 								throw new ApplicationException("Unknown message received: " + messageName);
 						}
@@ -583,8 +613,8 @@ namespace Deveel.Data.Net {
 
 				return responseStream;
 			}
-		}
-		
+		} 
+
 		#endregion
 		
 		#region PathConnection
@@ -643,6 +673,28 @@ namespace Deveel.Data.Net {
 			}
 		}
 		
+		#endregion
+
+		#region PathStatus
+
+		protected sealed class PathStatus {
+			public PathStatus(string pathName, bool deleted) {
+				this.pathName = pathName;
+				this.deleted = deleted;
+			}
+
+			private readonly string pathName;
+			private readonly bool deleted;
+
+			public bool IsDeleted {
+				get { return deleted; }
+			}
+
+			public string PathName {
+				get { return pathName; }
+			}
+		}
+
 		#endregion
 	}
 }

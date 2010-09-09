@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace Deveel.Data.Net {
@@ -65,7 +66,7 @@ namespace Deveel.Data.Net {
 			File.Create(delFile);
 		}
 		
-		protected override RootServer.PathAccess FetchPathAccess(string pathName) {
+		protected override PathAccess FetchPathAccess(string pathName) {
 			// Read it from the file system.
 			string f = Path.Combine(basePath, pathName);
 			
@@ -81,7 +82,7 @@ namespace Deveel.Data.Net {
 			// Read the summary data for this path.
 			string summaryFile = Path.Combine(basePath, pathName + ".summary");
 			
-			Deveel.Data.Util.Properties p = new Deveel.Data.Util.Properties();
+			Util.Properties p = new Util.Properties();
 			
 			using (FileStream fileStream = new FileStream(summaryFile, FileMode.Open, FileAccess.Read)) {
 				p.Load(fileStream);
@@ -92,6 +93,26 @@ namespace Deveel.Data.Net {
 			// Format it into a PathAccess object,
 			FileStream accessStream = new FileStream(f, FileMode.Open, FileAccess.ReadWrite, FileShare.None, 1024, FileOptions.WriteThrough);
 			return new PathAccess(accessStream, pathName, pathType);
+		}
+
+		protected override IList<PathStatus> ListPaths() {
+			List<PathStatus> list = new List<PathStatus>();
+			string[] all_files = Directory.GetFiles(basePath);
+			foreach (string file in all_files) {
+				string fname = Path.GetFileNameWithoutExtension(file);
+				string ext = Path.GetExtension(file);
+				bool deleted = false;
+				if (ext.Equals(".deleted")) {
+					deleted = true;
+				} else if (fname.EndsWith(".summary") ||
+						   fname.EndsWith(".properties")) {
+					continue;
+				}
+
+				list.Add(new PathStatus(fname, deleted));
+			}
+
+			return list;
 		}
 	}
 }

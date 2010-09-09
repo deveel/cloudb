@@ -10,6 +10,10 @@ namespace Deveel.Data.Net {
 
 		private readonly Properties properties;
 
+		public ISortedCollection<string> Keys {
+			get { return properties.Keys; }
+		}
+
 		public void Set(String path, ServiceAddress rootAddress) {
 			string rootAddrStr = null;
 			if (rootAddress != null)

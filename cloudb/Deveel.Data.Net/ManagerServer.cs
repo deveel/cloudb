@@ -10,47 +10,51 @@ namespace Deveel.Data.Net {
 		private IServiceConnector connector;
 		private ServiceAddress address;
 		private ErrorStateException errorState;
-		
+
 		private DataAddress currentAddressSpaceEnd;
 		private readonly object allocationLock = new object();
-		
+
 		private readonly Dictionary<long, BlockServerInfo> blockServersMap;
 		private readonly List<BlockServerInfo> blockServers;
 		private readonly List<RootServerInfo> rootServers;
 		private IDatabase blockDatabase;
 		private readonly object blockDbWriteLock = new object();
-		
+		private readonly Random random;
+
 		private readonly object heartbeatLock = new object();
-		private List<BlockServerInfo> monitoredServers = new List<ManagerServer.BlockServerInfo>(32);
-		private Thread heartbeatThread;
-		
-		private static Key BlockServerKey = new Key((short)12, 0, 10);
-		
+		private readonly Dictionary<ServiceAddress, DateTime> failureFloodControl;
+		private readonly List<BlockServerInfo> monitoredServers = new List<BlockServerInfo>(32);
+		private readonly Thread heartbeatThread;
+
+		private static readonly Key BlockServerKey = new Key(12, 0, 10);
+		private static readonly Key PathRootKey = new Key(12, 0, 20);
+
 		protected ManagerServer(IServiceConnector connector, ServiceAddress address) {
 			this.connector = connector;
 			this.address = address;
-			
-			blockServersMap = new Dictionary<long, ManagerServer.BlockServerInfo>(256);
+
+			blockServersMap = new Dictionary<long, BlockServerInfo>(256);
 			blockServers = new List<BlockServerInfo>(256);
 			rootServers = new List<RootServerInfo>(256);
-			
+			random = new Random();
+
 			heartbeatThread = new Thread(Heartbeat);
 			heartbeatThread.IsBackground = true;
 			heartbeatThread.Start();
 		}
-		
+
 		~ManagerServer() {
 			Dispose(false);
 		}
-		
+
 		public ServiceType ServiceType {
 			get { return ServiceType.Manager; }
 		}
-		
+
 		public IMessageProcessor Processor {
 			get { return new ManagerServerMessageProcessor(this); }
 		}
-		
+
 		private void Dispose(bool disposing) {
 			if (!disposed) {
 				OnDispose(disposing);
@@ -58,14 +62,14 @@ namespace Deveel.Data.Net {
 				initialized = false;
 			}
 		}
-		
+
 		private void UpdateAddressSpaceEnd() {
 			lock (blockDbWriteLock) {
 				ITransaction transaction = blockDatabase.CreateTransaction();
 				try {
 					// Get the map,
 					BlockServerTable blockServerTable = new BlockServerTable(transaction.GetFile(BlockServerKey, FileAccess.Read));
-					
+
 					// Set the 'current address space end' object with a value that is
 					// past the end of the address space.
 
@@ -88,25 +92,144 @@ namespace Deveel.Data.Net {
 				}
 			}
 		}
-		
+
 		private void CheckErrorState() {
 			if (errorState != null)
 				throw errorState;
 		}
-		
+
 		private void SetErrorState(Exception e) {
 			errorState = new ErrorStateException(e);
 		}
-		
-		private void RegisterBlockServer(ServiceAddress address) {
+
+		private long[] AllocateOnlineServerNodesForBlock(long blockId) {
+			// Fetch the list of all online servers,
+			List<BlockServerInfo> servSet = new List<BlockServerInfo>(blockServers.Count);
+			lock (blockServersMap) {
+				foreach (BlockServerInfo server in blockServers) {
+					// Add the servers with status 'up'
+					if (server.Status == ServerStatus.Up)
+						servSet.Add(server);
+				}
+			}
+
+			// TODO: This is a simple random server picking method for a block.
+			//   We should prioritize servers picked based on machine specs, etc.
+
+			int sz = servSet.Count;
+			// If serv_set is 3 or less, we return the servers available,
+			if (sz <= 3) {
+				long[] returnVal = new long[sz];
+				for (int i = 0; i < sz; ++i)
+					returnVal[i] = servSet[i].Guid;
+				return returnVal;
+			} else {
+				// Randomly pick three servers from the list,
+				long[] returnVal = new long[3];
+				for (int i = 0; i < 3; ++i) {
+					// java.util.Random is specced to be thread-safe,
+					int randomIndex = random.Next(servSet.Count);
+					BlockServerInfo blockServer = servSet[randomIndex];
+					servSet.RemoveAt(randomIndex);
+					returnVal[i] = blockServer.Guid;
+				}
+
+				// Return the array,
+				return returnVal;
+			}
+		}
+
+		private long[] GetOnlineServersWithBlock(long blockId) {
+			long[] servers;
+			// Note; we perform these operations inside a lock because we may need to
+			//  provision servers to contain certain blocks which requires a database
+			//  update.
+			lock (blockDbWriteLock) {
+				// Create a transaction
+				ITransaction transaction = blockDatabase.CreateTransaction();
+				try {
+					// Get the map,
+					BlockServerTable blockServerTable = new BlockServerTable(transaction.GetFile(BlockServerKey, FileAccess.ReadWrite));
+
+					// Get the servers list,
+					servers = blockServerTable[blockId];
+					// If the list is empty,
+					if (servers.Length == 0) {
+						// Provision servers to contain the block,
+						servers = AllocateOnlineServerNodesForBlock(blockId);
+						// Did we allocate any servers for this block?
+						if (servers.Length > 0) {
+							// Put the servers in the map,
+							for (int i = 0; i < servers.Length; ++i)
+								blockServerTable.Add(blockId, servers[i]);
+
+							// Commit and check point the update,
+							blockDatabase.Publish(transaction);
+							blockDatabase.CheckPoint();
+						}
+					}
+				} finally {
+					blockDatabase.Dispose(transaction);
+				}
+			}
+
+			return servers;
+		}
+
+		private void CheckAndFixAllocationServers() {
+			// If the failure report is on a block server that is servicing allocation
+			// requests, we push the allocation requests to the next block.
+			long currentBlockId;
+			lock (allocationLock) {
+				currentBlockId = currentAddressSpaceEnd.BlockId;
+			}
+
+			long[] bservers = GetOnlineServersWithBlock(currentBlockId);
+
+			int okServerCount = 0;
+
+			// Change the status of the block server to STATUS_DOWN_CLIENT_REPORT
+			lock (blockServersMap) {
+				// For each server that stores the block,
+				for (int i = 0; i < bservers.Length; ++i) {
+					long serverGuid = bservers[i];
+					// Is the status of this server UP?
+					foreach (BlockServerInfo block_server in blockServers) {
+						// If this matches the guid, and is up, we add to 'ok_server_count'
+						if (block_server.Guid == serverGuid &&
+							block_server.Status == ServerStatus.Up) {
+							++okServerCount;
+						}
+					}
+				}
+			}
+
+			// If the count of ok servers for the allocation set size is not
+			// the same then there are one or more servers that are inoperable
+			// in the allocation set. So, we increment the block id ref of
+			// 'current address space end' by 1 to force a reevaluation of the
+			// servers to allocate the current block.
+			if (okServerCount != bservers.Length) {
+				lock (allocationLock) {
+					long blockId = currentAddressSpaceEnd.BlockId;
+					int dataId = currentAddressSpaceEnd.DataId;
+					if (currentBlockId == blockId) {
+						++blockId;
+						dataId = 0;
+						currentAddressSpaceEnd = new DataAddress(blockId, dataId);
+					}
+				}
+			}
+		}
+
+		private void RegisterBlockServer(ServiceAddress serviceAddress) {
 			// Open a connection with the block server,
-			IMessageProcessor processor = connector.Connect(address, ServiceType.Block);
+			IMessageProcessor processor = connector.Connect(serviceAddress, ServiceType.Block);
 
 			// Lock the block server with this manager
-			MessageStream inputStream, outputStream;
-			outputStream = new MessageStream(16);
-			outputStream.AddMessage("bindWithManager", this.address);
-			inputStream = processor.Process(outputStream);
+			MessageStream outputStream = new MessageStream(16);
+			outputStream.AddMessage("bindWithManager", address);
+			MessageStream inputStream = processor.Process(outputStream);
 			foreach (Message m in inputStream) {
 				if (m.IsError)
 					throw new ApplicationException(m.ErrorMessage);
@@ -118,16 +241,15 @@ namespace Deveel.Data.Net {
 			inputStream = processor.Process(outputStream);
 			Message rm = null;
 			foreach (Message m in inputStream) {
-				if (m.IsError) {
+				if (m.IsError)
 					throw new ApplicationException(m.ErrorMessage);
-				} else {
-					rm = m;
-				}
+				
+				rm = m;
 			}
-			
+
 			long serverGuid = (long)rm[0];
 			long[] blockIdList = (long[])rm[1];
-			
+
 			// Create a transaction
 			lock (blockDbWriteLock) {
 				ITransaction transaction = blockDatabase.CreateTransaction();
@@ -160,57 +282,490 @@ namespace Deveel.Data.Net {
 				}
 			}
 
-			BlockServerInfo blockServer = new BlockServerInfo(serverGuid, address, ServerStatus.Up);
+			BlockServerInfo blockServer = new BlockServerInfo(serverGuid, serviceAddress, ServerStatus.Up);
 			// Add it to the map
 			lock (blockServersMap) {
 				blockServersMap[serverGuid] = blockServer;
 				blockServers.Add(blockServer);
-				//TODO: how to update the list of servers?
+				PersistBlockServers(blockServers);
 			}
 
 			// Update the address space end variable,
 			UpdateAddressSpaceEnd();
 		}
-		
-		private void UnregisterBlockServer(ServiceAddress address) {
-			throw new NotImplementedException();
+
+		private void UnregisterBlockServer(ServiceAddress serviceAddress) {
+			// Open a connection with the block server,
+			IMessageProcessor processor = connector.Connect(serviceAddress, ServiceType.Block);
+
+			// Unlock the block server from this manager
+			MessageStream outputStream = new MessageStream(16);
+			outputStream.AddMessage("unbindWithManager", address);
+			MessageStream inputStream = processor.Process(outputStream);
+			foreach (Message m in inputStream) {
+				if (m.IsError)
+					throw new ApplicationException(m.ErrorMessage);
+			}
+
+			// Remove it from the map and persist
+			lock (blockServersMap) {
+				// Find the server to remove,
+				List<BlockServerInfo> to_remove = new List<BlockServerInfo>();
+				foreach (BlockServerInfo server in blockServers) {
+					if (server.Address.Equals(serviceAddress))
+						to_remove.Add(server);
+				}
+				// Remove the entries that match,
+				foreach (BlockServerInfo item in to_remove) {
+					blockServersMap.Remove(item.Guid);
+					blockServers.Remove(item);
+				}
+				PersistBlockServers(blockServers);
+			}
+
+			// Check that we aren't allocating against servers no longer in
+			// the list. If so, fix the error.
+			CheckAndFixAllocationServers();
 		}
-		
+
 		private void UnregisterAllBlockServers() {
-			throw new NotImplementedException();
+			// Create a list of servers to be deregistered,
+			List<BlockServerInfo> to_remove;
+			lock (blockServersMap) {
+				to_remove = new List<BlockServerInfo>(blockServers.Count);
+				to_remove.AddRange(blockServers);
+			}
+
+			foreach (BlockServerInfo s in to_remove) {
+				// Open a connection with the block server,
+				IMessageProcessor processor = connector.Connect(s.Address, ServiceType.Block);
+
+				// Unlock the block server from this manager
+				MessageStream outputStream = new MessageStream(16);
+				outputStream.AddMessage("unbindWithManager", address);
+				MessageStream inputStream = processor.Process(outputStream);
+				foreach (Message m in inputStream) {
+					if (m.IsError)
+						throw new ApplicationException(m.ErrorMessage);
+				}
+			}
+
+			// Remove the entries from the map and persist
+			lock (blockServersMap) {
+				// Remove the entries that match,
+				foreach (BlockServerInfo item in to_remove) {
+					blockServersMap.Remove(item.Guid);
+					blockServers.Remove(item);
+				}
+
+				PersistBlockServers(blockServers);
+			}
+
+			// Check that we aren't allocating against servers no longer in
+			// the list. If so, fix the error.
+			CheckAndFixAllocationServers();
 		}
-		
+
+		private BlockServerInfo[] GetServersInfo(long[] servers_guid) {
+			lock (blockServersMap) {
+				int sz = servers_guid.Length;
+				List<BlockServerInfo> reply = new List<BlockServerInfo>(sz);
+				for (int i = 0; i < sz; ++i) {
+					BlockServerInfo blockServer = blockServersMap[servers_guid[i]];
+					if (blockServer != null)
+						// Copy the server information into a new object.
+						reply.Add(new BlockServerInfo(blockServer.Guid, blockServer.Address, blockServer.Status));
+				}
+				return reply.ToArray();
+			}
+		}
+
 		private BlockServerInfo[] GetServerListForBlock(long blockId) {
-			throw new NotImplementedException();
+			// Query the local database for the server list of the block.  If the
+			// block doesn't exist in the database then it provisions it over the
+			// network.
+
+			long[] server_ids = GetOnlineServersWithBlock(blockId);
+
+			// Resolve the server ids into server names and parse it as a reply
+			int sz = server_ids.Length;
+
+			// No online servers contain the block
+			if (sz == 0)
+				throw new ApplicationException("No online servers for block: " + blockId);
+
+			return GetServersInfo(server_ids);
 		}
-		
-		private void RegisterRootServer(ServiceAddress address) {
-			throw new NotImplementedException();
+
+		private void RegisterRootServer(ServiceAddress serviceAddress) {
+			// Open a connection with the root server,
+			IMessageProcessor processor = connector.Connect(serviceAddress, ServiceType.Root);
+
+			// Lock the root server with this manager
+			MessageStream outputStream = new MessageStream(16);
+			outputStream.AddMessage("bindWithManager", address);
+			MessageStream inputStream = processor.Process(outputStream);
+			foreach (Message m in inputStream) {
+				if (m.IsError)
+					throw new ApplicationException(m.ErrorMessage);
+			}
+
+			// Get the database path report from the server,
+			outputStream = new MessageStream(16);
+			outputStream.AddMessage(new Message("pathReport"));
+			inputStream = processor.Process(outputStream);
+			Message rm = null;
+			foreach (Message m in inputStream) {
+				if (m.IsError)
+					throw new ApplicationException(m.ErrorMessage);
+				
+				rm = m;
+			}
+
+			string[] pathsNames = (String[])rm[0];
+
+			// Create a transaction
+			lock (blockDbWriteLock) {
+				ITransaction transaction = blockDatabase.CreateTransaction();
+				try {
+					// Get the map,
+					PathRootTable pathRootTable = new PathRootTable(transaction.GetFile(PathRootKey, FileAccess.ReadWrite));
+
+					// Read until the end
+					int sz = pathsNames.Length;
+					// Put each block item into the database,
+					for (int i = 0; i < sz; ++i) {
+						// Put the mapping of path_root to the root server that manages it.
+						pathRootTable.Set(pathsNames[i], serviceAddress);
+					}
+
+					// Commit and check point the update,
+					blockDatabase.Publish(transaction);
+					blockDatabase.CheckPoint();
+
+				} finally {
+					blockDatabase.Dispose(transaction);
+				}
+			}
+
+			// Add it to the map
+			lock (rootServers) {
+				rootServers.Add(new RootServerInfo(serviceAddress, ServerStatus.Up));
+				PersistRootServers(rootServers);
+			}
 		}
-		
-		private void UnregisterRootServer(ServiceAddress address) {
-			throw new NotImplementedException();
+
+		private void UnregisterRootServer(ServiceAddress serviceAddress) {
+			// Open a connection with the block server,
+			IMessageProcessor processor = connector.Connect(serviceAddress, ServiceType.Root);
+
+			// Unlock the block server from this manager
+			MessageStream outputStream = new MessageStream(16);
+			outputStream.AddMessage("unbindWithManager", address);
+			MessageStream inputStream = processor.Process(outputStream);
+			foreach (Message m in inputStream) {
+				if (m.IsError)
+					throw new ApplicationException(m.ErrorMessage);
+			}
+
+			// Remove it from the map and persist
+			lock (rootServers) {
+				// Find the server to remove,
+				for (int i = rootServers.Count - 1; i >= 0; i--) {
+					if (rootServers[i].Address.Equals(serviceAddress))
+						rootServers.RemoveAt(i);
+				}
+
+				PersistRootServers(rootServers);
+			}
 		}
-		
+
 		private void UnregisterAllRootServers() {
-			throw new NotImplementedException();
+			// Create a list of servers to be deregistered,
+			List<RootServerInfo> to_remove;
+			lock (rootServers) {
+				to_remove = new List<RootServerInfo>(rootServers.Count);
+				to_remove.AddRange(rootServers);
+			}
+
+			foreach (RootServerInfo s in to_remove) {
+				// Open a connection with the root server,
+				IMessageProcessor processor = connector.Connect(s.Address, ServiceType.Root);
+
+				// Unlock the root server from this manager
+				MessageStream outputStream = new MessageStream(16);
+				outputStream.AddMessage("unbindWithManager", address);
+				MessageStream inputStream = processor.Process(outputStream);
+				foreach (Message m in inputStream) {
+					if (m.IsError)
+						throw new ApplicationException(m.ErrorMessage);
+				}
+			}
+
+			// Remove the entries from the map and persist
+			lock (rootServers) {
+				// Remove the entries that match,
+				foreach (RootServerInfo item in to_remove) {
+					rootServers.Remove(item);
+				}
+
+				PersistRootServers(rootServers);
+			}
 		}
-		
+
 		private ServiceAddress GetRootForPath(string pathName) {
-			throw new NotImplementedException();
+			// Perform this under a lock. This lock is also active for block queries
+			// and administration updates.
+			lock (blockDbWriteLock) {
+				// Create a transaction
+				ITransaction transaction = blockDatabase.CreateTransaction();
+				try {
+					// Get the map,
+					PathRootTable path_root_map = new PathRootTable(transaction.GetFile(PathRootKey, FileAccess.Read));
+
+					// Get the service address for the path name
+					return path_root_map.Get(pathName);
+				} finally {
+					blockDatabase.Dispose(transaction);
+				}
+			}
 		}
-		
+
+		private  string[] GetPaths() {
+			// Perform this under a lock. This lock is also active for block queries
+			// and administration updates.
+			List<String> paths = new List<string>(32);
+			lock (blockDbWriteLock) {
+				// Create a transaction
+				ITransaction transaction = blockDatabase.CreateTransaction();
+				try {
+					// Get the map,
+					PathRootTable pathRootTable = new PathRootTable(transaction.GetFile(PathRootKey, FileAccess.Read));
+					foreach(string path in pathRootTable.Keys) {
+						paths.Add(path);
+					}
+				} finally {
+					blockDatabase.Dispose(transaction);
+				}
+			}
+			// Return the list,
+			return paths.ToArray();
+		}
+
 		private DataAddress AllocateNode(int nodeSize) {
-			throw new NotImplementedException();
+			if (nodeSize >= 65536)
+				throw new ArgumentException("node_size too large");
+			if (nodeSize < 0)
+				throw new ArgumentException("node_size too small");
+
+			long blockId;
+			int dataId;
+
+			lock (allocationLock) {
+				// Fetch the current block of the end of the address space,
+				blockId = currentAddressSpaceEnd.BlockId;
+				// Get the data identifier,
+				dataId = currentAddressSpaceEnd.DataId;
+
+				// The next position,
+				int nextDataId = dataId;
+				long nextBlockId = blockId;
+				++nextDataId;
+				if (nextDataId >= 16384) {
+					nextDataId = 0;
+					++nextBlockId;
+				}
+
+				// Create the new end address
+				currentAddressSpaceEnd = new DataAddress(nextBlockId, nextDataId);
+			}
+
+			// Return the data address,
+			return new DataAddress(blockId, dataId);
 		}
-		
+
+		private void RemovePathRootMapping(string pathName) {
+			// Perform this under a lock. This lock is also active for block queries
+			// and administration updates.
+			lock (blockDbWriteLock) {
+				// Create a transaction
+				ITransaction transaction = blockDatabase.CreateTransaction();
+				try {
+					PathRootTable path_root_map = new PathRootTable(transaction.GetFile(PathRootKey, FileAccess.Write));
+					path_root_map.Set(pathName, null);
+
+					// Commit and check point the update,
+					blockDatabase.Publish(transaction);
+					blockDatabase.CheckPoint();
+				} finally {
+					blockDatabase.Dispose(transaction);
+				}
+			}
+		}
+
+		private void AddPathRootMapping(string pathName, ServiceAddress serviceAddress) {
+			// Perform this under a lock. This lock is also active for block queries
+			// and administration updates.
+			lock (blockDbWriteLock) {
+				// Create a transaction
+				ITransaction transaction = blockDatabase.CreateTransaction();
+				try {
+					// Get the map,
+					PathRootTable path_root_map = new PathRootTable(transaction.GetFile(PathRootKey, FileAccess.Write));
+
+					// Create the map
+					path_root_map.Set(pathName, serviceAddress);
+
+					// Commit and check point the update,
+					blockDatabase.Publish(transaction);
+					blockDatabase.CheckPoint();
+				} finally {
+					blockDatabase.Dispose(transaction);
+				}
+			}
+		}
+
+		private void RemoveBlockServerMapping(long blockId, long serverGuid) {
+			lock (blockDbWriteLock) {
+				ITransaction transaction = blockDatabase.CreateTransaction();
+				try {
+					BlockServerTable blockServerTable = new BlockServerTable(transaction.GetFile(BlockServerKey, FileAccess.Write));
+					blockServerTable.Remove(blockId, serverGuid);
+
+					// Commit and check point the update,
+					blockDatabase.Publish(transaction);
+					blockDatabase.CheckPoint();
+				} finally {
+					blockDatabase.Dispose(transaction);
+				}
+			}
+		}
+
+		private void AddBlockServerMapping(long blockId, long serverGuid) {
+			lock (blockDbWriteLock) {
+				// Create a transaction
+				ITransaction transaction = blockDatabase.CreateTransaction();
+				try {
+					// Get the map,
+					BlockServerTable blockServerTable = new BlockServerTable(transaction.GetFile(BlockServerKey, FileAccess.Write));
+
+					// Make the block -> server map
+					blockServerTable.Add(blockId, serverGuid);
+
+					// Commit and check point the update,
+					blockDatabase.Publish(transaction);
+					blockDatabase.CheckPoint();
+				} finally {
+					blockDatabase.Dispose(transaction);
+				}
+			}
+		}
+
+		private long[] GetServerGuidList(long blockId) {
+			long[] servers;
+			// Note; we perform these operations inside a lock because we may need to
+			//  provision servers to contain certain blocks which requires a database
+			//  update.
+			lock (blockDbWriteLock) {
+				// Create a transaction
+				ITransaction transaction = blockDatabase.CreateTransaction();
+				try {
+					// Get the map,
+					BlockServerTable blockServerTable = new BlockServerTable(transaction.GetFile(BlockServerKey, FileAccess.Read));
+
+					// Get the servers list,
+					servers = blockServerTable.Get(blockId);
+				} finally {
+					blockDatabase.Dispose(transaction);
+				}
+			}
+
+			return servers;
+		}
+
+		private void NotifyBlockServerFailure(ServiceAddress serviceAddress) {
+			// This ensures that if we get flooded with failure notifications, the
+			// load is not too great. Failure flooding should be capped by the
+			// client also.
+			lock (failureFloodControl) {
+				DateTime currentTime = DateTime.Now;
+				DateTime lastAddressFailTime;
+				if (failureFloodControl.TryGetValue(serviceAddress, out lastAddressFailTime) &&
+					lastAddressFailTime.AddMilliseconds(30 * 1000) > currentTime) {
+					// We don't respond to failure notifications on the same address if a
+					// failure notice arrived within a minute of the last one accepted.
+					return;
+				}
+				failureFloodControl[serviceAddress] = currentTime;
+			}
+
+			// Change the status of the block server to STATUS_DOWN_CLIENT_REPORT
+			lock (blockServersMap) {
+				// Get the MSBlockServer object from the map,
+				foreach (BlockServerInfo block_server in blockServers) {
+					// If the block server is the one that failed,
+					if (block_server.Address.Equals(serviceAddress)) {
+						if (block_server.Status == ServerStatus.Up) {
+							block_server.Status = ServerStatus.DownClientReport;
+							// Add this block to the heartbeat check thread,
+							MonitorServer(block_server);
+						}
+					}
+				}
+			}
+
+			// Change the allocation point if we are allocating against servers that
+			// have failed,
+			CheckAndFixAllocationServers();
+		}
+
+		private long[] GetBlockMappingRange(long start, long end) {
+			if (start < 0)
+				throw new ArgumentException("start < 0");
+			if (end < 0)
+				throw new ArgumentException("end < 0");
+			if (start > end)
+				throw new ArgumentException("start > end");
+
+			lock (blockDbWriteLock) {
+				// Create a transaction
+				ITransaction transaction = blockDatabase.CreateTransaction();
+				try {
+					// Get the map,
+					BlockServerTable block_server_map = new BlockServerTable(transaction.GetFile(BlockServerKey, FileAccess.Read));
+					long size = block_server_map.Count;
+					start = Math.Min(start, size);
+					end = Math.Min(end, size);
+
+					// Return the range,
+					return block_server_map.GetRange(start, end);
+				} finally {
+					blockDatabase.Dispose(transaction);
+				}
+			}
+		}
+
+		private long GetBlockMappingCount() {
+			lock (blockDbWriteLock) {
+				// Create a transaction
+				ITransaction transaction = blockDatabase.CreateTransaction();
+				try {
+					// Get the map,
+					BlockServerTable blockServerTable = new BlockServerTable(transaction.GetFile(BlockServerKey, FileAccess.Read));
+					return blockServerTable.Count;
+				} finally {
+					blockDatabase.Dispose(transaction);
+				}
+			}
+		}
+
 		private void MonitorServer(BlockServerInfo blockServer) {
 			lock (this) {
 				if (!monitoredServers.Contains(blockServer))
 					monitoredServers.Add(blockServer);
 			}
 		}
-		
+
 		private void PollServer(BlockServerInfo server) {
 			bool pollOk = true;
 
@@ -254,7 +809,7 @@ namespace Deveel.Data.Net {
 				}
 			}
 		}
-		
+
 		private void Heartbeat() {
 			try {
 				while (true) {
@@ -265,13 +820,13 @@ namespace Deveel.Data.Net {
 						// If there are no servers to monitor, continue the loop,
 						if (monitoredServers.Count == 0)
 							continue;
-						
+
 						// Otherwise, copy the monitored servers into the 'servers'
 						// object,
 						servers = new List<BlockServerInfo>(monitoredServers.Count);
 						servers.AddRange(monitoredServers);
 					}
-					
+
 					// Poll the servers
 					foreach (BlockServerInfo s in servers) {
 						PollServer(s);
@@ -281,96 +836,99 @@ namespace Deveel.Data.Net {
 				//TODO: WARN log ...
 			}
 		}
-		
+
+		protected abstract void PersistBlockServers(IList<BlockServerInfo> servers_list);
+
+		protected abstract void PersistRootServers(IList<RootServerInfo> servers_list);
+
 		protected void SetBlockDatabase(IDatabase database) {
 			blockDatabase = database;
 		}
-		
+
 		protected virtual void OnInit() {
 		}
-		
+
 		protected virtual void OnDispose(bool disposing) {
 		}
-		
+
 		public void Init() {
 			if (initialized)
 				throw new ApplicationException("The manager server was already initialized.");
-			
+
 			OnInit();
-			
+
 			initialized = true;
 		}
-		
+
 		public void Dispose() {
 			GC.SuppressFinalize(this);
 			Dispose(true);
 		}
-		
+
 		#region ManagerServerMessageProcessor
-		
+
 		class ManagerServerMessageProcessor : IMessageProcessor {
 			public ManagerServerMessageProcessor(ManagerServer server) {
 				this.server = server;
 			}
-			
+
 			private readonly ManagerServer server;
-			
+
 			public MessageStream Process(MessageStream messageStream) {
 				MessageStream responseStream = new MessageStream(32);
 
 				// The messages in the stream,
-				foreach(Message m in messageStream) {
+				foreach (Message m in messageStream) {
 					try {
 						// Check the server isn't in a stop state,
 						server.CheckErrorState();
-						
-						string cmd = m.Name;
-						switch(m.Name) {
+
+						switch (m.Name) {
 							case "getServerListForBlock": {
-								long  blockId = (long)m[0];
+								long blockId = (long) m[0];
 								BlockServerInfo[] servers = server.GetServerListForBlock(blockId);
 								Message response = new Message("R");
 								response.AddArgument(servers.Length);
-								for(int i = 0; i < servers.Length; i++) {
+								for (int i = 0; i < servers.Length; i++) {
 									response.AddArgument(servers[i].Address);
-									response.AddArgument((int)servers[i].Status);
+									response.AddArgument((int) servers[i].Status);
 								}
 								responseStream.AddMessage(response);
 								break;
 							}
 							case "allocateNode": {
-								int nodeSize = (int)m[0];
+								int nodeSize = (int) m[0];
 								DataAddress address = server.AllocateNode(nodeSize);
 								responseStream.AddMessage("R", address);
 								break;
 							}
 							case "registerBlockServer": {
-								ServiceAddress address = (ServiceAddress)m[0];
+								ServiceAddress address = (ServiceAddress) m[0];
 								server.RegisterBlockServer(address);
 								responseStream.AddMessage("R", 1);
-								break;	
+								break;
 							}
 							case "unregisterBlockServer": {
-								ServiceAddress address = (ServiceAddress)m[0];
+								ServiceAddress address = (ServiceAddress) m[0];
 								server.UnregisterBlockServer(address);
 								responseStream.AddMessage("R", 1);
-								break;	
+								break;
 							}
 							case "unregisterAllBlockServers": {
 								server.UnregisterAllBlockServers();
 								responseStream.AddMessage("R", 1);
-								break;	
+								break;
 							}
-							
-							// root servers
+
+								// root servers
 							case "registerRootServer": {
-								ServiceAddress address = (ServiceAddress)m[0];
+								ServiceAddress address = (ServiceAddress) m[0];
 								server.RegisterRootServer(address);
 								responseStream.AddMessage("R", 1);
 								break;
 							}
 							case "unregisterRootServer": {
-								ServiceAddress address = (ServiceAddress)m[0];
+								ServiceAddress address = (ServiceAddress) m[0];
 								server.UnregisterRootServer(address);
 								responseStream.AddMessage("R", 1);
 								break;
@@ -381,9 +939,65 @@ namespace Deveel.Data.Net {
 								break;
 							}
 							case "getRootForPath": {
-								string pathName = (string)m[0];
+								string pathName = (string) m[0];
 								ServiceAddress address = server.GetRootForPath(pathName);
 								responseStream.AddMessage("R", address);
+								break;
+							}
+							case "addPathRootMapping": {
+								string pathName = (string) m[0];
+								ServiceAddress address = (ServiceAddress) m[1];
+								server.AddPathRootMapping(pathName, address);
+								responseStream.AddMessage("R", 1);
+								break;
+							}
+							case "removePathRootMapping": {
+								string pathName = (string) m[0];
+								server.RemovePathRootMapping(pathName);
+								responseStream.AddMessage("R", 1);
+								break;
+							}
+							case "getPaths": {
+								string[] pathSet = server.GetPaths();
+								responseStream.AddMessage("R", pathSet);
+								break;
+							}
+							case "getServerGUIDList": {
+								long blockId = (long) m[0];
+								long[] serverGuids = server.GetServerGuidList(blockId);
+								responseStream.AddMessage("R", serverGuids);
+								break;
+							}
+							case "addBlockServerMapping": {
+								long blockId = (long) m[0];
+								long serverGuid = (long) m[1];
+								server.AddBlockServerMapping(blockId, serverGuid);
+								responseStream.AddMessage("R", 1);
+								break;
+							}
+							case "removeBlockServerMapping": {
+								long blockId = (long) m[0];
+								long serverGuid = (long) m[1];
+								server.RemoveBlockServerMapping(blockId, serverGuid);
+								responseStream.AddMessage("R", 1);
+								break;
+							}
+							case "notifyBlockServerFailure": {
+								ServiceAddress address = (ServiceAddress) m[0];
+								server.NotifyBlockServerFailure(address);
+								responseStream.AddMessage("R", 1);
+								break;
+							}
+							case "getBlockMappingCount": {
+								long blockMappingCount = server.GetBlockMappingCount();
+								responseStream.AddMessage("R", blockMappingCount);
+								break;
+							}
+							case "getBlockMappingRange": {
+								long start = (long) m[0];
+								long end = (long) m[1];
+								long[] mappings = server.GetBlockMappingRange(start, end);
+								responseStream.AddMessage("R", mappings);
 								break;
 							}
 							default:
@@ -392,7 +1006,7 @@ namespace Deveel.Data.Net {
 					} catch (OutOfMemoryException e) {
 						//TODO: ERROR log ...
 						server.SetErrorState(e);
-						throw e;
+						throw;
 					} catch (Exception e) {
 						//TODO: ERROR log ...
 						responseStream.AddErrorMessage(new ServiceException(e));
@@ -402,24 +1016,24 @@ namespace Deveel.Data.Net {
 				return responseStream;
 			}
 		}
-		
+
 		#endregion
-		
+
 		#region RootServerInfo
-		
-		private class RootServerInfo {
-			private ServiceAddress address;
-			private ServerStatus status;
-			
-			public RootServerInfo(ServiceAddress address, ServerStatus status) {
+
+		protected sealed class RootServerInfo {
+			private readonly ServiceAddress address;
+			private readonly ServerStatus status;
+
+			internal RootServerInfo(ServiceAddress address, ServerStatus status) {
 				this.address = address;
 				this.status = status;
 			}
-			
+
 			public ServiceAddress Address {
 				get { return address; }
 			}
-			
+
 			public ServerStatus Status {
 				get { return status; }
 			}
@@ -434,29 +1048,29 @@ namespace Deveel.Data.Net {
 			}
 		}
 		#endregion
-		
+
 		#region BlockServerInfo
-		
-		private class BlockServerInfo {
-			private long guid;
-			private ServiceAddress address;
+
+		protected sealed class BlockServerInfo {
+			private readonly long guid;
+			private readonly ServiceAddress address;
 			private ServerStatus status;
-			
-			public BlockServerInfo(long guid, ServiceAddress address, ServerStatus status) {
+
+			internal BlockServerInfo(long guid, ServiceAddress address, ServerStatus status) {
 				this.guid = guid;
 				this.address = address;
 				this.status = status;
 			}
-			
+
 			public ServerStatus Status {
 				get { return status; }
 				set { status = value; }
 			}
-			
+
 			public long Guid {
 				get { return guid; }
 			}
-			
+
 			public ServiceAddress Address {
 				get { return address; }
 			}
@@ -471,18 +1085,18 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		
+
 		#endregion
-		
+
 		#region ServerStatus
-		
-		enum ServerStatus {
+
+		protected enum ServerStatus {
 			Up = 1,
 			DownShutdown = 2,
 			DownHeartbeat = 3,
 			DownClientReport = 4
 		}
-		
+
 		#endregion
 	}
 }
