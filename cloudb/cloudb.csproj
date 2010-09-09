@@ -57,10 +57,12 @@
     <Compile Include="Deveel.Data.Net\CompressedNodeSet.cs" />
     <Compile Include="Deveel.Data.Net\DataAddress.cs" />
     <Compile Include="Deveel.Data.Net\ErrorMessage.cs" />
+    <Compile Include="Deveel.Data.Net\FileSystemRootServer.cs" />
     <Compile Include="Deveel.Data.Net\IPathConnection.cs" />
     <Compile Include="Deveel.Data.Net\IPath.cs" />
     <Compile Include="Deveel.Data.Net\IMessageProcessor.cs" />
     <Compile Include="Deveel.Data.Net\INetworkCache.cs" />
+    <Compile Include="Deveel.Data.Net\IService.cs" />
     <Compile Include="Deveel.Data.Net\IServiceConnector.cs" />
     <Compile Include="Deveel.Data.Net\MachineProfile.cs" />
     <Compile Include="Deveel.Data.Net\ManagerCacheState.cs" />

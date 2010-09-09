@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 
 namespace Deveel.Data.Util {
-	public class StrongPagedAccess {
+	internal sealed class StrongPagedAccess {
 		private readonly Stream input;
 		private readonly Dictionary<long, byte[]> cache;
 		private readonly int pageSize;

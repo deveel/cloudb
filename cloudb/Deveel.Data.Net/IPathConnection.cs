@@ -41,14 +41,14 @@ namespace Deveel.Data.Net {
 		
 		/// <summary>
 		/// Gets all the addresses to the root nodes of the versions published
-		/// on the database since the date specified.
+		/// on the database since the given one.
 		/// </summary>
-		/// <param name="start">The date since when to start searching.</param>
+		/// <param name="rootNode">The node since where to start searching.</param>
 		/// <returns>
 		/// Returns an array of <see cref="DataAddress"/> pointing to the root nodes
-		/// of the versions of the database published since the given date.
+		/// of the versions of the database published since the given node.
 		/// </returns>
-		DataAddress[] GetSnapshots(DateTime start);
+		DataAddress[] GetSnapshots(DataAddress rootNode);
 		
 		/// <summary>
 		/// Sets the version, referenced by the given address, as the most recent

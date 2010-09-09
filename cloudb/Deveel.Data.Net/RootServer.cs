@@ -1,13 +1,49 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 
 using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
-	public abstract class RootServer {
-		private ErrorStateException errorState;
+	public abstract class RootServer : IService {
+		protected RootServer(IServiceConnector connector) {
+			this.connector = connector;
+			pathCache = new Dictionary<string, RootServer.PathAccess>(128);
+		}
 		
-		protected abstract Stream CreatePathAccessStream(string path);
+		~RootServer() {
+			Dispose(false);
+		}
+		
+		
+		private ServiceAddress managerAddress;
+		private ErrorStateException errorState;
+		private IServiceConnector connector;
+		private readonly Dictionary<string, PathAccess> pathCache;
+		private bool initialized;
+		private bool disposed;
+		
+		public IMessageProcessor Processor {
+			get { return new RootServerMessageProcessor(this); }
+		}
+		
+		public ServiceType ServiceType {
+			get { return ServiceType.Root; }
+		}
+		
+		protected ServiceAddress ManagerAddress {
+			get { return managerAddress; }
+			set { managerAddress = value; }
+		}
+		
+		private void Dispose(bool disposing) {
+			if (!disposed) {
+				OnDispose(disposing);
+				managerAddress = null;
+				disposed = true;
+				initialized = false;
+			}
+		}
 		
 		private void SetErrorState(Exception e) {
 			errorState = new ErrorStateException(e);
@@ -18,61 +54,384 @@ namespace Deveel.Data.Net {
 				throw errorState;
 		}
 		
+		private long BinarySearch(StrongPagedAccess access, long low, long high, long timestamp) {
+			while (low <= high) {
+				long mid = (low + high) >> 1;
+
+				long midTimeStamp = access.ReadInt64(mid * 16);
+
+				if (midTimeStamp < timestamp) {
+					low = mid + 1;
+				} else if (midTimeStamp > timestamp) {
+					high = mid - 1;
+				} else {
+					return mid;
+				}
+			}
+			return -(low + 1);
+		}
+		
+		private void CheckPathNameValid(string name) {
+			int sz = name.Length;
+			for (int i = 0; i < sz; ++i) {
+				char c = name[i];
+				// If the character is not a letter or digit or lower case, then it's
+				// invalid
+				if (!Char.IsLetterOrDigit(c) || Char.IsUpper(c))
+					throw new ApplicationException("Path name '" + name + "' is invalid, must contain only lower case letters or digits.");
+			}
+		}
+		
 		private void CheckPathType(string pathTypeName) {
-			throw new NotImplementedException();
+			try {
+				Type type = Type.GetType(pathTypeName, true, true);
+				Activator.CreateInstance(type);
+			} catch (TypeLoadException e) {
+				throw new ApplicationException("Type not found: " + e.Message);
+			} catch (TypeInitializationException e) {
+				throw new ApplicationException("Type instantiation exception: " + e.Message);
+			} catch (UnauthorizedAccessException e) {
+				throw new ApplicationException("Unauthorized Access exception: " + e.Message);
+			}
 		}
 		
 		private void AddPath(string pathName, string pathTypeName, DataAddress rootNode) {
-			throw new NotImplementedException();
+			// Check the name given is valid,
+			CheckPathNameValid(pathName);
+
+			lock (pathCache) {
+				if (pathCache.ContainsKey(pathName))
+					// If it's input the local map, generate an error,
+					throw new ApplicationException("Path '" + pathName + "' already exists.");
+				
+				CreatePath(pathName, pathTypeName);
+			}
+
+			if (rootNode != null) {
+				// Finally publish the base_root to the path,
+				PublishPath(pathName, rootNode);
+			}
 		}
 		
 		private void RemovePath(string pathName) {
-			throw new NotImplementedException();
+			// Check the name given is valid,
+			CheckPathNameValid(pathName);
+
+			lock (pathCache) {
+				DeletePath(pathName);
+				pathCache.Remove(pathName);
+			}
 		}
 		
 		private string GetPathType(string pathName) {
-			throw new NotImplementedException();
+			// Check the name given is valid,
+			CheckPathNameValid(pathName);
+
+			PathAccess pathAccess = GetPathAccess(pathName);
+			return pathAccess.PathTypeName;
 		}
 		
 		private void InitPath(string pathName) {
-			throw new NotImplementedException();
+			// Check the name given is valid,
+			CheckPathNameValid(pathName);
+
+			// Fetch the path access object for the given name. This will generate an
+			// exception if the path doesn't exist or there is an error input the
+			// configuration of the path.
+			PathAccess pathAccess = GetPathAccess(pathName);
+
+			IPath path;
+			lock (pathAccess) {
+				try {
+					path = pathAccess.Path;
+				} catch (TypeLoadException e) {
+					throw new ApplicationException("Type not found: " + e.Message);
+				} catch (TypeInitializationException e) {
+					throw new ApplicationException("Type instantiation exception: " + e.Message);
+				} catch (UnauthorizedAccessException e) {
+					throw new ApplicationException("Unauthorized Access exception: " + e.Message);
+				}
+			}
+
+			// Create the connection object (should be fairly lightweight)
+			INetworkCache networkCache = ManagerCacheState.GetCache(managerAddress);
+			IPathConnection connection = new PathConnection(this, pathName, connector, managerAddress, networkCache);
+
+			// Call the initialize function,
+			path.Init(connection);
 		}
 		
 		private void PublishPath(string name, DataAddress rootNode) {
-			throw new NotImplementedException();
+			// Check the name given is valid,
+			CheckPathNameValid(name);
+
+			// Fetch the path access object for the given name. This will generate an
+			// exception if the path doesn't exist or there is an error input the
+			// configuration of the path.
+			PathAccess pathAccess = GetPathAccess(name);
+
+			lock (pathAccess) {
+				// Write the root node entry to the end of the stream,
+				Stream f = pathAccess.AccessStream;
+				long pos = f.Length;
+				f.Seek(pos, SeekOrigin.Begin);
+				byte[] buffer = new byte[16];
+				ByteBuffer.WriteInt8(DateTime.Now.ToBinary(), buffer, 0);
+				ByteBuffer.WriteInt8(rootNode.Value, buffer, 8);
+				f.Write(buffer, 0, 16);
+				pathAccess.PagedAccess.InvalidateSection(pos, 16);
+				pathAccess.LastDataAddress = rootNode;
+			}
 		}
 		
 		private DataAddress GetSnapshot(string pathName) {
-			throw new NotImplementedException();
+			// Check the name given is valid,
+			CheckPathNameValid(pathName);
+
+			// Fetch the path access object for the given name. This will generate an
+			// exception if the path doesn't exist or there is an error input the
+			// configuration of the path.
+			PathAccess pathAccess = GetPathAccess(pathName);
+			
+			lock (pathAccess) {
+				if (pathAccess.LastDataAddress == null) {
+					// Read the root node entry from the end of the file,
+
+					long pos = pathAccess.AccessStream.Length;
+					if (pos == 0) {
+						// Nothing input the file, so return null
+						return null;
+					}
+					
+					// Read the long at the position of the root node reference,
+					long rootNodeId = pathAccess.PagedAccess.ReadInt64(pos - 8);
+					pathAccess.LastDataAddress = new DataAddress(rootNodeId);
+					// Clear the cache if it's over a certain size,
+					pathAccess.PagedAccess.ClearCache(4);
+				}
+				return pathAccess.LastDataAddress;
+			}
+
 		}
 		
 		private DataAddress[] GetSnapshots(string pathName, DateTime start, DateTime end) {
-			throw new NotImplementedException();
+			// Check the name given is valid,
+			CheckPathNameValid(pathName);
+
+			// Fetch the path access object for the given name. This will generate an
+			// exception if the path doesn't exist or there is an error input the
+			// configuration of the path.
+			PathAccess pathAccess = GetPathAccess(pathName);
+
+			List<DataAddress> nodes = new List<DataAddress>();
+			lock (pathAccess) {
+				// We perform a binary search for the start and end time input the set of
+				// root nodes since the records are ordered by time. Note that the key
+				// is a timestamp obtained by System.currentTimeMillis() that could
+				// become output of order if the system time is changed or other
+				// misc time synchronization oddities. Because of this, we consider the
+				// records 'roughly' ordered and it should be noted the result may not
+				// be exactly correct.
+
+				long setSize = pathAccess.AccessStream.Length / 16;
+
+				long startPos = BinarySearch(pathAccess.PagedAccess, 0, setSize - 1, start.ToBinary());
+				long endPos = BinarySearch(pathAccess.PagedAccess, 0, setSize - 1, end.ToBinary());
+				if (startPos < 0)
+					startPos = -(startPos + 1);
+				if (endPos < 0)
+					endPos = -(endPos + 1);
+				
+				// Crudely clear the cache if it's reached a certain threshold,
+				pathAccess.PagedAccess.ClearCache(4);
+
+				if (startPos >= endPos - 1) {
+					startPos = endPos - 2;
+					endPos = endPos + 2;
+				}
+
+				startPos = Math.Max(0, startPos);
+				endPos = Math.Min(setSize, endPos);
+
+				// Return the records,
+				while (true) {
+					if (startPos > endPos || startPos >= setSize)
+						// End if start has reached the end,
+						break;
+					
+					long node = pathAccess.PagedAccess.ReadInt64((startPos * 16) + 8);
+					nodes.Add(new DataAddress(node));
+					// Crudely clear the cache if it's reached a certain threshold,
+					pathAccess.PagedAccess.ClearCache(4);
+
+					++startPos;
+				}
+			}
+
+			// Return the nodes array,
+			return nodes.ToArray();
 		}
 		
-		private DataAddress[] GetSnapshots(string pathName, DateTime start) {
-			throw new NotImplementedException();
+		private DataAddress[] GetSnapshots(string pathName, DataAddress rootNode) {
+			// Check the name given is valid,
+			CheckPathNameValid(pathName);
+
+			// Fetch the path access object for the given name. This will generate an
+			// exception if the path doesn't exist or there is an error input the
+			// configuration of the path.
+			PathAccess pathAccess = GetPathAccess(pathName);
+
+			List<DataAddress> rootList = new List<DataAddress>(6);
+			lock (pathAccess) {
+				bool found = false;
+
+				// Start position at the end of the file,
+				long pos = pathAccess.AccessStream.Length;
+
+				while (!found && pos > 0) {
+					// Iterate backwards,
+					pos = pos - 16;
+					// Read the root node for this record,
+					long rootNodeId = pathAccess.PagedAccess.ReadInt64(pos + 8);
+					// Crudely clear the cache if it's reached a certain threshold,
+					pathAccess.PagedAccess.ClearCache(4);
+					// Did we find the root node?
+					DataAddress rootNodeAddress = new DataAddress(rootNodeId);
+					if (rootNodeAddress.Equals(rootNode)) {
+						found = true;
+					} else {
+						rootList.Add(rootNodeAddress);
+					}
+				}
+
+				// If not found, report error
+				if (!found) {
+					// Bit of an obscure error message. This basically means we didn't
+					// find the root node requested input the path file.
+					throw new ApplicationException("Root not found input version list");
+				}
+
+				// Return the array as a list,
+				return rootList.ToArray();
+
+			}
 		}
 		
 		private DataAddress Commit(String pathName, DataAddress proposal) {
-			throw new NotImplementedException();
+			// Check the name given is valid,
+			CheckPathNameValid(pathName);
+
+			// Fetch the path access object for the given name. This will generate an
+			// exception if the path doesn't exist or there is an error input the
+			// configuration of the path.
+			PathAccess pathAccess = GetPathAccess(pathName);
+
+			IPath path;
+			lock (pathAccess) {
+				try {
+					path = pathAccess.Path;
+				} catch (TypeLoadException e) {
+					throw new CommitFaultException("Type not found: " + e.Message);
+				} catch (TypeInitializationException e) {
+					throw new CommitFaultException("Type instantiation exception: " + e.Message);
+				} catch (UnauthorizedAccessException e) {
+					throw new CommitFaultException("Unauthorized Access exception: " + e.Message);
+				}
+			}
+
+			// Create the connection object (should be fairly lightweight)
+			INetworkCache networkCache = ManagerCacheState.GetCache(managerAddress);
+			IPathConnection connection = new PathConnection(this, pathName, connector, managerAddress, networkCache);
+
+			// Perform the commit,
+			return path.Commit(connection, proposal);
 		}
 		
-		protected abstract void BindWithManager(ServiceAddress managerAddress);
+		private void BindWithManager(ServiceAddress managerAddress) {
+			if (this.managerAddress != null)
+				throw new ApplicationException("This root server is already bound to a manager server");
+			
+			try {
+				OnBindingWithManager(managerAddress);
+			} catch(Exception e) {
+				throw new ApplicationException("Error while binding with manager: " + e.Message, e);
+			}
+			
+			this.managerAddress = managerAddress;
+		}
 		
-		protected abstract void UnbindWithManager(ServiceAddress managerAddress);
+		private void UnbindWithManager(ServiceAddress managerAddress) {
+			if (this.managerAddress == null)
+				throw new ApplicationException("This root server is not bound to a manager server");
+			
+			if (!this.managerAddress.Equals(managerAddress))
+				throw new ApplicationException("Trying to unbind a different manager server");
+			
+			try {
+				OnUnbindingWithManager(managerAddress);
+			} catch (Exception e) {
+				throw new ApplicationException("Error while unbinding with manager: " + e.Message, e);
+			}
+			
+			this.managerAddress = null;
+		}
+		
+		private PathAccess GetPathAccess(string pathName) {
+			// Fetch the lock object for the given path name,
+			PathAccess pathAccess;
+			lock (pathCache) {
+				if (!pathCache.TryGetValue(pathName, out pathAccess)) {
+					pathAccess = FetchPathAccess(pathName);
+					
+					// Put it input the local map
+					pathCache[pathName] = pathAccess;
+				}
+			}
+			return pathAccess;
+		}
+
+		
+		protected virtual void OnBindingWithManager(ServiceAddress managerAddress) {
+		}
+		
+		protected virtual void OnUnbindingWithManager(ServiceAddress managerAddress) {
+		}
+		
+		protected virtual void OnDispose(bool disposing) {
+		}
+		
+		protected virtual void OnInit() {
+		}
+				
+		protected abstract PathAccess FetchPathAccess(string pathName);
+		
+		protected abstract void CreatePath(string pathName, string pathTypeName);
+		
+		protected abstract void DeletePath(string pathName);
+		
+		public virtual void Init() {
+			if (initialized)
+				throw new ApplicationException("The server was already initialized.");
+			
+			OnInit();
+			
+			initialized = true;
+		}
+		
+		public void Dispose() {
+			GC.SuppressFinalize(this);
+			Dispose(true);
+		}
 		
 		#region PathAccess
 		
-		class PathAccess {
+		protected class PathAccess {
 			private readonly string name;
 			private readonly string pathTypeName;
 			private IPath path;
 			private readonly Stream accessStream;
 			private readonly StrongPagedAccess pagedAccess;
 			private DataAddress lastDataAddress;
-
-			public byte[] tempBuffer = new byte[32];
 			
 			public PathAccess(Stream accessStream, string name, string pathTypeName) {
 				this.name = name;
@@ -95,7 +454,11 @@ namespace Deveel.Data.Net {
 				}
 			}
 			
-			public DataAddress LastDataAddress {
+			public string PathTypeName {
+				get { return pathTypeName; }
+			}
+			
+			internal DataAddress LastDataAddress {
 				get { return lastDataAddress; }
 				set { lastDataAddress = value; }
 			}
@@ -104,7 +467,7 @@ namespace Deveel.Data.Net {
 				get { return accessStream; }
 			}
 			
-			public StrongPagedAccess PagedAccess {
+			internal StrongPagedAccess PagedAccess {
 				get { return pagedAccess; }
 			}
 		}
@@ -255,9 +618,9 @@ namespace Deveel.Data.Net {
 				}
 			}
 			
-			public DataAddress[] GetSnapshots(DateTime start) {
+			public DataAddress[] GetSnapshots(DataAddress rootNode) {
 				try {
-					return server.GetSnapshots(pathName, start);
+					return server.GetSnapshots(pathName, rootNode);
 				} catch(IOException e) {
 					throw new ApplicationException("IO Error: " + e.Message);
 				}

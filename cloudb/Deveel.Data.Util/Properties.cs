@@ -6,7 +6,7 @@ using System.IO;
 using System.Text;
 
 namespace Deveel.Data.Util {
-	public class Properties : Dictionary<object, object> {
+	class Properties : Dictionary<object, object> {
 		public Properties()
 			: base() {
 		}
