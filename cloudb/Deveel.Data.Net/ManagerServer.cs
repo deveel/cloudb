@@ -1,21 +1,30 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 
 namespace Deveel.Data.Net {
 	public abstract class ManagerServer : IService {
 		private bool disposed;
+		private bool initialized;
 		private IServiceConnector connector;
 		private ServiceAddress address;
 		private ErrorStateException errorState;
 		
+		private DataAddress currentAddressSpaceEnd;
+		private readonly object allocationLock = new object();
+		
 		private readonly Dictionary<long, BlockServerInfo> blockServersMap;
 		private readonly List<BlockServerInfo> blockServers;
 		private readonly List<RootServerInfo> rootServers;
+		private IDatabase blockDatabase;
+		private readonly object blockDbWriteLock = new object();
 		
 		private readonly object heartbeatLock = new object();
 		private List<BlockServerInfo> monitoredServers = new List<ManagerServer.BlockServerInfo>(32);
 		private Thread heartbeatThread;
+		
+		private static Key BlockServerKey = new Key((short)12, 0, 10);
 		
 		protected ManagerServer(IServiceConnector connector, ServiceAddress address) {
 			this.connector = connector;
@@ -44,8 +53,39 @@ namespace Deveel.Data.Net {
 		
 		private void Dispose(bool disposing) {
 			if (!disposed) {
-				//TODO:
+				OnDispose(disposing);
 				disposed = true;
+				initialized = false;
+			}
+		}
+		
+		private void UpdateAddressSpaceEnd() {
+			lock (blockDbWriteLock) {
+				ITransaction transaction = blockDatabase.CreateTransaction();
+				try {
+					// Get the map,
+					BlockServerTable blockServerTable = new BlockServerTable(transaction.GetFile(BlockServerKey, FileAccess.Read));
+					
+					// Set the 'current address space end' object with a value that is
+					// past the end of the address space.
+
+					// Fetch the last block added,
+					DataAddress addressSpaceEnd = new DataAddress(0, 0);
+					// If the map is empty,
+					if (blockServerTable.Count != 0) {
+						long lastBlockId = blockServerTable.LastBlockId;
+						addressSpaceEnd = new DataAddress(lastBlockId + 1024, 0);
+					}
+					lock (allocationLock) {
+						if (currentAddressSpaceEnd == null) {
+							currentAddressSpaceEnd = addressSpaceEnd;
+						} else {
+							currentAddressSpaceEnd = currentAddressSpaceEnd.Max(addressSpaceEnd);
+						}
+					}
+				} finally {
+					blockDatabase.Dispose(transaction);
+				}
 			}
 		}
 		
@@ -59,7 +99,77 @@ namespace Deveel.Data.Net {
 		}
 		
 		private void RegisterBlockServer(ServiceAddress address) {
-			throw new NotImplementedException();
+			// Open a connection with the block server,
+			IMessageProcessor processor = connector.Connect(address, ServiceType.Block);
+
+			// Lock the block server with this manager
+			MessageStream inputStream, outputStream;
+			outputStream = new MessageStream(16);
+			outputStream.AddMessage("bindWithManager", this.address);
+			inputStream = processor.Process(outputStream);
+			foreach (Message m in inputStream) {
+				if (m.IsError)
+					throw new ApplicationException(m.ErrorMessage);
+			}
+
+			// Get the block set report from the server,
+			outputStream = new MessageStream(16);
+			outputStream.AddMessage("blockSetReport");
+			inputStream = processor.Process(outputStream);
+			Message rm = null;
+			foreach (Message m in inputStream) {
+				if (m.IsError) {
+					throw new ApplicationException(m.ErrorMessage);
+				} else {
+					rm = m;
+				}
+			}
+			
+			long serverGuid = (long)rm[0];
+			long[] blockIdList = (long[])rm[1];
+			
+			// Create a transaction
+			lock (blockDbWriteLock) {
+				ITransaction transaction = blockDatabase.CreateTransaction();
+				try {
+					// Get the map,
+					BlockServerTable blockServerTable = new BlockServerTable(transaction.GetFile(BlockServerKey, FileAccess.ReadWrite));
+
+					int actualAdded = 0;
+
+					// Read until the end
+					int sz = blockIdList.Length;
+					// Put each block item into the database,
+					for (int i = 0; i < sz; ++i) {
+						long block_id = blockIdList[i];
+						bool added = blockServerTable.Add(block_id, serverGuid);
+						if (added) {
+							// TODO: Check if a server is adding polluted blocks into the
+							//   network via checksum,
+							++actualAdded;
+						}
+					}
+
+					if (actualAdded > 0) {
+						// Commit and check point the update,
+						blockDatabase.Publish(transaction);
+						blockDatabase.CheckPoint();
+					}
+				} finally {
+					blockDatabase.Dispose(transaction);
+				}
+			}
+
+			BlockServerInfo blockServer = new BlockServerInfo(serverGuid, address, ServerStatus.Up);
+			// Add it to the map
+			lock (blockServersMap) {
+				blockServersMap[serverGuid] = blockServer;
+				blockServers.Add(blockServer);
+				//TODO: how to update the list of servers?
+			}
+
+			// Update the address space end variable,
+			UpdateAddressSpaceEnd();
 		}
 		
 		private void UnregisterBlockServer(ServiceAddress address) {
@@ -172,8 +282,23 @@ namespace Deveel.Data.Net {
 			}
 		}
 		
+		protected void SetBlockDatabase(IDatabase database) {
+			blockDatabase = database;
+		}
+		
+		protected virtual void OnInit() {
+		}
+		
+		protected virtual void OnDispose(bool disposing) {
+		}
+		
 		public void Init() {
-			throw new NotImplementedException();
+			if (initialized)
+				throw new ApplicationException("The manager server was already initialized.");
+			
+			OnInit();
+			
+			initialized = true;
 		}
 		
 		public void Dispose() {
