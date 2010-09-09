@@ -66,6 +66,7 @@
     <Compile Include="Deveel.Data.Net\IServiceConnector.cs" />
     <Compile Include="Deveel.Data.Net\MachineProfile.cs" />
     <Compile Include="Deveel.Data.Net\ManagerCacheState.cs" />
+    <Compile Include="Deveel.Data.Net\ManagerServer.cs" />
     <Compile Include="Deveel.Data.Net\MemoryNetworkCache.cs" />
     <Compile Include="Deveel.Data.Net\MessageStreamSerializer.cs" />
     <Compile Include="Deveel.Data.Net\NetworkAdminException.cs" />
