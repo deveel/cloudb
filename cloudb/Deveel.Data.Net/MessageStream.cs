@@ -45,6 +45,10 @@ namespace Deveel.Data.Net {
 			}
 			CloseMessage();
 		}
+		
+		public void AddMessage(string name, params object[] args) {
+			AddMessage(new Message(name, args));
+		}
 
 		internal void WriteTo(Stream output) {
 			BinaryWriter writer = new BinaryWriter(output, Encoding.Unicode);

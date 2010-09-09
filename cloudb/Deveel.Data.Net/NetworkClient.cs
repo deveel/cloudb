@@ -20,7 +20,7 @@ namespace Deveel.Data.Net {
 		private IServiceConnector connector;
 		private readonly ServiceAddress managerAddress;
 		private readonly string password;
-		private NetworkTreeStorageSystem storageSystem;
+		private NetworkTreeSystem storageSystem;
 		private readonly INetworkCache cache;
 
 		private long maxTransactionNodeCacheHeapSize;
@@ -40,7 +40,7 @@ namespace Deveel.Data.Net {
 
 		private void Connect(IServiceConnector serviceConnector) {
 			connector = serviceConnector;
-			storageSystem = new NetworkTreeStorageSystem(connector, managerAddress, cache);
+			storageSystem = new NetworkTreeSystem(connector, managerAddress, cache);
 			storageSystem.SetMaxNodeCacheHeapSize(maxTransactionNodeCacheHeapSize);
 		}
 

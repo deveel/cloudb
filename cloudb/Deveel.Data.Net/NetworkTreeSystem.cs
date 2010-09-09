@@ -10,8 +10,8 @@ using Deveel.Data.Store;
 using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
-	internal class NetworkTreeStorageSystem : ITreeSystem {
-		internal NetworkTreeStorageSystem(IServiceConnector connector, ServiceAddress managerAddress, INetworkCache networkCache) {
+	internal class NetworkTreeSystem : ITreeSystem {
+		internal NetworkTreeSystem(IServiceConnector connector, ServiceAddress managerAddress, INetworkCache networkCache) {
 			this.connector = connector;
 			this.managerAddress = managerAddress;
 			this.networkCache = networkCache;

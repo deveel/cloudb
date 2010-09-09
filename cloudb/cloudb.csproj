@@ -57,6 +57,8 @@
     <Compile Include="Deveel.Data.Net\CompressedNodeSet.cs" />
     <Compile Include="Deveel.Data.Net\DataAddress.cs" />
     <Compile Include="Deveel.Data.Net\ErrorMessage.cs" />
+    <Compile Include="Deveel.Data.Net\IPathConnection.cs" />
+    <Compile Include="Deveel.Data.Net\IPath.cs" />
     <Compile Include="Deveel.Data.Net\IMessageProcessor.cs" />
     <Compile Include="Deveel.Data.Net\INetworkCache.cs" />
     <Compile Include="Deveel.Data.Net\IServiceConnector.cs" />
@@ -70,12 +72,15 @@
     <Compile Include="Deveel.Data.Net\NetworkConfigurationSource.cs" />
     <Compile Include="Deveel.Data.Net\NetworkException.cs" />
     <Compile Include="Deveel.Data.Net\NetworkProfile.cs" />
-    <Compile Include="Deveel.Data.Net\NetworkTreeStorageSystem.cs" />
+    <Compile Include="Deveel.Data.Net\NetworkTreeSystem.cs" />
     <Compile Include="Deveel.Data.Net\NetworkWriteException.cs" />
+    <Compile Include="Deveel.Data.Net\PathNameAttribute.cs" />
     <Compile Include="Deveel.Data.Net\PathProfile.cs" />
     <Compile Include="Deveel.Data.Net\PathRootTable.cs" />
     <Compile Include="Deveel.Data.Net\ProxyServiceConnector.cs" />
+    <Compile Include="Deveel.Data.Net\RootServer.cs" />
     <Compile Include="Deveel.Data.Net\TcpServiceconnector.cs" />
+    <Compile Include="Deveel.Data.Util\StrongPagedAccess.cs" />
     <Compile Include="Deveel.Data\TreeGraph.cs" />
     <Compile Include="Deveel.Data.Store\AbstractStore.cs" />
     <Compile Include="Deveel.Data.Store\AreaInputStream.cs" />
