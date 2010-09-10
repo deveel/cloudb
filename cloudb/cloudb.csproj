@@ -51,6 +51,7 @@
     <Compile Include="Deveel.Data.Diagnostics\Log.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LogEntry.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LogWriter.cs" />
+    <Compile Include="Deveel.Data.Net\BlockServer.cs" />
     <Compile Include="Deveel.Data.Net\BlockServerElement.cs" />
     <Compile Include="Deveel.Data.Net\BlockServerTable.cs" />
     <Compile Include="Deveel.Data.Net\CommitFaultException.cs" />
@@ -58,6 +59,7 @@
     <Compile Include="Deveel.Data.Net\DataAddress.cs" />
     <Compile Include="Deveel.Data.Net\ErrorMessage.cs" />
     <Compile Include="Deveel.Data.Net\FileSystemRootServer.cs" />
+    <Compile Include="Deveel.Data.Net\IBlockStore.cs" />
     <Compile Include="Deveel.Data.Net\IPathConnection.cs" />
     <Compile Include="Deveel.Data.Net\IPath.cs" />
     <Compile Include="Deveel.Data.Net\IMessageProcessor.cs" />
