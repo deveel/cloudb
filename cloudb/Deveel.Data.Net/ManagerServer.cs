@@ -836,6 +836,24 @@ namespace Deveel.Data.Net {
 				//TODO: WARN log ...
 			}
 		}
+		
+		protected void AddRegisteredBlockServer(long serverGuid, ServiceAddress address) {
+			lock (blockServersMap) {
+				BlockServerInfo blockServer = new BlockServerInfo(serverGuid, address, ServerStatus.Up);
+				// Add to the internal map/list
+				blockServersMap[serverGuid] = blockServer;
+				blockServers.Add(blockServer);
+			}
+
+			UpdateAddressSpaceEnd();
+		}
+
+		protected void AddRegisteredRootServer(ServiceAddress address) {
+			lock (rootServers) {
+				// Add to the internal map/list
+				rootServers.Add(new RootServerInfo(address, ServerStatus.Up));
+			}
+		}
 
 		protected abstract void PersistBlockServers(IList<BlockServerInfo> servers_list);
 
