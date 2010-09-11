@@ -85,7 +85,11 @@ namespace Deveel.Data.Net {
 				if (!connections.TryGetValue(address, out c)) {
 					IPEndPoint endPoint = address.ToEndPoint();
 					Socket socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+#if DEBUG
+					socket.ReceiveTimeout = Int32.MaxValue;
+#endif
 					socket.ReceiveTimeout = 8 * 1000;  // 8 second timeout,
+#endif
 					socket.NoDelay = true;
 
 					int curSendBufSize = socket.SendBufferSize;

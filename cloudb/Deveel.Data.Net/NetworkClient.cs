@@ -1,45 +1,31 @@
 using System;
 using System.IO;
-using System.Net;
-using System.Net.Sockets;
-
-using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
-	public abstract class NetworkClient : IDisposable {
-		protected NetworkClient(ServiceAddress managerAddress, string password)
-			: this(managerAddress, password, ManagerCacheState.GetCache(managerAddress)) {
+	public class NetworkClient : IDisposable {
+		public NetworkClient(ServiceAddress managerAddress, IServiceConnector connector)
+			: this(managerAddress, connector, ManagerCacheState.GetCache(managerAddress)) {
 		}
 
-		protected NetworkClient(ServiceAddress managerAddress, string password, INetworkCache cache) {
-			this.password = password;
+		public NetworkClient(ServiceAddress managerAddress, IServiceConnector connector, INetworkCache cache) {
+			this.connector = connector;
 			this.managerAddress = managerAddress;
 			this.cache = cache;
 		}
 
 		private IServiceConnector connector;
 		private readonly ServiceAddress managerAddress;
-		private readonly string password;
 		private NetworkTreeSystem storageSystem;
 		private readonly INetworkCache cache;
 
 		private long maxTransactionNodeCacheHeapSize;
-
-		public NetworkProfile NetworkProfile {
-			get { return new NetworkProfile(connector, password); }
-		}
 
 		public long MaxTransactionNodeCacheHeapSize {
 			get { return maxTransactionNodeCacheHeapSize; }
 			set { maxTransactionNodeCacheHeapSize = value; }
 		}
 
-		protected string NetworkPassword {
-			get { return password; }
-		}
-
-		private void Connect(IServiceConnector serviceConnector) {
-			connector = serviceConnector;
+		public void Connect() {
 			storageSystem = new NetworkTreeSystem(connector, managerAddress, cache);
 			storageSystem.SetMaxNodeCacheHeapSize(maxTransactionNodeCacheHeapSize);
 		}
@@ -128,6 +114,7 @@ namespace Deveel.Data.Net {
 
 		#endregion
 
+		/*
 		public static NetworkClient ConnectTcp(Properties p) {
 			string managerAddress = p.GetProperty("manager_address");
 			string networkPassword = p.GetProperty("network_password");
@@ -185,65 +172,50 @@ namespace Deveel.Data.Net {
 		public static NetworkClient ConnectProxyTcp(IPAddress proxy_address, int proxy_port, ServiceAddress manager_server, String network_password) {
 			return ConnectProxyTcp(proxy_address, proxy_port, manager_server, network_password, ManagerCacheState.GetCache(manager_server));
 		}
+		
+#region TcpProxyNetworkClient
 
-		#region TcpNetworkClient
+sealed class TcpProxyNetworkClient : TcpNetworkClient {
+	private TcpProxyServiceConnector proxy_connector;
 
-		class TcpNetworkClient : NetworkClient {
-			private TcpServiceConnector tcp_connector;
+	private readonly IPAddress proxy_host;
+	private readonly int proxy_port;
 
-			internal TcpNetworkClient(ServiceAddress manager_server, String network_password, INetworkCache lnc)
-				: base(manager_server, network_password, lnc) {
-			}
+	public TcpProxyNetworkClient(IPAddress proxy_host, int proxy_port, ServiceAddress manager_server, string network_password, INetworkCache lnc)
+		: base(manager_server, network_password, lnc) {
+		this.proxy_host = proxy_host;
+		this.proxy_port = proxy_port;
+	}
 
-			public virtual void Connect() {
-				tcp_connector = new TcpServiceConnector(NetworkPassword);
-				Connect(tcp_connector);
-			}
+	public override void Connect() {
+		proxy_connector = new TcpProxyServiceConnector(NetworkPassword);
+		proxy_connector.Connect(proxy_host, proxy_port);
+		Connect(proxy_connector);
+	}
+}
+
+#endregion
+
+#region TcpProxyServiceConnector
+
+private class TcpProxyServiceConnector : ProxyServiceConnector {
+	public TcpProxyServiceConnector(string net_password) 
+		: base(net_password) {
+	}
+
+	public void Connect(IPAddress proxy_address, int proxy_port) {
+		try {
+			Socket socket = new Socket(proxy_address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+			socket.Connect(proxy_address, proxy_port);
+			Connect(new NetworkStream(socket, FileAccess.ReadWrite));
+		} catch (IOException e) {
+			throw new Exception("IO Error", e);
 		}
+	}
+}
 
-		#endregion
+#endregion
 
-		#region TcpProxyNetworkClient
-
-		sealed class TcpProxyNetworkClient : TcpNetworkClient {
-			private TcpProxyServiceConnector proxy_connector;
-
-			private readonly IPAddress proxy_host;
-			private readonly int proxy_port;
-
-			public TcpProxyNetworkClient(IPAddress proxy_host, int proxy_port, ServiceAddress manager_server, string network_password, INetworkCache lnc)
-				: base(manager_server, network_password, lnc) {
-				this.proxy_host = proxy_host;
-				this.proxy_port = proxy_port;
-			}
-
-			public override void Connect() {
-				proxy_connector = new TcpProxyServiceConnector(NetworkPassword);
-				proxy_connector.Connect(proxy_host, proxy_port);
-				Connect(proxy_connector);
-			}
-		}
-
-		#endregion
-
-		#region TcpProxyServiceConnector
-
-		private class TcpProxyServiceConnector : ProxyServiceConnector {
-			public TcpProxyServiceConnector(string net_password) 
-				: base(net_password) {
-			}
-
-			public void Connect(IPAddress proxy_address, int proxy_port) {
-				try {
-					Socket socket = new Socket(proxy_address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-					socket.Connect(proxy_address, proxy_port);
-					Connect(new NetworkStream(socket, FileAccess.ReadWrite));
-				} catch (IOException e) {
-					throw new Exception("IO Error", e);
-				}
-			}
-		}
-
-		#endregion
+*/
 	}
 }

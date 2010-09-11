@@ -1,23 +1,41 @@
 ﻿using System;
 using System.IO;
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
 
 namespace Deveel.Data.Net {
-	public class ProxyServiceConnector : IServiceConnector {
-		public ProxyServiceConnector(string net_password) {
-			this.net_password = net_password;
+	public class TcpProxyServiceConnector : IServiceConnector {
+		public TcpProxyServiceConnector(IPAddress proxyAddress, int proxyPort, string password) {
+			this.proxyAddress = proxyAddress;
+			this.proxyPort = proxyPort;
+			this.password = password;
+
+			Connect();
 		}
 
-		private readonly String net_password;
+		private readonly IPAddress proxyAddress;
+		private readonly int proxyPort;
+		private readonly string password;
+		private string initString;
 
 		private BinaryReader pin;
 		private BinaryWriter pout;
 		private readonly object proxy_lock = new object();
 
-		private string init_string = null;
+		public int ProxyPort {
+			get { return proxyPort; }
+		}
 
+		public IPAddress ProxyAddress {
+			get { return proxyAddress; }
+		}
 
-		public void Connect(Stream stream) {
+		private void Connect() {
+			Socket socket = new Socket(proxyAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+			socket.Connect(proxyAddress, proxyPort);
+			NetworkStream stream = new NetworkStream(socket);
+
 			pin = new BinaryReader(new BufferedStream(stream), Encoding.Unicode);
 			pout = new BinaryWriter(new BufferedStream(stream), Encoding.Unicode);
 
@@ -26,8 +44,8 @@ namespace Deveel.Data.Net {
 				long v = pin.ReadInt64();
 				pout.Write(v);
 				pout.Flush();
-				init_string = pin.ReadString();
-				pout.Write(net_password);
+				initString = pin.ReadString();
+				pout.Write(password);
 				pout.Flush();
 			} catch (IOException e) {
 				throw new Exception("IO Error", e);
@@ -55,7 +73,7 @@ namespace Deveel.Data.Net {
 			} catch (IOException) {
 				//TODO: ERROR log ...
 			} finally {
-				init_string = null;
+				initString = null;
 				pin = null;
 				pout = null;
 			}
@@ -70,13 +88,13 @@ namespace Deveel.Data.Net {
 		#region MessageProcessor
 
 		private class MessageProcessor : IMessageProcessor {
-			public MessageProcessor(ProxyServiceConnector connector, ServiceAddress address, ServiceType serviceType) {
+			public MessageProcessor(TcpProxyServiceConnector connector, ServiceAddress address, ServiceType serviceType) {
 				this.connector = connector;
 				this.address = address;
 				this.serviceType = serviceType;
 			}
 
-			private readonly ProxyServiceConnector connector;
+			private readonly TcpProxyServiceConnector connector;
 			private readonly ServiceAddress address;
 			private readonly ServiceType serviceType;
 

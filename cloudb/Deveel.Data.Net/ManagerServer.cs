@@ -38,6 +38,8 @@ namespace Deveel.Data.Net {
 			rootServers = new List<RootServerInfo>(256);
 			random = new Random();
 
+			failureFloodControl = new Dictionary<ServiceAddress, DateTime>();
+
 			heartbeatThread = new Thread(Heartbeat);
 			heartbeatThread.IsBackground = true;
 			heartbeatThread.Start();

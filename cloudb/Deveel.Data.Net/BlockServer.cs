@@ -6,7 +6,7 @@ using System.Threading;
 namespace Deveel.Data.Net {
 	public abstract class BlockServer : IService {
 		private long serverGuid;
-		private volatile int blockCount = 0;
+		private volatile int blockCount;
 		private long lastBlockId = -1;
 		private bool disposed;
 		private readonly IServiceConnector connector;
@@ -20,7 +20,7 @@ namespace Deveel.Data.Net {
 		
 		private readonly object processLock = new object();
 		private readonly object blockUploadLock = new object();
-		private int processId = 0;
+		private int processId;
 		private Timer sendBlockTimer;
 		
 		protected BlockServer(IServiceConnector connector) {
@@ -34,9 +34,21 @@ namespace Deveel.Data.Net {
 		public ServiceType ServiceType {
 			get { return ServiceType.Block; }
 		}
+
+		protected long LastBlockId {
+			get { return lastBlockId; }
+		}
 		
 		public IMessageProcessor Processor {
-			get { throw new NotImplementedException(); }
+			get { return new BlockServerMessageProcessor(this); }
+		}
+
+		public int BlockCount {
+			get { return blockCount; }
+		}
+
+		protected object BlockUploadSyncRoot {
+			get { return blockUploadLock; }
 		}
 		
 		private void Dispose(bool disposing) {
@@ -49,12 +61,16 @@ namespace Deveel.Data.Net {
 						blocksPendingFlush.Clear();
 						blockContainerAccessList.Clear();
 					}
+
+					if (sendBlockTimer != null)
+						sendBlockTimer.Dispose();
+					if (blockFlushTimer != null)
+						blockFlushTimer.Dispose();
 				
 					blockCount = 0;
 					lastBlockId = -1;
 				}
-				
-				//TODO:
+
 				disposed = true;
 			}
 		}

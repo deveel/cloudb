@@ -170,24 +170,141 @@ namespace Deveel.Data.Net {
 			compressionThread.Start();
 		}
 		
-		protected override BlockServer.BlockContainer LoadBlock(long blockId) {
-			throw new NotImplementedException();
+		protected override BlockContainer LoadBlock(long blockId) {
+			// If it's not found in the map,
+			// Turn the block id into a filename,
+			String block_fname = blockId.ToString();
+			string block_file_name = Path.Combine(path, block_fname + ".mcd");
+			IBlockStore block_store;
+			if (!File.Exists(block_file_name)) {
+				block_file_name = Path.Combine(path, block_fname);
+				// If this file doesn't exist,
+				if (!File.Exists(block_file_name)) {
+					// We check if the block_id is less than maximum id. If it is we
+					// generate an exception indicating this block doesn't exist on this
+					// server. This means something screwed up, either the manager server
+					// was erroneously told the block was located on this server but it
+					// isn't, or the file was deleted by the user.
+					if (blockId < LastBlockId)
+						throw new BlockReadException("Block " + blockId + " not stored on server");
+				}
+
+				block_store = new FileBlockStore(blockId, block_file_name);
+			} else {
+				block_store = new CompressedBlockStore(blockId, block_file_name);
+			}
+
+			// Make the block container object,
+			BlockContainer container = new BlockContainer(blockId, block_store);
+
+			// Add the new container to the control list (used by the compression
+			// thread).
+			lock (compressionAddList) {
+				compressionAddList.Add(container);
+			}
+
+			return container;
 		}
 		
 		protected override long[] ListBlocks() {
-			throw new NotImplementedException();
+			string[] dir = Directory.GetFiles(path);
+			List<long> blocks = new List<long>(dir.Length);
+			foreach (string f in dir) {
+				string fileName = Path.GetFileName(f);
+				if (!fileName.Equals("block_server_guid") &&
+					!fileName.EndsWith(".tempc") &&
+					!fileName.EndsWith(".tmpc1") &&
+					!fileName.EndsWith(".tmpc2")) {
+					if (fileName.EndsWith(".mcd")) {
+						fileName = fileName.Substring(0, fileName.Length - 4);
+					}
+					long block_id = Int64.Parse(fileName);
+					blocks.Add(block_id);
+				}
+			}
+
+			return blocks.ToArray();
 		}
 		
 		protected override void OnCompleteBlockWrite(long blockId, int storeType) {
-			base.OnCompleteBlockWrite(blockId, storeType);
+			String tmpext;
+			if (storeType == 1) {
+				tmpext = ".tmpc1";
+			} else if (storeType == 2) {
+				tmpext = ".tmpc2";
+			} else {
+				throw new ApplicationException("Unknown file_type: " + storeType);
+			}
+
+			// Make sure this process is exclusive
+			lock (BlockUploadSyncRoot) {
+				string block_fname = blockId.ToString();
+				string f = Path.Combine(path, block_fname + tmpext);
+
+				if (!File.Exists(f))
+					throw new ApplicationException("File doesn't exist");
+
+				// Check the file we are renaming to doesn't exist,
+				string f_normal = Path.Combine(path, block_fname);
+				string f_compress = Path.Combine(path, block_fname + ".mcd");
+
+				if (File.Exists(f_normal) || File.Exists(f_compress))
+					throw new ApplicationException("Block file exists already");
+
+				// Does exist and is a file,
+				// What we will rename the file to,
+				if (storeType == 1) {
+					File.Move(f, f_normal);
+				} else if (storeType == 2) {
+					File.Move(f, f_compress);
+				} else {
+					throw new ApplicationException();
+				}
+			}
 		}
 		
 		protected override void OnWriteBlockPart(long blockId, long pos, int storeType, byte[] buffer, int length) {
-			base.OnWriteBlockPart(blockId, pos, storeType, buffer, length);
+			String tmpext;
+			if (storeType == 1) {
+				tmpext = ".tmpc1";
+			} else if (storeType == 2) {
+				tmpext = ".tmpc2";
+			} else {
+				throw new ApplicationException("Unknown file_type: " + storeType);
+			}
+
+			// Make sure this process is exclusive
+			lock (BlockUploadSyncRoot) {
+				try {
+					string f = Path.Combine(path, blockId + tmpext);
+					if (pos == 0) {
+						if (File.Exists(f))
+							throw new ApplicationException("File '" + f + "' already exists.");
+						
+						File.Create(f);
+					}
+
+					if (new FileInfo(f).Length != pos)
+						throw new ApplicationException("Block sync issue on block file.");
+
+					// Everything ok, we can write the file,
+					using (FileStream fout = new FileStream(f, FileMode.Append, FileAccess.Write)) {
+						fout.Write(buffer, 0, length);
+					}
+
+				} catch (IOException e) {
+					throw new ApplicationException("IO Error: " + e.Message);
+				}
+			}
 		}
 		
 		protected override void OnDispose(bool disposing) {
-			base.OnDispose(disposing);
+			if (disposing) {
+				FinishCompress();
+
+				if (fileDeleteTimer != null)
+					fileDeleteTimer.Dispose();
+			}
 		}
 	}
 }

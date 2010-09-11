@@ -4,7 +4,7 @@ using System.IO;
 
 namespace Deveel.Data.Net {
 	public sealed class FileSystemRootServer : RootServer {
-		public FileSystemRootServer(string basePath, IServiceConnector connector)
+		public FileSystemRootServer(IServiceConnector connector, string basePath)
 			: base(connector) {
 			this.basePath = basePath;
 		}

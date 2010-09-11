@@ -13,7 +13,7 @@ namespace Deveel.Data.Diagnostics {
 		}
 
 		internal AnalyticsRecord(long start, long end, long timeInOps, long ops)
-			: this(new DateTime(start), new DateTime(end), new TimeSpan(timeInOps * TimeSpan.TicksPerMillisecond), ops) {
+			: this(DateTime.FromBinary(start), DateTime.FromBinary(end), new TimeSpan(timeInOps * TimeSpan.TicksPerMillisecond), ops) {
 		}
 
 		private readonly DateTime start;
@@ -48,6 +48,15 @@ namespace Deveel.Data.Diagnostics {
 		/// </summary>
 		public TimeSpan TotalOperationsTime {
 			get { return timeInOps; }
+		}
+
+		internal long [] ToArray() {
+			long[] array = new long[4];
+			array[0] = start.ToBinary();
+			array[1] = end.ToBinary();
+			array[2] = timeInOps.Ticks;
+			array[3] = ops;
+			return array;
 		}
 	}
 }

@@ -89,40 +89,52 @@ namespace Deveel.Data.Net {
 			// Set the new content length
 			length = length + count;
 		}
-		
-		public int Read(int dataId, byte[] buffer, int offset, int length) {
-			throw new NotImplementedException();
+
+		public int Read(int dataId, byte[] buffer, int offset, int len) {
+			if (dataId < 0 || dataId >= 16384)
+				throw new ArgumentException("data_id out of range");
+
+			// Seek to the position of this data id in the table,
+			int pos = dataId*6;
+			int dataIdPos = pagedAccess.ReadInt32(pos);
+			int dataIdLength = ((int) pagedAccess.ReadInt16(pos + 4)) & 0x0FFFF;
+
+			// If position for the data_id is 0, the data hasn't been written,
+			len = Math.Min(len, dataIdLength);
+			if (dataIdPos == 0)
+				throw new BlockReadException("Data id " + dataId + " is empty (block " + blockId + ")");
+
+			// Fetch the content,
+			content.Seek(dataIdPos, SeekOrigin.Begin);
+			return content.Read(buffer, offset, len);
 		}
-		
+
 		public Stream OpenInputStream() {
 			return new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.Read);
 		}
-		
+
 		public NodeSet GetNodeSet(int dataId) {
 			if (dataId < 0 || dataId >= 16384)
 				throw new ArgumentException("data_id out of range");
 
 			// Seek to the position of this data id in the table,
-			int pos = dataId * 6;
+			int pos = dataId*6;
 			int dataIdPos = pagedAccess.ReadInt32(pos);
-			int dataIdLength = ((int)pagedAccess.ReadInt16(pos + 4)) & 0x0FFFF;
+			int dataIdLength = ((int) pagedAccess.ReadInt16(pos + 4)) & 0x0FFFF;
 
 			// If position for the data_id is 0, the data hasn't been written,
 			byte[] buf = new byte[dataIdLength];
-			if (dataIdPos > 0) {
-				// Fetch the content,
-				content.Seek(dataIdPos, SeekOrigin.Begin);
-				content.Read(buf, 0, dataIdLength);
-			} else {
-				throw new BlockReadException("Data id " + dataId +
-											 " is empty (block " + blockId + ")");
-			}
+			if (dataIdPos == 0)
+				throw new BlockReadException("Data id " + dataId + " is empty (block " + blockId + ")");
+
+			// Fetch the content,
+			content.Seek(dataIdPos, SeekOrigin.Begin);
+			content.Read(buf, 0, dataIdLength);
 
 			// Return as a nodeset object,
 			return new SingleNodeSet(blockId, dataId, buf);
-
 		}
-		
+
 		public void Delete(int dataId) {
 			if (dataId < 0 || dataId >= 16384)
 				throw new ArgumentException("data_id out of range");
