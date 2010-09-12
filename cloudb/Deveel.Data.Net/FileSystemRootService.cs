@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 
 namespace Deveel.Data.Net {
-	public sealed class FileSystemRootServer : RootServer {
-		public FileSystemRootServer(IServiceConnector connector, string basePath)
+	public sealed class FileSystemRootService : RootService {
+		public FileSystemRootService(IServiceConnector connector, string basePath)
 			: base(connector) {
 			this.basePath = basePath;
 		}
@@ -13,7 +13,7 @@ namespace Deveel.Data.Net {
 		
 		protected override void OnInit() {
 			try {
-				// Read the manager server address from the properties file,
+				// Read the manager service address from the properties file,
 				Deveel.Data.Util.Properties p = new Deveel.Data.Util.Properties();
 
 				// Contains the root properties,
@@ -24,7 +24,7 @@ namespace Deveel.Data.Net {
 					}
 				}
 
-				// Fetch the manager server property,
+				// Fetch the manager service property,
 				string v = p.GetProperty("manager_server_address");
 				if (v != null) {
 					ManagerAddress = ServiceAddress.Parse(v);
@@ -39,7 +39,7 @@ namespace Deveel.Data.Net {
 			string f = Path.Combine(basePath, pathName);
 			FileInfo fileInfo = new FileInfo(f);
 			if (fileInfo.Exists)
-				throw new ApplicationException("Path file for '" + pathName + "' exists on this root server.");
+				throw new ApplicationException("Path file for '" + pathName + "' exists on this root service.");
 
 			// Create the root file
 			using (fileInfo.Create()) {
@@ -59,7 +59,7 @@ namespace Deveel.Data.Net {
 			// Check the file exists,
 			string f = Path.Combine(basePath, pathName);
 			if (!File.Exists(f))
-				throw new ApplicationException("Path file for '" + pathName + "' doesn't exist on this root server.");
+				throw new ApplicationException("Path file for '" + pathName + "' doesn't exist on this root service.");
 			
 			// We simply add a '.delete' file to indicate it's deleted
 			string delFile = Path.Combine(basePath, pathName + ".deleted");
@@ -72,7 +72,7 @@ namespace Deveel.Data.Net {
 			
 			// If it doesn't exist, generate an error
 			if (!File.Exists(f))
-				throw new ApplicationException("Path '" + pathName + "' not found input this root server.");
+				throw new ApplicationException("Path '" + pathName + "' not found input this root service.");
 			
 			// If it does exist, does the .deleted file exist indicating this root
 			// path was removed,

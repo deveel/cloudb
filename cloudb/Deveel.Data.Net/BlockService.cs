@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 
+using Deveel.Data.Diagnostics;
+
 namespace Deveel.Data.Net {
-	public abstract class BlockServer : IService {
+	public abstract class BlockService : Service {
 		private long serverGuid;
 		private volatile int blockCount;
 		private long lastBlockId = -1;
-		private bool disposed;
 		private readonly IServiceConnector connector;
-		private ErrorStateException errorState;
 		
 		private readonly Dictionary<long, BlockContainer> blockContainerCache;
 		private readonly LinkedList<BlockContainer> blockContainerAccessList;
@@ -22,8 +22,10 @@ namespace Deveel.Data.Net {
 		private readonly object blockUploadLock = new object();
 		private int processId;
 		private Timer sendBlockTimer;
+
+		private Logger log;
 		
-		protected BlockServer(IServiceConnector connector) {
+		protected BlockService(IServiceConnector connector) {
 			this.connector = connector;
 			
 			blockContainerCache = new Dictionary<long, BlockContainer>(5279);
@@ -31,7 +33,7 @@ namespace Deveel.Data.Net {
 			blocksPendingFlush = new LinkedList<BlockContainer>();
 		}
 		
-		public ServiceType ServiceType {
+		public override ServiceType ServiceType {
 			get { return ServiceType.Block; }
 		}
 
@@ -39,10 +41,6 @@ namespace Deveel.Data.Net {
 			get { return lastBlockId; }
 		}
 		
-		public IMessageProcessor Processor {
-			get { return new BlockServerMessageProcessor(this); }
-		}
-
 		public int BlockCount {
 			get { return blockCount; }
 		}
@@ -50,40 +48,7 @@ namespace Deveel.Data.Net {
 		protected object BlockUploadSyncRoot {
 			get { return blockUploadLock; }
 		}
-		
-		private void Dispose(bool disposing) {
-			if (!disposed) {
-				OnDispose(disposing);
 				
-				if (disposing) {
-					lock (pathLock) {
-						blockContainerCache.Clear();
-						blocksPendingFlush.Clear();
-						blockContainerAccessList.Clear();
-					}
-
-					if (sendBlockTimer != null)
-						sendBlockTimer.Dispose();
-					if (blockFlushTimer != null)
-						blockFlushTimer.Dispose();
-				
-					blockCount = 0;
-					lastBlockId = -1;
-				}
-
-				disposed = true;
-			}
-		}
-		
-		private void CheckErrorState() {
-			if (errorState != null)
-				throw errorState;
-		}
-		
-		private void SetErrorState(Exception e) {
-			errorState = new ErrorStateException(e);
-		}
-		
 		private BlockContainer FetchBlockContainer(long block_id) {
 			// Check for stop state,
 			CheckErrorState();
@@ -189,17 +154,29 @@ namespace Deveel.Data.Net {
 			}
 
 		}
+
+		protected override void OnDispose(bool disposing) {
+			if (disposing) {
+				lock (pathLock) {
+					blockContainerCache.Clear();
+					blocksPendingFlush.Clear();
+					blockContainerAccessList.Clear();
+				}
+
+				if (sendBlockTimer != null)
+					sendBlockTimer.Dispose();
+				if (blockFlushTimer != null)
+					blockFlushTimer.Dispose();
+
+				blockCount = 0;
+				lastBlockId = -1;
+			}
+		}
 		
 		protected void SetGuid(long value) {
 			serverGuid = value;
 		}
-		
-		protected virtual void OnInit() {
-		}
-		
-		protected virtual void OnDispose(bool disposing) {
-		}
-		
+						
 		protected virtual void OnCompleteBlockWrite(long blockId, int storeType) {
 		}
 		
@@ -210,10 +187,12 @@ namespace Deveel.Data.Net {
 		protected abstract BlockContainer LoadBlock(long blockId);
 		
 		protected abstract long[] ListBlocks();
-		
-		public void Init() {
-			OnInit();
-			
+
+		protected override IMessageProcessor CreateProcessor() {
+			return new BlockServerMessageProcessor(this);
+		}
+
+		protected override void OnInit() {
 			// Read in all the blocks in and populate the map,
 			long[] blocks = ListBlocks();
 			long inLastBlockId = -1;
@@ -230,22 +209,17 @@ namespace Deveel.Data.Net {
 
 			// Discover the block count,
 			blockCount = blocks.Length;
-			// The latest block on this server,
+			// The latest block on this service,
 			this.lastBlockId = inLastBlockId;
-		}
-		
-		public void Dispose() {
-			Dispose(true);
-			GC.SuppressFinalize(this);
 		}
 		
 		#region BlockServerMessageProcessor
 		
 		private sealed class BlockServerMessageProcessor : IMessageProcessor {
-			private readonly BlockServer server;
+			private readonly BlockService service;
 			
-			public BlockServerMessageProcessor(BlockServer server) {
-				this.server = server;
+			public BlockServerMessageProcessor(BlockService service) {
+				this.service = service;
 			}
 			
 			private void CloseContainers(Dictionary<long, BlockContainer> touched) {
@@ -258,11 +232,11 @@ namespace Deveel.Data.Net {
 			private BlockContainer GetBlock(IDictionary<long, BlockContainer> touched, long blockId) {
 				BlockContainer b;
 				if (!touched.TryGetValue(blockId, out b)) {
-					b = server.FetchBlockContainer(blockId);
+					b = service.FetchBlockContainer(blockId);
 					bool created = b.Open();
 					if (created) {
-						++server.blockCount;
-						server.lastBlockId = blockId;
+						++service.blockCount;
+						service.lastBlockId = blockId;
 					}
 					touched[blockId] = b;
 					//TODO: DEBUG log ...
@@ -282,7 +256,7 @@ namespace Deveel.Data.Net {
 				container.Write(dataId, buf, off, len);
 
 				// Schedule the block to flushed 5 seconds after a write
-				server.ScheduleBlockFlush(container, 5000);
+				service.ScheduleBlockFlush(container, 5000);
 			}
 			
 			private NodeSet ReadFromBlock(IDictionary<long, BlockContainer> touched, DataAddress address) {
@@ -309,23 +283,23 @@ namespace Deveel.Data.Net {
 					// Remove the data,
 					container.Delete(dataId);
 					// Schedule the block to be file synch'd 5 seconds after a write
-					server.ScheduleBlockFlush(container, 5000);
+					service.ScheduleBlockFlush(container, 5000);
 				}
 			}
 			
 			private long SendBlockTo(long blockId, ServiceAddress destination,
 									 long destServerGuid,
 									 ServiceAddress managerAddress) {
-				lock (server.processLock) {
-					long processId = server.processId;
-					server.processId = server.processId + 1;
+				lock (service.processLock) {
+					long processId = service.processId;
+					service.processId = service.processId + 1;
 					SendBlockInfo info = new SendBlockInfo(processId, blockId,
 													  destination,
 													  destServerGuid,
 													  managerAddress);
 					// Schedule the process to happen immediately (or as immediately as
 					// possible).
-					server.sendBlockTimer = new Timer(SendBlock, info, 0, Timeout.Infinite);
+					service.sendBlockTimer = new Timer(SendBlock, info, 0, Timeout.Infinite);
 
 					return processId;
 				}
@@ -334,17 +308,17 @@ namespace Deveel.Data.Net {
 			private void SendBlock(object state) {
 				SendBlockInfo info = (SendBlockInfo)state;
 				
-				BlockContainer container = server.FetchBlockContainer(info.blockId);
+				BlockContainer container = service.FetchBlockContainer(info.blockId);
 				if (!container.Exists)
 					return;
 				
 				// Connect to the destination service address,
-				IMessageProcessor p = server.connector.Connect(info.destination, ServiceType.Block);
+				IMessageProcessor p = service.connector.Connect(info.destination, ServiceType.Block);
 				
 				try {
 					// If the block was accessed less than 5 minutes ago, we don't allow
 					// the copy to happen,
-					if (info.blockId == server.lastBlockId) {
+					if (info.blockId == service.lastBlockId) {
 						//TODO: INFO log ...
 						return;
 					} else if (container.LastWriteTime > 
@@ -370,7 +344,7 @@ namespace Deveel.Data.Net {
 							// Get the input iterator,
 							foreach(Message m in inputStream) {
 								if (m.IsError) {
-									//TODO: ERROR log ...
+									service.log.Log(LogLevel.Error, "sendBlockPath Error: " + m.ErrorMessage);
 									return;
 								}
 							}
@@ -387,13 +361,13 @@ namespace Deveel.Data.Net {
 					// Get the input iterator,
 					foreach(Message m in inputStream) {
 						if (m.IsError) {
-							//TODO: ERROR log ...
+							service.log.Error("sendBlockComplete Error: " + m.ErrorMessage);
 							return;
 						}
 					}
 
-					// Tell the manager server about this new block mapping,
-					IMessageProcessor mp = server.connector.Connect(info.managerAddress, ServiceType.Manager);
+					// Tell the manager service about this new block mapping,
+					IMessageProcessor mp = service.connector.Connect(info.managerAddress, ServiceType.Manager);
 					outputStream = new MessageStream(8);
 					outputStream.AddMessage("addBlockServerMapping", info.blockId, info.destServerGuid);
 					
@@ -404,13 +378,13 @@ namespace Deveel.Data.Net {
 					// Get the input iterator,
 					foreach(Message m in inputStream) {
 						if (m.IsError) {
-							//TODO: ERROR log ...
+							service.log.Error("addBlockServerMapping Error: " + m.ErrorMessage);
 							return;
 						}
 					}
 
 				} catch (IOException e) {
-					//TODO: ERROR log ...
+					service.log.Error("IO Error: " + e.Message);
 				}
 			}
 			
@@ -431,16 +405,16 @@ namespace Deveel.Data.Net {
 				
 				foreach(Message m in messageStream) {
 					try {
-						server.CheckErrorState();
+						service.CheckErrorState();
 						
 						switch(m.Name) {
 							case "bindWithManager":
 							case "unbindWithManager":
-								//TODO: is this needed for a block server?
+								//TODO: is this needed for a block service?
 								responseStream.AddMessage("R", 1L);
 								break;
 							case "serverGUID":
-								responseStream.AddMessage("R", server.serverGuid);
+								responseStream.AddMessage("R", service.serverGuid);
 								break;
 							case "writeToBlock": {
 								DataAddress address = (DataAddress)m[0];
@@ -477,8 +451,8 @@ namespace Deveel.Data.Net {
 								break;	
 							}
 							case "blockSetReport": {
-								long[] blockIds = server.ListBlocks();
-								responseStream.AddMessage("R", server.serverGuid, blockIds);
+								long[] blockIds = service.ListBlocks();
+								responseStream.AddMessage("R", service.serverGuid, blockIds);
 								break;
 							}
 							case "blockChecksum": {
@@ -504,14 +478,14 @@ namespace Deveel.Data.Net {
 								int storeType = (int)m[2];
 								byte[] buffer = (byte[])m[3];
 								int length = (int)m[4];
-								server.WriteBlockPart(blockId, pos, storeType, buffer, length);
+								service.WriteBlockPart(blockId, pos, storeType, buffer, length);
 								responseStream.AddMessage("R", 1L);
 								break;	
 							}
 							case "sendBlockComplete": {
 								long blockId = (long)m[0];
 								int storeType = (int)m[1];
-								server.CompleteBlockWrite(blockId, storeType);
+								service.CompleteBlockWrite(blockId, storeType);
 								responseStream.AddMessage("R", 1L);
 								break;
 							}
@@ -519,11 +493,11 @@ namespace Deveel.Data.Net {
 								throw new ApplicationException("Unknown message name: " + m.Name);
 						}
 					} catch(OutOfMemoryException e) {
-						//TODO: ERROR log ...
-						server.SetErrorState(e);
+						service.log.Error("Out of Memory");
+						service.SetErrorState(e);
 						throw;
 					} catch (Exception e) {
-						//TODO: ERROR log ...
+						service.log.Error("Error while processing: " + e.Message, e);
 						responseStream.AddErrorMessage(new ServiceException(e));
 					}
 				}
@@ -532,7 +506,7 @@ namespace Deveel.Data.Net {
 				try {
 					CloseContainers(containersTouched);
 				} catch (Exception e) {
-					//TODO: ERROR log ...
+					service.log.Error("Error while closing containers: " + e.Message, e);
 				}
 				
 				return responseStream;

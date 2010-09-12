@@ -6,13 +6,13 @@ using System.Text;
 using System.Threading;
 
 namespace Deveel.Data.Net {
-	public abstract class TcpAdminServer : AdminServer {
+	public abstract class TcpAdminService : AdminService {
 		private readonly string password;
 		private readonly NetworkConfigSource config;
 		private readonly ServiceAddress serviceAddress;
 		private bool polling;
 
-		protected TcpAdminServer(NetworkConfigSource config, IPAddress address, int port, string  password) {
+		protected TcpAdminService(NetworkConfigSource config, IPAddress address, int port, string  password) {
 			this.config = config;
 			serviceAddress = new ServiceAddress(address, port);
 			this.password = password;
@@ -66,7 +66,7 @@ namespace Deveel.Data.Net {
 				while (polling) {
 					Socket s;
 					try {
-						// The socket to run the server,
+						// The socket to run the service,
 						s = socket.Accept();
 						s.NoDelay = true;
 						int cur_send_buf_size = s.SendBufferSize;
@@ -115,12 +115,12 @@ namespace Deveel.Data.Net {
 		#region TcpConnection
 
 		private class TcpConnection {
-			private readonly TcpAdminServer server;
+			private readonly TcpAdminService service;
 			private readonly Random random;
 
-			public TcpConnection(TcpAdminServer server) {
-				this.server = server;
-				this.random = new Random();
+			public TcpConnection(TcpAdminService service) {
+				this.service = service;
+				random = new Random();
 			}
 
 			private static MessageStream NoServiceError() {
@@ -159,7 +159,7 @@ namespace Deveel.Data.Net {
 					string passwordCode = sb.ToString();
 
 					// If it doesn't match, terminate the thread immediately,
-					if (!passwordCode.Equals(server.password))
+					if (!passwordCode.Equals(service.password))
 						return;
 
 					// The main command dispatch loop for this connection,
@@ -181,31 +181,31 @@ namespace Deveel.Data.Net {
 
 						// Destined for the administration module,
 						if (destination == 'a') {
-							message_out = server.Processor.Process(message_stream);
+							message_out = service.Processor.Process(message_stream);
 						}
-							// For a block server in this JVM
+							// For a block service in this machine
 						else if (destination == 'b') {
-							if (server.Block == null) {
+							if (service.Block == null) {
 								message_out = NoServiceError();
 							} else {
-								message_out = server.Block.Processor.Process(message_stream);
+								message_out = service.Block.Processor.Process(message_stream);
 							}
 
 						}
-							// For a manager server in this JVM
+							// For a manager service in this machine
 						else if (destination == 'm') {
-							if (server.Manager == null) {
+							if (service.Manager == null) {
 								message_out = NoServiceError();
 							} else {
-								message_out = server.Manager.Processor.Process(message_stream);
+								message_out = service.Manager.Processor.Process(message_stream);
 							}
 						}
-							// For a root server in this JVM
+							// For a root service in this machine
 						else if (destination == 'r') {
-							if (server.Root == null) {
+							if (service.Root == null) {
 								message_out = NoServiceError();
 							} else {
-								message_out = server.Root.Processor.Process(message_stream);
+								message_out = service.Root.Processor.Process(message_stream);
 							}
 						} else {
 							throw new IOException("Unknown destination: " + destination);
@@ -214,7 +214,7 @@ namespace Deveel.Data.Net {
 						// Update the stats
 						DateTime benchmark_end = DateTime.Now;
 						TimeSpan time_took = benchmark_end - benchmark_start;
-						server.Analytics.AddEvent(benchmark_end, time_took);
+						service.Analytics.AddEvent(benchmark_end, time_took);
 
 						// Write and flush the output message,
 						serializer.Serialize(message_out, writer);

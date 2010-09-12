@@ -1,103 +1,152 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Reflection;
+using System.Diagnostics;
+using System.Threading;
 
 namespace Deveel.Data.Diagnostics {
-	public static class Logger {
-		private static readonly Dictionary<string, ILogger> loggers = new Dictionary<string, ILogger>(128);
-		private static readonly Dictionary<string, Type> loggerTypeMap = new Dictionary<string, Type>(128);
-
-		public const string LoggerNameKey = "log_name";
-
-		private static void InspectLoggers() {
-			Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
-			for (int i = 0; i < assemblies.Length; i++) {
-				Assembly assembly = assemblies[i];
-				Type[] types = assembly.GetTypes();
-				for (int j = 0; j < types.Length; j++) {
-					Type type = types[j];
-					if (typeof(ILogger).IsAssignableFrom(type) &&
-						type != typeof(ILogger) &&
-						!type.IsAbstract) {
-						LoggerNameAttribute nameAttribute =
-							(LoggerNameAttribute) Attribute.GetCustomAttribute(type, typeof(LoggerNameAttribute));
-						if (nameAttribute != null && 
-							!loggerTypeMap.ContainsKey(nameAttribute.Name))
-							loggerTypeMap[nameAttribute.Name] = type;
-					}
-				}
-			}
+	public sealed class Logger : ILogger {
+		internal Logger(string name, Type loggingType, ILogger logger) {
+			this.name = name;
+			this.logger = logger;
+			this.loggingType = loggingType;
 		}
 
-		private static Type GetLoggerType(string typeName) {
-			Type type;
-			if (loggerTypeMap.TryGetValue(typeName, out type))
-				return type;
-			return Type.GetType(typeName, false, true);
+		private readonly string name;
+		private readonly ILogger logger;
+		private readonly Type loggingType;
+
+		public string Name {
+			get { return name; }
 		}
 
-		public static void Init(ConfigSource config) {
-			InspectLoggers();
-
-			string ln = config.GetString("logger", null);
-			if (ln == null)
-				ln = config.GetString("loggers", null);
-			if (ln == null)
-				return;
-
-			string[] sp = ln.Split(',');
-			for (int i = 0; i < sp.Length; i++) {
-				string loggerName = sp[i].Trim();
-				ConfigSource loggerConfig = new ConfigSource();
-				foreach(string key in config.Keys) {
-					if (key.StartsWith(loggerName + "_")) {
-						string value = config.GetString(key);
-						string loggerKey = key.Substring(loggerName.Length + 1, key.Length - (loggerName.Length + 1));
-						loggerConfig.SetValue(loggerKey, value);
-					}
-				}
-
-				loggerConfig.SetValue(LoggerNameKey, loggerName);
-
-				string loggerTypeName = loggerConfig.GetString(loggerName + "_logger_type", null);
-				if (loggerTypeName == null)
-					loggerTypeName = typeof(DefaultLogger).AssemblyQualifiedName;
-
-				Type loggerType = GetLoggerType(loggerTypeName);
-				if (loggerType == null || !typeof(ILogger).IsAssignableFrom(loggerType))
-					continue;
-
-				try {
-					ILogger logger = (ILogger)Activator.CreateInstance(loggerType, true);
-					logger.Init(loggerConfig);
-					loggers[loggerName] = logger;
-				} catch {
-					continue;
-				}
-			}
+		public void Dispose() {
+			logger.Dispose();
 		}
 
-		public static void Log(string loggerName, LogLevel level, Type sourceType, string message) {
-			ILogger logger;
-			if (loggers.TryGetValue(loggerName, out logger)) {
-				if (logger.IsInterestedIn(level))
-					logger.Write(level, sourceType, message);
-			}
+		void ILogger.Init(ConfigSource config) {
+			throw new InvalidOperationException();
 		}
 
-		public static void Log(string loggerName, Exception exception) {
-			ILogger logger;
-			if (loggers.TryGetValue(loggerName, out logger)) {
-				logger.WriteException(exception);
-			}
+		public bool IsInterestedIn(LogLevel level) {
+			return logger.IsInterestedIn(level);
 		}
 
-		public static void Log(string loggerName, LogLevel level, Exception exception) {
-			ILogger logger;
-			if (loggers.TryGetValue(loggerName, out logger)) {
-				if (logger.IsInterestedIn(level))
-					logger.WriteException(level, exception);
-			}
+		private void Log(LogEntry entry) {
+			string threadName = entry.Thread;
+			if (String.IsNullOrEmpty(threadName))
+				threadName = Thread.CurrentThread.Name;
+			string source = entry.Source;
+			if (String.IsNullOrEmpty(source))
+				source = loggingType.AssemblyQualifiedName;
+			logger.Log(new LogEntry(threadName, source, entry.Level, entry.Message, entry.Error, entry.Time));
+		}
+
+		void ILogger.Log(LogEntry entry) {
+			throw new InvalidOperationException();
+		}
+
+		public void Log(LogLevel level, object ob, string message) {
+			Log(new LogEntry(null, ob.GetType().AssemblyQualifiedName, level, message, null, DateTime.Now));
+		}
+
+		public void Log(LogLevel level, Type type, string message) {
+			Log(new LogEntry(null, type.AssemblyQualifiedName, level, message, null, DateTime.Now));
+		}
+
+		public void Log(LogLevel level, string typeString, string message) {
+			Log(new LogEntry(null, typeString, level, message, null, DateTime.Now));
+		}
+
+		public void Log(LogLevel level, string message, Exception error) {
+			Log(new LogEntry(null, null, level, message, error, DateTime.Now));
+		}
+
+		public void Log(LogLevel level, object ob, string message, Exception error) {
+			Log(new LogEntry(null, ob.GetType().AssemblyQualifiedName, level, message, error, DateTime.Now));
+		}
+
+		public void Log(LogLevel level, Type type, string message, Exception error) {
+			Log(new LogEntry(null, type.AssemblyQualifiedName, level, message, error, DateTime.Now));
+		}
+
+		public void Log(LogLevel level, string typeString, string message, Exception error) {
+			Log(new LogEntry(null, typeString, level, message, error, DateTime.Now));
+		}
+
+		public void Log(LogLevel level, string message) {
+			Log(new LogEntry(null, null, level, message, null, DateTime.Now));
+		}
+
+
+		public void Log(LogLevel level, Exception e) {
+			Log(new LogEntry(null, null, level, null, e, DateTime.Now));
+		}
+
+		public void Error(object ob, string message) {
+			Log(LogLevel.Error, ob, message);
+		}
+
+		public void Error(Type type, string message) {
+			Log(LogLevel.Error, type, message);
+		}
+
+		public void Error(string typeString, string message) {
+			Log(LogLevel.Error, typeString, message);
+		}
+
+		public void Error(string  message) {
+			Log(LogLevel.Error, message);
+		}
+
+		public void Error(object ob, string message, Exception error) {
+			Log(LogLevel.Error, ob, message, error);
+		}
+
+		public void Error(Type type, string message, Exception error) {
+			Log(LogLevel.Error, type, message, error);
+		}
+
+		public void Error(string typeString, string message, Exception error) {
+			Log(LogLevel.Error, typeString, message, error);
+		}
+
+		public void Error(string message, Exception error) {
+			Log(LogLevel.Error, message, error);
+		}
+
+		public void Error(Exception e) {
+			Log(LogLevel.Error, e);
+		}
+
+		public void Warning(object ob, string message) {
+			Log(LogLevel.Warning, ob, message);
+		}
+
+		public void Warning(Type type, string message) {
+			Log(LogLevel.Warning, type, message);
+		}
+
+		public void Warning(string typeString, string message) {
+			Log(LogLevel.Warning, typeString, message);
+		}
+
+		public void Warning(Exception e) {
+			Log(LogLevel.Warning, e);
+		}
+
+		public void Info(object ob, string message) {
+			Log(LogLevel.Information, ob, message);
+		}
+
+		public void Info(Type type, string message) {
+			Log(LogLevel.Information, type, message);
+		}
+
+		public void Info(string typeString, string  message) {
+			Log(LogLevel.Information, typeString, message);
+		}
+
+		public void Info(Exception e) {
+			Log(LogLevel.Information, e);
 		}
 	}
 }

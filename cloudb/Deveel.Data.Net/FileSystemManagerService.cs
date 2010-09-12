@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 
 namespace Deveel.Data.Net {
-	public sealed class FileSystemManagerServer : ManagerServer {
+	public sealed class FileSystemManagerService : ManagerService {
 		private readonly string basePath;
 		private readonly string dbpath;
 		private FileSystemDatabase database;
@@ -11,7 +11,7 @@ namespace Deveel.Data.Net {
 		private const string RegisteredBlockServers = "blockservers";
 		private const string RegisteredRootServers = "rootservers";
 
-		public FileSystemManagerServer(IServiceConnector connector, string basePath, 
+		public FileSystemManagerService(IServiceConnector connector, string basePath, 
 		                               string dbPath, ServiceAddress address)
 			: base(connector, address) {
 			this.basePath = basePath;
@@ -71,7 +71,7 @@ namespace Deveel.Data.Net {
 					}
 				}
 			} catch (IOException e) {
-				throw new ApplicationException("Error persisting block server list: " +
+				throw new ApplicationException("Error persisting block service list: " +
 												 e.Message);
 			}
 		}
@@ -90,7 +90,7 @@ namespace Deveel.Data.Net {
 					}
 				}
 			} catch (IOException e) {
-				throw new ApplicationException("Error persisting root server list: " +
+				throw new ApplicationException("Error persisting root service list: " +
 										   e.Message);
 			}
 		}

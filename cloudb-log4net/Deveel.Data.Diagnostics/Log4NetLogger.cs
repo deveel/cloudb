@@ -38,6 +38,16 @@ namespace Deveel.Data.Diagnostics {
 			return level;
 		}
 
+		private static void ConfigPattern(AppenderSkeleton appender, ConfigSource config) {
+			string logPattern = config.GetString("log_pattern", null);
+			if (logPattern == null)
+				logPattern = "%date [%thread] %-5level %logger - %message%newline";
+
+			PatternLayout layout = new PatternLayout(logPattern);
+			layout.ActivateOptions();
+			appender.Layout = layout;
+		}
+
 		private static IAppender GetFileAppender(string loggerName, ConfigSource config, Level level) {
 			// Logging directory,
 			string value = config.GetString("log_directory");
@@ -69,13 +79,8 @@ namespace Deveel.Data.Diagnostics {
 			appender.File = value;
 			appender.AppendToFile = true;
 
-			string logPattern = config.GetString("log_pattern", null);
-			if (logPattern == null)
-				logPattern = "%date [%thread] %-5level %logger - %message%newline";
+			ConfigPattern(appender, config);
 
-			PatternLayout layout = new PatternLayout(logPattern);
-			layout.ActivateOptions();
-			appender.Layout = layout;
 			appender.Threshold = level;
 			appender.StaticLogFileName = true;
 			appender.LockingModel = new FileAppender.MinimalLock();
@@ -85,7 +90,20 @@ namespace Deveel.Data.Diagnostics {
 		}
 
 		private static IAppender GetConsoleAppender(string  loggerName, ConfigSource config, Level level) {
-			throw new NotImplementedException();
+			ConsoleAppender appender = new ConsoleAppender();
+			appender.Name = loggerName;
+			appender.Threshold = level;
+
+			string target = config.GetString("target");
+			if (target == "out" || target == "stdout" || target == null)
+				target = "Console.Out";
+			if (target == "err" || target == "stderr")
+				target = "Console.Error";
+			appender.Target = target;
+
+			ConfigPattern(appender, config);
+			appender.ActivateOptions();
+			return appender;
 		}
 
 		private Level ConvertToLevel(LogLevel l) {
@@ -93,7 +111,7 @@ namespace Deveel.Data.Diagnostics {
 		}
 
 		public void Init(ConfigSource config) {
-			string loggerName = config.GetString(Logger.LoggerNameKey);
+			string loggerName = config.GetString(LogManager.LoggerNameKey);
 			if (loggerName == null)
 				throw new InvalidOperationException();
 
@@ -120,29 +138,10 @@ namespace Deveel.Data.Diagnostics {
 			return log.Logger.IsEnabledFor(l);
 		}
 
-		public void Write(LogLevel level, object ob, string message) {
-			Level l = ConvertToLevel(level);
-			log.Logger.Log(ob.GetType(), l, message, null);
-		}
-
-		public void Write(LogLevel level, Type type, string message) {
-			Level l = ConvertToLevel(level);
-			log.Logger.Log(type, l, message, null);
-		}
-
-		public void Write(LogLevel level, string typeString, string message) {
-			Level l = ConvertToLevel(level);
-			Type type = Type.GetType(typeString, true, true);
-			log.Logger.Log(type, l, message, null);
-		}
-
-		public void WriteException(Exception e) {
-			log.Logger.Log(null, Level.Error, e.Message, e);
-		}
-
-		public void WriteException(LogLevel level, Exception e) {
-			Level l = ConvertToLevel(level);
-			log.Logger.Log(null, l, e.Message, e);
+		public void Log(LogEntry entry) {
+			Level l = ConvertToLevel(entry.Level);
+			Type sourceType = Type.GetType(entry.Source, false, true);
+			log.Logger.Log(sourceType, l, entry.Message, entry.Error);
 		}
 	}
 }

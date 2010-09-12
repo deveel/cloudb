@@ -80,7 +80,7 @@ namespace Deveel.Data.Diagnostics {
 				mode = FileMode.CreateNew;
 			}
 
-			outputStream = new FileStream(base_name, mode, FileAccess.Write, FileShare.Read);
+			outputStream = new FileStream(base_name, mode, FileAccess.Write, FileShare.Read, 1024, FileOptions.WriteThrough);
 			output = new StreamWriter(outputStream, Encoding.Default);
 
 		}
@@ -108,7 +108,7 @@ namespace Deveel.Data.Diagnostics {
 				File.Move(log_file, log_file + ".1");
 
 				// Create the new empty log file,
-				outputStream = new FileStream(log_file, FileMode.CreateNew, FileAccess.Write, FileShare.Read);
+				outputStream = new FileStream(log_file, FileMode.CreateNew, FileAccess.Write, FileShare.Read, 1024, FileOptions.WriteThrough);
 				output = new StreamWriter(outputStream, Encoding.Default);
 				log_file_size = 0;
 			}
@@ -139,7 +139,6 @@ namespace Deveel.Data.Diagnostics {
 		public override void Flush() {
 			lock (this) {
 				output.Flush();
-				FSync.Sync(outputStream);
 				CheckLogSize();
 			}
 		}

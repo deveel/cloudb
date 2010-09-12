@@ -3,58 +3,47 @@
 using Deveel.Data.Diagnostics;
 
 namespace Deveel.Data.Net {
-	public abstract class AdminServer : IService {
+	public abstract class AdminService : Service {
 		private readonly Analytics analytics;
 
 		private readonly object serverManagerLock = new object();
-		private BlockServer blockServer;
-		private ManagerServer managerServer;
-		private RootServer rootServer;
+		private BlockService blockService;
+		private ManagerService managerService;
+		private RootService rootService;
 
-		private bool disposed;
-
-		protected AdminServer() {
+		protected AdminService() {
 			analytics = new Analytics();
 		}
 
-		~AdminServer() {
+		~AdminService() {
 			Dispose(false);
 		}
 
-		protected ManagerServer Manager {
-			get { return managerServer; }
+		protected ManagerService Manager {
+			get { return managerService; }
 		}
 
-		protected RootServer Root {
-			get { return rootServer; }
+		protected RootService Root {
+			get { return rootService; }
 		}
 
-		protected BlockServer Block {
-			get { return blockServer; }
+		protected BlockService Block {
+			get { return blockService; }
 		}
 
 		protected Analytics Analytics {
 			get { return analytics; }
 		}
 
-		private void Dispose(bool disposing) {
-			if (!disposed) {
-				if (disposing) {
-					OnDispose(disposing);
+		protected override object GetService(Type service) {
+			if (typeof(BlockService).IsAssignableFrom(service))
+				return blockService;
+			if (typeof(ManagerService).IsAssignableFrom(service))
+				return managerService;
+			if (typeof(RootService).IsAssignableFrom(service))
+				return rootService;
 
-					if (managerServer != null)
-						managerServer.Dispose();
-					if (rootServer != null)
-						rootServer.Dispose();
-					if (blockServer != null)
-						blockServer.Dispose();
-
-					managerServer = null;
-					rootServer = null;
-					blockServer = null;
-				}
-				disposed = true;
-			}
+			return null;
 		}
 
 		private void InitService(string  serviceTypeName) {
@@ -72,19 +61,19 @@ namespace Deveel.Data.Net {
 			// Start the services,
 			lock (serverManagerLock) {
 				if (service_type == ServiceType.Block) {
-					if (blockServer == null) {
-						blockServer = (BlockServer)CreateService(Net.ServiceType.Block);
-						blockServer.Init();
+					if (blockService == null) {
+						blockService = (BlockService)CreateService(Net.ServiceType.Block);
+						blockService.Init();
 					}
 				} else if (service_type == ServiceType.Manager) {
-					if (managerServer == null) {
-						managerServer = (ManagerServer)CreateService(Net.ServiceType.Manager);
-						managerServer.Init();
+					if (managerService == null) {
+						managerService = (ManagerService)CreateService(Net.ServiceType.Manager);
+						managerService.Init();
 					}
 				} else if (service_type == ServiceType.Root) {
-					if (rootServer == null) {
-						rootServer = (RootServer) CreateService(Net.ServiceType.Root);
-						rootServer.Init();
+					if (rootService == null) {
+						rootService = (RootService) CreateService(Net.ServiceType.Root);
+						rootService.Init();
 					}
 				} else {
 					throw new Exception("Unknown service: " + service_type);
@@ -95,19 +84,19 @@ namespace Deveel.Data.Net {
 		protected void DisposeService(ServiceType service_type) {
 			lock (serverManagerLock) {
 				if (service_type == ServiceType.Block) {
-					if (blockServer != null) {
-						DisposeService(blockServer);
-						blockServer = null;
+					if (blockService != null) {
+						DisposeService(blockService);
+						blockService = null;
 					}
 				} else if (service_type == ServiceType.Manager) {
-					if (managerServer != null) {
-						DisposeService(managerServer);
-						managerServer = null;
+					if (managerService != null) {
+						DisposeService(managerService);
+						managerService = null;
 					}
 				} else if (service_type == ServiceType.Root) {
-					if (rootServer != null) {
-						DisposeService(rootServer);
-						rootServer = null;
+					if (rootService != null) {
+						DisposeService(rootService);
+						rootService = null;
 					}
 				} else {
 					throw new Exception("Unknown service: " + service_type);
@@ -119,27 +108,30 @@ namespace Deveel.Data.Net {
 
 		protected abstract void DisposeService(IService service);
 
-		protected virtual void OnInit() {
+		protected override void OnDispose(bool disposing) {
+			if (disposing) {
+				if (managerService != null)
+					managerService.Dispose();
+				if (rootService != null)
+					rootService.Dispose();
+				if (blockService != null)
+					blockService.Dispose();
+
+				managerService = null;
+				rootService = null;
+				blockService = null;
+			}
 		}
 
-		protected virtual void OnDispose(bool disposing) {
-		}
-
-		public void Dispose() {
-			GC.SuppressFinalize(this);
-
-			Dispose(true);
-		}
-
-		public ServiceType ServiceType {
+		public override ServiceType ServiceType {
 			get { return ServiceType.Admin; }
 		}
 
-		public IMessageProcessor Processor {
-			get { return new AdminServerMessageProcessor(this); }
+		protected override IMessageProcessor CreateProcessor() {
+			return new AdminServerMessageProcessor(this);
 		}
 
-		public void Init() {
+		public new void Init() {
 			lock(serverManagerLock) {
 				OnInit();
 			}
@@ -148,14 +140,14 @@ namespace Deveel.Data.Net {
 		#region AdminServerMessageProcessor
 
 		private sealed class AdminServerMessageProcessor : IMessageProcessor {
-			private readonly AdminServer server;
+			private readonly AdminService service;
 
-			public AdminServerMessageProcessor(AdminServer server) {
-				this.server = server;
+			public AdminServerMessageProcessor(AdminService service) {
+				this.service = service;
 			}
 
 			private long[] GetStats() {
-				AnalyticsRecord[] records = server.analytics.GetStats();
+				AnalyticsRecord[] records = service.analytics.GetStats();
 				long[] stats = new long[records.Length * 4];
 				for (int i = 0; i < records.Length; i++) {
 					AnalyticsRecord record = records[i];
@@ -174,20 +166,20 @@ namespace Deveel.Data.Net {
 						string command = m.Name;
 						// Report on the services running,
 						if (command.Equals("report")) {
-							lock (server.serverManagerLock) {
+							lock (service.serverManagerLock) {
 								// TODO:
 								long tm = 0;		// Total Memory
 								long fm = 0;		// Free Memory
 								long td = 0;		// Total Space
 								long fd = 0;		// Free Space
 								outputStream.AddMessage("R");
-								if (server.blockServer == null) {
+								if (service.blockService == null) {
 									outputStream.AddMessageArgument("block=no");
 								} else {
-									outputStream.AddMessageArgument(server.blockServer.BlockCount.ToString());
+									outputStream.AddMessageArgument(service.blockService.BlockCount.ToString());
 								}
-								outputStream.AddMessageArgument("manager=" + (server.managerServer == null ? "no" : "yes"));
-								outputStream.AddMessageArgument("root=" + (server.rootServer == null ? "no" : "yes"));
+								outputStream.AddMessageArgument("manager=" + (service.managerService == null ? "no" : "yes"));
+								outputStream.AddMessageArgument("root=" + (service.rootService == null ? "no" : "yes"));
 								outputStream.AddMessageArgument(tm - fm);
 								outputStream.AddMessageArgument(tm);
 								outputStream.AddMessageArgument(td - fd);
@@ -203,12 +195,12 @@ namespace Deveel.Data.Net {
 							// Starts a service,
 							if (command.Equals("init")) {
 								string service_type = (string)m[0];
-								server.InitService(service_type);
+								service.InitService(service_type);
 							}
 								// Stops a service,
 							else if (command.Equals("dispose")) {
 								string service_type = (String)m[0];
-								server.DisposeService(service_type);
+								service.DisposeService(service_type);
 							} else {
 								throw new Exception("Unknown command: " + command);
 							}
@@ -218,11 +210,11 @@ namespace Deveel.Data.Net {
 						}
 
 					} catch (OutOfMemoryException e) {
-						//TODO: ERROR log ...
-						// This will end the connection
+						service.Logger.Log(LogLevel.Error, service, "Out Of Memory Error.");
+						// This will end the connection);
 						throw;
 					} catch (Exception e) {
-						//TODO: ERROR log ...
+						service.Logger.Error("Error while processing.");
 						outputStream.AddErrorMessage(new ServiceException(e));
 					}
 				}

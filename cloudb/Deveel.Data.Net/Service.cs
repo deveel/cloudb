@@ -1,46 +1,76 @@
 ﻿using System;
+using System.ComponentModel;
+
+using Deveel.Data.Diagnostics;
 
 namespace Deveel.Data.Net {
-	public sealed class Service {
-		internal Service(ServiceAddress address) {
-			this.address = address;
+	public abstract class Service : Component, IService {
+		private IMessageProcessor processor;
+		private Logger log;
+		private ErrorStateException errorState;
+
+		private bool disposed;
+		private bool initialized;
+
+		protected Service() {
+			log = LogManager.GetLogger("network", GetType());
 		}
 
-		private readonly ServiceAddress address;
-		private ServiceType type;
-
-		private long memoryUsed;
-		private long memoryTotal;
-		private long storageUsed;
-		private long storageTotal;
-
-		public ServiceType Type {
-			get { return type; }
-			internal set { type = value; }
+		~Service() {
+			Dispose(false);
 		}
 
-		public ServiceAddress Address {
-			get { return address; }
+		protected Logger Logger {
+			get { return log; }
 		}
 
-		public long MemoryUsed {
-			get { return memoryUsed; }
-			internal set { memoryUsed = value; }
+		public abstract ServiceType ServiceType { get; }
+
+		public IMessageProcessor Processor {
+			get {
+				if (processor == null)
+					processor = CreateProcessor();
+				return processor;
+			}
 		}
 
-		public long MemoryTotal {
-			get { return memoryTotal; }
-			internal set { memoryTotal = value; }
+		protected void CheckErrorState() {
+			if (errorState != null)
+				throw errorState;
 		}
 
-		public long StorageUsed {
-			get { return storageUsed; }
-			internal set { storageUsed = value; }
+		protected void SetErrorState(Exception e) {
+			errorState = new ErrorStateException(e);
 		}
 
-		public long StorageTotal {
-			get { return storageTotal; }
-			internal set { storageTotal = value; }
+		protected abstract IMessageProcessor CreateProcessor();
+
+		protected virtual void OnDispose(bool disposing) {
+		}
+
+		protected override void Dispose(bool disposing) {
+			if (!disposed) {
+				if (disposing) {
+					log.Dispose();
+					log = null;
+				}
+
+				OnDispose(disposing);
+
+				disposed = true;
+			}
+		}
+
+		protected virtual void OnInit() {
+		}
+
+		public void Init() {
+			if (initialized)
+				throw new InvalidOperationException("The service is already initialized.");
+
+			OnInit();
+
+			initialized = true;
 		}
 	}
 }

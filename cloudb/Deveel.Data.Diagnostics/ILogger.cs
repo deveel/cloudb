@@ -55,38 +55,6 @@ namespace Deveel.Data.Diagnostics {
 		/// </returns>
 		bool IsInterestedIn(LogLevel level);
 
-		/// <summary>
-		/// This writes the given debugging string.
-		/// </summary>
-		/// <param name="level">The filter level below which the messages are 
-		/// sent to the debugger. This must be between 0 and 255 (a level
-		/// of 255 is always printed).</param>
-		/// <param name="ob">The object instance which issued the call.</param>
-		/// <param name="message">The message to log.</param>
-		void Write(LogLevel level, object ob, string message);
-
-		void Write(LogLevel level, Type type, string message);
-
-		void Write(LogLevel level, string typeString, string message);
-
-		/// <summary>
-		/// This writes the given <see cref="Exception"/>.
-		/// </summary>
-		/// <param name="e"></param>
-		/// <remarks>
-		/// Exceptions are always output to the log stream.
-		/// </remarks>
-		void WriteException(Exception e);
-
-		/// <summary>
-		/// This writes the given <see cref="Exception"/> but gives 
-		/// it a level.
-		/// </summary>
-		/// <param name="level"></param>
-		/// <param name="e"></param>
-		/// <remarks>
-		/// This method is used to output a warning exception.
-		/// </remarks>
-		void WriteException(LogLevel level, Exception e);
+		void Log(LogEntry entry);
 	}
 }

@@ -12,19 +12,7 @@ namespace Deveel.Data.Diagnostics {
 			return false;
 		}
 
-		public void Write(LogLevel level, object ob, string message) {
-		}
-
-		public void Write(LogLevel level, Type type, string message) {
-		}
-
-		public void Write(LogLevel level, string typeString, string message) {
-		}
-
-		public void WriteException(Exception e) {
-		}
-
-		public void WriteException(LogLevel level, Exception e) {
+		public void Log(LogEntry entry) {
 		}
 	}
 }

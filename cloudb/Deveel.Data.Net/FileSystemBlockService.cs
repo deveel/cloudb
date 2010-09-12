@@ -4,7 +4,7 @@ using System.IO;
 using System.Threading;
 
 namespace Deveel.Data.Net {
-	public sealed class FileSystemBlockServer : BlockServer {
+	public sealed class FileSystemBlockService : BlockService {
 		private readonly string path;
 		
 		private bool compressFinished;
@@ -15,7 +15,7 @@ namespace Deveel.Data.Net {
 		
 		private Timer fileDeleteTimer;
 		
-		public FileSystemBlockServer(IServiceConnector connector, string path)
+		public FileSystemBlockService(IServiceConnector connector, string path)
 			: base(connector) {
 			this.path = path;
 			compressionThread = new Thread(Compress);
@@ -93,7 +93,7 @@ namespace Deveel.Data.Net {
 									// Remove it from the new_items list
 									new_items.RemoveAt(i);
 								} catch(IOException e) {
-									//TODO: ERROR log ...
+									Logger.Error("IO Error while compressing", e);
 								}
 							}
 
@@ -140,7 +140,7 @@ namespace Deveel.Data.Net {
 				// Get the contents,
 				using(StreamReader reader = new StreamReader(guidFile)) {
 					string line = reader.ReadLine();
-					// Set the server guid
+					// Set the service guid
 					SetGuid(Int64.Parse(line.Trim()));
 				}
 			} else {
@@ -149,7 +149,7 @@ namespace Deveel.Data.Net {
 				try {
 					fileStream = File.Create(guidFile);
 				} catch (Exception e) {
-					throw new ApplicationException("Unable to create guid server file", e);
+					throw new ApplicationException("Unable to create guid service file", e);
 				}
 
 				// Create a unique server_guid
@@ -168,6 +168,8 @@ namespace Deveel.Data.Net {
 			}
 			
 			compressionThread.Start();
+
+			base.OnInit();
 		}
 		
 		protected override BlockContainer LoadBlock(long blockId) {
@@ -182,11 +184,11 @@ namespace Deveel.Data.Net {
 				if (!File.Exists(block_file_name)) {
 					// We check if the block_id is less than maximum id. If it is we
 					// generate an exception indicating this block doesn't exist on this
-					// server. This means something screwed up, either the manager server
-					// was erroneously told the block was located on this server but it
+					// service. This means something screwed up, either the manager service
+					// was erroneously told the block was located on this service but it
 					// isn't, or the file was deleted by the user.
 					if (blockId < LastBlockId)
-						throw new BlockReadException("Block " + blockId + " not stored on server");
+						throw new BlockReadException("Block " + blockId + " not stored on service");
 				}
 
 				block_store = new FileBlockStore(blockId, block_file_name);

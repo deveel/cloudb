@@ -4,12 +4,9 @@ using System.IO;
 using System.Threading;
 
 namespace Deveel.Data.Net {
-	public abstract class ManagerServer : IService {
-		private bool disposed;
-		private bool initialized;
-		private IServiceConnector connector;
-		private ServiceAddress address;
-		private ErrorStateException errorState;
+	public abstract class ManagerService : Service {
+		private readonly IServiceConnector connector;
+		private readonly ServiceAddress address;
 
 		private DataAddress currentAddressSpaceEnd;
 		private readonly object allocationLock = new object();
@@ -29,7 +26,7 @@ namespace Deveel.Data.Net {
 		private static readonly Key BlockServerKey = new Key(12, 0, 10);
 		private static readonly Key PathRootKey = new Key(12, 0, 20);
 
-		protected ManagerServer(IServiceConnector connector, ServiceAddress address) {
+		protected ManagerService(IServiceConnector connector, ServiceAddress address) {
 			this.connector = connector;
 			this.address = address;
 
@@ -45,24 +42,16 @@ namespace Deveel.Data.Net {
 			heartbeatThread.Start();
 		}
 
-		~ManagerServer() {
+		~ManagerService() {
 			Dispose(false);
 		}
 
-		public ServiceType ServiceType {
+		public override ServiceType ServiceType {
 			get { return ServiceType.Manager; }
 		}
 
-		public IMessageProcessor Processor {
-			get { return new ManagerServerMessageProcessor(this); }
-		}
-
-		private void Dispose(bool disposing) {
-			if (!disposed) {
-				OnDispose(disposing);
-				disposed = true;
-				initialized = false;
-			}
+		protected override IMessageProcessor CreateProcessor() {
+			return new ManagerServerMessageProcessor(this);
 		}
 
 		private void UpdateAddressSpaceEnd() {
@@ -95,15 +84,6 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		private void CheckErrorState() {
-			if (errorState != null)
-				throw errorState;
-		}
-
-		private void SetErrorState(Exception e) {
-			errorState = new ErrorStateException(e);
-		}
-
 		private long[] AllocateOnlineServerNodesForBlock(long blockId) {
 			// Fetch the list of all online servers,
 			List<BlockServerInfo> servSet = new List<BlockServerInfo>(blockServers.Count);
@@ -115,7 +95,7 @@ namespace Deveel.Data.Net {
 				}
 			}
 
-			// TODO: This is a simple random server picking method for a block.
+			// TODO: This is a simple random service picking method for a block.
 			//   We should prioritize servers picked based on machine specs, etc.
 
 			int sz = servSet.Count;
@@ -179,7 +159,7 @@ namespace Deveel.Data.Net {
 		}
 
 		private void CheckAndFixAllocationServers() {
-			// If the failure report is on a block server that is servicing allocation
+			// If the failure report is on a block service that is servicing allocation
 			// requests, we push the allocation requests to the next block.
 			long currentBlockId;
 			lock (allocationLock) {
@@ -190,12 +170,12 @@ namespace Deveel.Data.Net {
 
 			int okServerCount = 0;
 
-			// Change the status of the block server to STATUS_DOWN_CLIENT_REPORT
+			// Change the status of the block service to STATUS_DOWN_CLIENT_REPORT
 			lock (blockServersMap) {
-				// For each server that stores the block,
+				// For each service that stores the block,
 				for (int i = 0; i < bservers.Length; ++i) {
 					long serverGuid = bservers[i];
-					// Is the status of this server UP?
+					// Is the status of this service UP?
 					foreach (BlockServerInfo block_server in blockServers) {
 						// If this matches the guid, and is up, we add to 'ok_server_count'
 						if (block_server.Guid == serverGuid &&
@@ -225,10 +205,10 @@ namespace Deveel.Data.Net {
 		}
 
 		private void RegisterBlockServer(ServiceAddress serviceAddress) {
-			// Open a connection with the block server,
+			// Open a connection with the block service,
 			IMessageProcessor processor = connector.Connect(serviceAddress, ServiceType.Block);
 
-			// Lock the block server with this manager
+			// Lock the block service with this manager
 			MessageStream outputStream = new MessageStream(16);
 			outputStream.AddMessage("bindWithManager", address);
 			MessageStream inputStream = processor.Process(outputStream);
@@ -237,7 +217,7 @@ namespace Deveel.Data.Net {
 					throw new ApplicationException(m.ErrorMessage);
 			}
 
-			// Get the block set report from the server,
+			// Get the block set report from the service,
 			outputStream = new MessageStream(16);
 			outputStream.AddMessage("blockSetReport");
 			inputStream = processor.Process(outputStream);
@@ -268,7 +248,7 @@ namespace Deveel.Data.Net {
 						long block_id = blockIdList[i];
 						bool added = blockServerTable.Add(block_id, serverGuid);
 						if (added) {
-							// TODO: Check if a server is adding polluted blocks into the
+							// TODO: Check if a service is adding polluted blocks into the
 							//   network via checksum,
 							++actualAdded;
 						}
@@ -297,10 +277,10 @@ namespace Deveel.Data.Net {
 		}
 
 		private void UnregisterBlockServer(ServiceAddress serviceAddress) {
-			// Open a connection with the block server,
+			// Open a connection with the block service,
 			IMessageProcessor processor = connector.Connect(serviceAddress, ServiceType.Block);
 
-			// Unlock the block server from this manager
+			// Unlock the block service from this manager
 			MessageStream outputStream = new MessageStream(16);
 			outputStream.AddMessage("unbindWithManager", address);
 			MessageStream inputStream = processor.Process(outputStream);
@@ -311,7 +291,7 @@ namespace Deveel.Data.Net {
 
 			// Remove it from the map and persist
 			lock (blockServersMap) {
-				// Find the server to remove,
+				// Find the service to remove,
 				List<BlockServerInfo> to_remove = new List<BlockServerInfo>();
 				foreach (BlockServerInfo server in blockServers) {
 					if (server.Address.Equals(serviceAddress))
@@ -339,10 +319,10 @@ namespace Deveel.Data.Net {
 			}
 
 			foreach (BlockServerInfo s in to_remove) {
-				// Open a connection with the block server,
+				// Open a connection with the block service,
 				IMessageProcessor processor = connector.Connect(s.Address, ServiceType.Block);
 
-				// Unlock the block server from this manager
+				// Unlock the block service from this manager
 				MessageStream outputStream = new MessageStream(16);
 				outputStream.AddMessage("unbindWithManager", address);
 				MessageStream inputStream = processor.Process(outputStream);
@@ -375,7 +355,7 @@ namespace Deveel.Data.Net {
 				for (int i = 0; i < sz; ++i) {
 					BlockServerInfo blockServer = blockServersMap[servers_guid[i]];
 					if (blockServer != null)
-						// Copy the server information into a new object.
+						// Copy the service information into a new object.
 						reply.Add(new BlockServerInfo(blockServer.Guid, blockServer.Address, blockServer.Status));
 				}
 				return reply.ToArray();
@@ -383,13 +363,13 @@ namespace Deveel.Data.Net {
 		}
 
 		private BlockServerInfo[] GetServerListForBlock(long blockId) {
-			// Query the local database for the server list of the block.  If the
+			// Query the local database for the service list of the block.  If the
 			// block doesn't exist in the database then it provisions it over the
 			// network.
 
 			long[] server_ids = GetOnlineServersWithBlock(blockId);
 
-			// Resolve the server ids into server names and parse it as a reply
+			// Resolve the service ids into service names and parse it as a reply
 			int sz = server_ids.Length;
 
 			// No online servers contain the block
@@ -400,10 +380,10 @@ namespace Deveel.Data.Net {
 		}
 
 		private void RegisterRootServer(ServiceAddress serviceAddress) {
-			// Open a connection with the root server,
+			// Open a connection with the root service,
 			IMessageProcessor processor = connector.Connect(serviceAddress, ServiceType.Root);
 
-			// Lock the root server with this manager
+			// Lock the root service with this manager
 			MessageStream outputStream = new MessageStream(16);
 			outputStream.AddMessage("bindWithManager", address);
 			MessageStream inputStream = processor.Process(outputStream);
@@ -412,7 +392,7 @@ namespace Deveel.Data.Net {
 					throw new ApplicationException(m.ErrorMessage);
 			}
 
-			// Get the database path report from the server,
+			// Get the database path report from the service,
 			outputStream = new MessageStream(16);
 			outputStream.AddMessage(new Message("pathReport"));
 			inputStream = processor.Process(outputStream);
@@ -437,7 +417,7 @@ namespace Deveel.Data.Net {
 					int sz = pathsNames.Length;
 					// Put each block item into the database,
 					for (int i = 0; i < sz; ++i) {
-						// Put the mapping of path_root to the root server that manages it.
+						// Put the mapping of path_root to the root service that manages it.
 						pathRootTable.Set(pathsNames[i], serviceAddress);
 					}
 
@@ -458,10 +438,10 @@ namespace Deveel.Data.Net {
 		}
 
 		private void UnregisterRootServer(ServiceAddress serviceAddress) {
-			// Open a connection with the block server,
+			// Open a connection with the block service,
 			IMessageProcessor processor = connector.Connect(serviceAddress, ServiceType.Root);
 
-			// Unlock the block server from this manager
+			// Unlock the block service from this manager
 			MessageStream outputStream = new MessageStream(16);
 			outputStream.AddMessage("unbindWithManager", address);
 			MessageStream inputStream = processor.Process(outputStream);
@@ -472,7 +452,7 @@ namespace Deveel.Data.Net {
 
 			// Remove it from the map and persist
 			lock (rootServers) {
-				// Find the server to remove,
+				// Find the service to remove,
 				for (int i = rootServers.Count - 1; i >= 0; i--) {
 					if (rootServers[i].Address.Equals(serviceAddress))
 						rootServers.RemoveAt(i);
@@ -491,10 +471,10 @@ namespace Deveel.Data.Net {
 			}
 
 			foreach (RootServerInfo s in to_remove) {
-				// Open a connection with the root server,
+				// Open a connection with the root service,
 				IMessageProcessor processor = connector.Connect(s.Address, ServiceType.Root);
 
-				// Unlock the root server from this manager
+				// Unlock the root service from this manager
 				MessageStream outputStream = new MessageStream(16);
 				outputStream.AddMessage("unbindWithManager", address);
 				MessageStream inputStream = processor.Process(outputStream);
@@ -651,7 +631,7 @@ namespace Deveel.Data.Net {
 					// Get the map,
 					BlockServerTable blockServerTable = new BlockServerTable(transaction.GetFile(BlockServerKey, FileAccess.Write));
 
-					// Make the block -> server map
+					// Make the block -> service map
 					blockServerTable.Add(blockId, serverGuid);
 
 					// Commit and check point the update,
@@ -701,11 +681,11 @@ namespace Deveel.Data.Net {
 				failureFloodControl[serviceAddress] = currentTime;
 			}
 
-			// Change the status of the block server to STATUS_DOWN_CLIENT_REPORT
+			// Change the status of the block service to STATUS_DOWN_CLIENT_REPORT
 			lock (blockServersMap) {
 				// Get the MSBlockServer object from the map,
 				foreach (BlockServerInfo block_server in blockServers) {
-					// If the block server is the one that failed,
+					// If the block service is the one that failed,
 					if (block_server.Address.Equals(serviceAddress)) {
 						if (block_server.Status == ServerStatus.Up) {
 							block_server.Status = ServerStatus.DownClientReport;
@@ -771,7 +751,7 @@ namespace Deveel.Data.Net {
 		private void PollServer(BlockServerInfo server) {
 			bool pollOk = true;
 
-			// Send the poll command to the server,
+			// Send the poll command to the service,
 			IMessageProcessor p = connector.Connect(server.Address, ServiceType.Block);
 			MessageStream msg_out = new MessageStream(16);
 			msg_out.AddMessage("poll", "manager heartbeat");
@@ -783,10 +763,10 @@ namespace Deveel.Data.Net {
 				}
 			}
 
-			// If the poll is ok, set the status of the server to UP and remove from
+			// If the poll is ok, set the status of the service to UP and remove from
 			// the monitor list,
 			if (pollOk) {
-				// The server status is set to 'Up' if either the current state
+				// The service status is set to 'Up' if either the current state
 				// is 'DownClientReport' or 'DownHeartbeat'
 				// Lock over servers map for safe alteration of the ref.
 				lock (blockServersMap) {
@@ -795,12 +775,12 @@ namespace Deveel.Data.Net {
 						server.Status = ServerStatus.Up;
 					}
 				}
-				// Remove the server from the monitored_servers list.
+				// Remove the service from the monitored_servers list.
 				lock (heartbeatLock) {
 					monitoredServers.Remove(server);
 				}
 			} else {
-				// Make sure the server status is set to 'DownHeartbeat' if the poll
+				// Make sure the service status is set to 'DownHeartbeat' if the poll
 				// failed,
 				// Lock over servers map for safe alteration of the ref.
 				lock (blockServersMap) {
@@ -865,34 +845,14 @@ namespace Deveel.Data.Net {
 			blockDatabase = database;
 		}
 
-		protected virtual void OnInit() {
-		}
-
-		protected virtual void OnDispose(bool disposing) {
-		}
-
-		public void Init() {
-			if (initialized)
-				throw new ApplicationException("The manager server was already initialized.");
-
-			OnInit();
-
-			initialized = true;
-		}
-
-		public void Dispose() {
-			GC.SuppressFinalize(this);
-			Dispose(true);
-		}
-
 		#region ManagerServerMessageProcessor
 
 		class ManagerServerMessageProcessor : IMessageProcessor {
-			public ManagerServerMessageProcessor(ManagerServer server) {
-				this.server = server;
+			public ManagerServerMessageProcessor(ManagerService service) {
+				this.service = service;
 			}
 
-			private readonly ManagerServer server;
+			private readonly ManagerService service;
 
 			public MessageStream Process(MessageStream messageStream) {
 				MessageStream responseStream = new MessageStream(32);
@@ -900,13 +860,13 @@ namespace Deveel.Data.Net {
 				// The messages in the stream,
 				foreach (Message m in messageStream) {
 					try {
-						// Check the server isn't in a stop state,
-						server.CheckErrorState();
+						// Check the service isn't in a stop state,
+						service.CheckErrorState();
 
 						switch (m.Name) {
 							case "getServerListForBlock": {
 								long blockId = (long) m[0];
-								BlockServerInfo[] servers = server.GetServerListForBlock(blockId);
+								BlockServerInfo[] servers = service.GetServerListForBlock(blockId);
 								Message response = new Message("R");
 								response.AddArgument(servers.Length);
 								for (int i = 0; i < servers.Length; i++) {
@@ -918,24 +878,24 @@ namespace Deveel.Data.Net {
 							}
 							case "allocateNode": {
 								int nodeSize = (int) m[0];
-								DataAddress address = server.AllocateNode(nodeSize);
+								DataAddress address = service.AllocateNode(nodeSize);
 								responseStream.AddMessage("R", address);
 								break;
 							}
 							case "registerBlockServer": {
 								ServiceAddress address = (ServiceAddress) m[0];
-								server.RegisterBlockServer(address);
+								service.RegisterBlockServer(address);
 								responseStream.AddMessage("R", 1);
 								break;
 							}
 							case "unregisterBlockServer": {
 								ServiceAddress address = (ServiceAddress) m[0];
-								server.UnregisterBlockServer(address);
+								service.UnregisterBlockServer(address);
 								responseStream.AddMessage("R", 1);
 								break;
 							}
 							case "unregisterAllBlockServers": {
-								server.UnregisterAllBlockServers();
+								service.UnregisterAllBlockServers();
 								responseStream.AddMessage("R", 1);
 								break;
 							}
@@ -943,80 +903,80 @@ namespace Deveel.Data.Net {
 								// root servers
 							case "registerRootServer": {
 								ServiceAddress address = (ServiceAddress) m[0];
-								server.RegisterRootServer(address);
+								service.RegisterRootServer(address);
 								responseStream.AddMessage("R", 1);
 								break;
 							}
 							case "unregisterRootServer": {
 								ServiceAddress address = (ServiceAddress) m[0];
-								server.UnregisterRootServer(address);
+								service.UnregisterRootServer(address);
 								responseStream.AddMessage("R", 1);
 								break;
 							}
 							case "unregisterAllRootServers": {
-								server.UnregisterAllRootServers();
+								service.UnregisterAllRootServers();
 								responseStream.AddMessage("R", 1);
 								break;
 							}
 							case "getRootForPath": {
 								string pathName = (string) m[0];
-								ServiceAddress address = server.GetRootForPath(pathName);
+								ServiceAddress address = service.GetRootForPath(pathName);
 								responseStream.AddMessage("R", address);
 								break;
 							}
 							case "addPathRootMapping": {
 								string pathName = (string) m[0];
 								ServiceAddress address = (ServiceAddress) m[1];
-								server.AddPathRootMapping(pathName, address);
+								service.AddPathRootMapping(pathName, address);
 								responseStream.AddMessage("R", 1);
 								break;
 							}
 							case "removePathRootMapping": {
 								string pathName = (string) m[0];
-								server.RemovePathRootMapping(pathName);
+								service.RemovePathRootMapping(pathName);
 								responseStream.AddMessage("R", 1);
 								break;
 							}
 							case "getPaths": {
-								string[] pathSet = server.GetPaths();
+								string[] pathSet = service.GetPaths();
 								responseStream.AddMessage("R", pathSet);
 								break;
 							}
 							case "getServerGUIDList": {
 								long blockId = (long) m[0];
-								long[] serverGuids = server.GetServerGuidList(blockId);
+								long[] serverGuids = service.GetServerGuidList(blockId);
 								responseStream.AddMessage("R", serverGuids);
 								break;
 							}
 							case "addBlockServerMapping": {
 								long blockId = (long) m[0];
 								long serverGuid = (long) m[1];
-								server.AddBlockServerMapping(blockId, serverGuid);
+								service.AddBlockServerMapping(blockId, serverGuid);
 								responseStream.AddMessage("R", 1);
 								break;
 							}
 							case "removeBlockServerMapping": {
 								long blockId = (long) m[0];
 								long serverGuid = (long) m[1];
-								server.RemoveBlockServerMapping(blockId, serverGuid);
+								service.RemoveBlockServerMapping(blockId, serverGuid);
 								responseStream.AddMessage("R", 1);
 								break;
 							}
 							case "notifyBlockServerFailure": {
 								ServiceAddress address = (ServiceAddress) m[0];
-								server.NotifyBlockServerFailure(address);
+								service.NotifyBlockServerFailure(address);
 								responseStream.AddMessage("R", 1);
 								break;
 							}
 							case "getBlockMappingCount": {
-								long blockMappingCount = server.GetBlockMappingCount();
+								long blockMappingCount = service.GetBlockMappingCount();
 								responseStream.AddMessage("R", blockMappingCount);
 								break;
 							}
 							case "getBlockMappingRange": {
 								long start = (long) m[0];
 								long end = (long) m[1];
-								long[] mappings = server.GetBlockMappingRange(start, end);
+								long[] mappings = service.GetBlockMappingRange(start, end);
 								responseStream.AddMessage("R", mappings);
 								break;
 							}
@@ -1025,7 +985,7 @@ namespace Deveel.Data.Net {
 						}
 					} catch (OutOfMemoryException e) {
 						//TODO: ERROR log ...
-						server.SetErrorState(e);
+						service.SetErrorState(e);
 						throw;
 					} catch (Exception e) {
 						//TODO: ERROR log ...

@@ -101,7 +101,7 @@ namespace Deveel.Data.Store {
 		/// </summary>
 		private JournalingThread journaling_thread;
 
-		private ILogger logger;
+		private Logger logger;
 
 		/**
  * The lock file objects used to ensure multiple instances are not accessing
@@ -111,7 +111,7 @@ namespace Deveel.Data.Store {
 
 
 		internal JournalledSystem(string journal_path, bool read_only, int page_size,
-					   LoggingBufferManager.IStoreDataAccessorFactory sda_factory, ILogger logger,
+					   LoggingBufferManager.IStoreDataAccessorFactory sda_factory, Logger logger,
 					   bool enable_logging) {
 			this.journal_path = journal_path;
 			this.read_only = read_only;
@@ -256,13 +256,13 @@ namespace Deveel.Data.Store {
 					// If the journal can be recovered from.
 					if (summary.can_be_recovered) {
 						if (Debug.IsInterestedIn(LogLevel.Information)) {
-							Debug.Write(LogLevel.Information, this, "Journal " + jf +
+							Debug.Log(LogLevel.Information, this, "Journal " + jf +
 															   " found - can be recovered.");
 						}
 						journal_files_list.Add(summary);
 					} else {
 						if (Debug.IsInterestedIn(LogLevel.Information)) {
-							Debug.Write(LogLevel.Information, this, "Journal " + jf +
+							Debug.Log(LogLevel.Information, this, "Journal " + jf +
 															   " deleting - nothing to recover.");
 						}
 						// Otherwise close and delete it
@@ -301,7 +301,7 @@ namespace Deveel.Data.Store {
 				last_journal_number = jf.journal_number;
 
 				if (Debug.IsInterestedIn(LogLevel.Information)) {
-					Debug.Write(LogLevel.Information, this, "Recovering: " + jf +
+					Debug.Log(LogLevel.Information, this, "Recovering: " + jf +
 													   " (8 .. " + summary.last_checkpoint + ")");
 				}
 
@@ -375,7 +375,7 @@ namespace Deveel.Data.Store {
 			}
 		}
 
-		private ILogger Debug {
+		private Logger Debug {
 			get { return logger; }
 		}
 
@@ -767,7 +767,7 @@ namespace Deveel.Data.Store {
 			/// </remarks>
 			internal void Persist(long start, long end) {
 				if (js.Debug.IsInterestedIn(LogLevel.Information)) {
-					js.Debug.Write(LogLevel.Information, this, "Persisting: " + file);
+					js.Debug.Log(LogLevel.Information, this, "Persisting: " + file);
 				}
 
 				BinaryReader din = new BinaryReader(data.FileStream, Encoding.Unicode);
@@ -799,7 +799,7 @@ namespace Deveel.Data.Store {
 						id_name_map[id] = resource_name;
 
 						if (js.Debug.IsInterestedIn(LogLevel.Information)) {
-							js.Debug.Write(LogLevel.Information, this, "Journal Command: Tag: " + id + " = " + resource_name);
+							js.Debug.Log(LogLevel.Information, this, "Journal Command: Tag: " + id + " = " + resource_name);
 						}
 
 						// Add this to the list of resources we updated.
@@ -811,7 +811,7 @@ namespace Deveel.Data.Store {
 						AbstractResource resource = js.GetResource(resource_name);
 
 						if (js.Debug.IsInterestedIn(LogLevel.Information)) {
-							js.Debug.Write(LogLevel.Information, this, "Journal Command: Delete: " +
+							js.Debug.Log(LogLevel.Information, this, "Journal Command: Delete: " +
 															   resource_name);
 						}
 
@@ -824,7 +824,7 @@ namespace Deveel.Data.Store {
 						AbstractResource resource = js.GetResource(resource_name);
 
 						if (js.Debug.IsInterestedIn(LogLevel.Information)) {
-							js.Debug.Write(LogLevel.Information, this, "Journal Command: Set Size: " +
+							js.Debug.Log(LogLevel.Information, this, "Journal Command: Set Size: " +
 										resource_name + " size = " + new_size);
 						}
 
@@ -863,7 +863,7 @@ namespace Deveel.Data.Store {
 						AbstractResource resource = js.GetResource(resource_name);
 
 						if (js.Debug.IsInterestedIn(LogLevel.Information)) {
-							js.Debug.Write(LogLevel.Information, this,
+							js.Debug.Log(LogLevel.Information, this,
 									"Journal Command: Page Modify: " + resource_name +
 									" page = " + page + " page_size = " + page_size +
 									" off = " + off + " len = " + len);
@@ -883,7 +883,7 @@ namespace Deveel.Data.Store {
 						AbstractResource resource = js.GetResource(resource_name);
 
 						if (js.Debug.IsInterestedIn(LogLevel.Information)) {
-							js.Debug.Write(LogLevel.Information, this,
+							js.Debug.Log(LogLevel.Information, this,
 									"Journal Command: Page Modify (Old): " + resource_name +
 									" page = " + page + " off = " + off +
 									" len = " + len);
@@ -893,7 +893,7 @@ namespace Deveel.Data.Store {
 					} else if (type == 100) { // Checkpoint (end)
 
 						if (js.Debug.IsInterestedIn(LogLevel.Information)) {
-							js.Debug.Write(LogLevel.Information, this, "Journal Command: Check Point.");
+							js.Debug.Log(LogLevel.Information, this, "Journal Command: Check Point.");
 						}
 
 						if (position == end) {
@@ -910,7 +910,7 @@ namespace Deveel.Data.Store {
 				for (int i = 0; i < sz; ++i) {
 					AbstractResource r = (AbstractResource)resources_updated[i];
 					if (js.Debug.IsInterestedIn(LogLevel.Information)) {
-						js.Debug.Write(LogLevel.Information, this, "Synch: " + r);
+						js.Debug.Log(LogLevel.Information, this, "Synch: " + r);
 					}
 					r.Synch();
 				}
@@ -1908,8 +1908,8 @@ namespace Deveel.Data.Store {
 								// Close and then delete the journal file
 								jf.CloseAndDelete();
 							} catch (IOException e) {
-								js.Debug.Write(LogLevel.Error, this, "Error persisting journal: " + jf);
-								js.Debug.WriteException(LogLevel.Error, e);
+								js.Debug.Log(LogLevel.Error, this, "Error persisting journal: " + jf);
+								js.Debug.Log(LogLevel.Error, e);
 								// If there is an error persisting the best thing to do is
 								// finish
 								lock (this) {

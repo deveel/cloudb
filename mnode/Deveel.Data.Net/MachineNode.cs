@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 
 using Deveel.Configuration;
+using Deveel.Data.Diagnostics;
 
 namespace Deveel.Data.Net {
 	public static class MachineNode {
@@ -66,12 +67,14 @@ namespace Deveel.Data.Net {
 				Console.Out.WriteLine();
 				Console.Out.WriteLine(wout.ToString());
 				return 1;
-			} else {
+			}
+
+			try {
 				// Get the node configuration file,
 				ConfigSource node_config_resource = new ConfigSource();
-				FileStream fin = new FileStream(nodeConfig, FileMode.Open, FileAccess.Read, FileShare.None);
-				node_config_resource.Load(new BufferedStream(fin));
-				fin.Close();
+				using (FileStream fin = new FileStream(nodeConfig, FileMode.Open, FileAccess.Read, FileShare.None)) {
+					node_config_resource.Load(new BufferedStream(fin));
+				}
 
 				// Parse the network configuration string,
 				NetworkConfigSource net_config_resource;
@@ -84,6 +87,9 @@ namespace Deveel.Data.Net {
 					Console.Out.WriteLine("Error: couldn't determine the network password.");
 					return 1;
 				}
+
+				// configure the loggers
+				LogManager.Init(node_config_resource);
 
 				//TODO: support also IPv6
 
@@ -119,16 +125,11 @@ namespace Deveel.Data.Net {
 				string nodeDir = net_config_resource.GetString("node_directory", Environment.CurrentDirectory);
 
 				Console.Out.WriteLine("Machine Node, " + (hostArg != null ? hostArg : "") + "port: " + port_arg);
-				TcpAdminServer inst = new TcpFileAdminServer(net_config_resource, host, port, password, nodeDir);
+				TcpAdminService inst = new TcpFileAdminService(net_config_resource, host, port, password, nodeDir);
 				inst.Init();
-
-				string line;
-				while ((line = Console.In.ReadLine()) != null) {
-					if (line.Equals("exit", StringComparison.InvariantCultureIgnoreCase)) {
-						inst.Dispose();
-						break;
-					}
-				}
+			} catch(Exception e) {
+				Console.Out.WriteLine(e.Message);
+				Console.Out.WriteLine(e.StackTrace);
 			}
 
 			return 0;

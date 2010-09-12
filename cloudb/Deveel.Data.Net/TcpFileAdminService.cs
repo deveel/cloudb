@@ -3,14 +3,14 @@ using System.IO;
 using System.Net;
 
 namespace Deveel.Data.Net {
-	public sealed class TcpFileAdminServer : TcpAdminServer {
+	public sealed class TcpFileAdminService : TcpAdminService {
 		private readonly string basePath;
 
 		private const string BlockRunFile = "runblock";
 		private const string ManagerRunFile = "runmanager";
 		private const string RootRunFile = "runroot";
 
-		public TcpFileAdminServer(NetworkConfigSource config, IPAddress address, int port, string password, string basePath) 
+		public TcpFileAdminService(NetworkConfigSource config, IPAddress address, int port, string password, string basePath) 
 			: base(config, address, port, password) {
 
 			if (!Directory.Exists(basePath))
@@ -47,21 +47,21 @@ namespace Deveel.Data.Net {
 				if (!Directory.Exists(npath))
 					Directory.CreateDirectory(npath);
 				File.Create(Path.Combine(basePath, BlockRunFile));
-				return new FileSystemBlockServer(new TcpServiceConnector(Password), npath);
+				return new FileSystemBlockService(new TcpServiceConnector(Password), npath);
 			} 
 			if (serviceType == ServiceType.Manager) {
 				string npath = Path.Combine(basePath, "manager");
 				if (!Directory.Exists(npath))
 					Directory.CreateDirectory(npath);
 				File.Create(Path.Combine(basePath, ManagerRunFile));
-				return new FileSystemManagerServer(new TcpServiceConnector(Password), basePath, npath, Address);
+				return new FileSystemManagerService(new TcpServiceConnector(Password), basePath, npath, Address);
 			} 
 			if (serviceType == ServiceType.Root) {
 				string npath = Path.Combine(basePath, "root");
 				if (!Directory.Exists(npath))
 					Directory.CreateDirectory(npath);
 				File.Create(Path.Combine(basePath, RootRunFile));
-				return new FileSystemRootServer(new TcpServiceConnector(Password), npath);
+				return new FileSystemRootService(new TcpServiceConnector(Password), npath);
 			}
 
 			throw new ArgumentException();

@@ -5,29 +5,18 @@ using System.IO;
 using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
-	public abstract class RootServer : IService {
-		protected RootServer(IServiceConnector connector) {
+	public abstract class RootService : Service {
+		protected RootService(IServiceConnector connector) {
 			this.connector = connector;
 			pathCache = new Dictionary<string, PathAccess>(128);
-		}
-		
-		~RootServer() {
-			Dispose(false);
-		}
-		
+		}		
 		
 		private ServiceAddress managerAddress;
 		private ErrorStateException errorState;
-		private IServiceConnector connector;
+		private readonly IServiceConnector connector;
 		private readonly Dictionary<string, PathAccess> pathCache;
-		private bool initialized;
-		private bool disposed;
 		
-		public IMessageProcessor Processor {
-			get { return new RootServerMessageProcessor(this); }
-		}
-		
-		public ServiceType ServiceType {
+		public override ServiceType ServiceType {
 			get { return ServiceType.Root; }
 		}
 		
@@ -35,25 +24,7 @@ namespace Deveel.Data.Net {
 			get { return managerAddress; }
 			set { managerAddress = value; }
 		}
-		
-		private void Dispose(bool disposing) {
-			if (!disposed) {
-				OnDispose(disposing);
-				managerAddress = null;
-				disposed = true;
-				initialized = false;
-			}
-		}
-		
-		private void SetErrorState(Exception e) {
-			errorState = new ErrorStateException(e);
-		}
-		
-		private void CheckErrorState() {
-			if (errorState != null)
-				throw errorState;
-		}
-		
+						
 		private long BinarySearch(StrongPagedAccess access, long low, long high, long timestamp) {
 			while (low <= high) {
 				long mid = (low + high) >> 1;
@@ -371,7 +342,7 @@ namespace Deveel.Data.Net {
 		
 		private void BindWithManager(ServiceAddress managerAddress) {
 			if (this.managerAddress != null)
-				throw new ApplicationException("This root server is already bound to a manager server");
+				throw new ApplicationException("This root service is already bound to a manager service");
 			
 			try {
 				OnBindingWithManager(managerAddress);
@@ -384,10 +355,10 @@ namespace Deveel.Data.Net {
 		
 		private void UnbindWithManager(ServiceAddress managerAddress) {
 			if (this.managerAddress == null)
-				throw new ApplicationException("This root server is not bound to a manager server");
+				throw new ApplicationException("This root service is not bound to a manager service");
 			
 			if (!this.managerAddress.Equals(managerAddress))
-				throw new ApplicationException("Trying to unbind a different manager server");
+				throw new ApplicationException("Trying to unbind a different manager service");
 			
 			try {
 				OnUnbindingWithManager(managerAddress);
@@ -419,12 +390,15 @@ namespace Deveel.Data.Net {
 		protected virtual void OnUnbindingWithManager(ServiceAddress managerAddress) {
 		}
 		
-		protected virtual void OnDispose(bool disposing) {
+		protected override void OnDispose(bool disposing) {
+			if (disposing)
+				managerAddress = null;
 		}
-		
-		protected virtual void OnInit() {
+
+		protected override IMessageProcessor CreateProcessor() {
+			return new RootServerMessageProcessor(this);
 		}
-				
+						
 		protected abstract PathAccess FetchPathAccess(string pathName);
 		
 		protected abstract void CreatePath(string pathName, string pathTypeName);
@@ -432,21 +406,7 @@ namespace Deveel.Data.Net {
 		protected abstract void DeletePath(string pathName);
 
 		protected abstract IList<PathStatus> ListPaths();
-		
-		public virtual void Init() {
-			if (initialized)
-				throw new ApplicationException("The server was already initialized.");
-			
-			OnInit();
-			
-			initialized = true;
-		}
-		
-		public void Dispose() {
-			GC.SuppressFinalize(this);
-			Dispose(true);
-		}
-		
+				
 		#region PathAccess
 		
 		protected class PathAccess {
@@ -501,11 +461,11 @@ namespace Deveel.Data.Net {
 		#region RootServerProcessor
 		
 		class RootServerMessageProcessor : IMessageProcessor {
-			public RootServerMessageProcessor(RootServer server) {
-				this.server = server;
+			public RootServerMessageProcessor(RootService service) {
+				this.service = service;
 			}
 			
-			private readonly RootServer server;			
+			private readonly RootService service;			
 			
 			public MessageStream Process(MessageStream messageStream) {
 				// The reply message,
@@ -514,18 +474,18 @@ namespace Deveel.Data.Net {
 				// The messages input the stream,
 				foreach (Message m in messageStream) {
 					try {
-						server.CheckErrorState();
+						service.CheckErrorState();
 						
 						string messageName = m.Name;
 						switch(messageName) {
 							case "publishPath": {
-								server.PublishPath((string)m[0], (DataAddress)m[1]);
+								service.PublishPath((string)m[0], (DataAddress)m[1]);
 								responseStream.AddMessage("R", 1);
 								break;
 							}
 							case "getSnapshot": {
 								string path = (string)m[0];
-								DataAddress address = server.GetSnapshot(path);
+								DataAddress address = service.GetSnapshot(path);
 								responseStream.AddMessage("R", address);
 								break;
 							}
@@ -533,7 +493,7 @@ namespace Deveel.Data.Net {
 								string path = (string)m[0];
 								DateTime start = DateTime.FromBinary((long)m[1]);
 								DateTime end = DateTime.FromBinary((long)m[2]);
-								DataAddress[] addresses = server.GetSnapshots(path, start, end);
+								DataAddress[] addresses = service.GetSnapshots(path, start, end);
 								responseStream.AddMessage("R", addresses);
 								break;
 							}
@@ -545,56 +505,56 @@ namespace Deveel.Data.Net {
 								string pathName = (string) m[0];
 								string pathTypeName = (string)m[1];
 								DataAddress rootNode = (DataAddress)m[2];
-								server.AddPath(pathName, pathTypeName, rootNode);
+								service.AddPath(pathName, pathTypeName, rootNode);
 								responseStream.AddMessage("R", 1);
 								break;
 							}
 							case "removePath": {
 								string pathName = (string)m[0];
-								server.RemovePath(pathName);
+								service.RemovePath(pathName);
 								responseStream.AddMessage("R", 1);
 								break;	
 							}
 							case "getPathType": {
 								string pathName = (string)m[0];
-								string pathType = server.GetPathType(pathName);
+								string pathType = service.GetPathType(pathName);
 								responseStream.AddMessage("R", pathType);
 								break;
 							}
 							case "checkPathType": {
 								string pathType = (string)m[0];
-								server.CheckPathType(pathType);
+								service.CheckPathType(pathType);
 								responseStream.AddMessage("R", 1);
 								break;	
 							}
 							case "initPath": {
 								string pathName = (string) m[0];
-								server.InitPath(pathName);
+								service.InitPath(pathName);
 								responseStream.AddMessage("R", 1);
 								break;	
 							}
 							case "commit": {
 								string pathName = (string) m[0];
 								DataAddress proposal = (DataAddress)m[1];
-								DataAddress rootNode = server.Commit(pathName, proposal);
+								DataAddress rootNode = service.Commit(pathName, proposal);
 								responseStream.AddMessage("R", rootNode);
 								break;
 							}
 							case "bindWithManager": {
 								ServiceAddress manager = (ServiceAddress)m[0];
-								server.BindWithManager(manager);
+								service.BindWithManager(manager);
 								responseStream.AddMessage("R", 1);
 								break;
 							}
 							case "unbindWithManager": {
 								ServiceAddress manager = (ServiceAddress)m[0];
-								server.UnbindWithManager(manager);
+								service.UnbindWithManager(manager);
 								responseStream.AddMessage("R", 1);
 								break;
 							}
 							case "pathReport": {
 								string[] pathNames, pathTypes;
-								server.PathReport(out pathNames, out pathTypes);
+								service.PathReport(out pathNames, out pathTypes);
 								responseStream.AddMessage("R", pathNames, pathTypes);
 								break;
 							}
@@ -603,7 +563,7 @@ namespace Deveel.Data.Net {
 						}
 					} catch (OutOfMemoryException e) {
 						//TODO: ERROR log ...
-						server.SetErrorState(e);
+						service.SetErrorState(e);
 						throw e;
 					} catch (Exception e) {
 						//TODO: ERROR log ...
@@ -620,21 +580,21 @@ namespace Deveel.Data.Net {
 		#region PathConnection
 		
 		class PathConnection : IPathConnection {
-			private readonly RootServer server;
+			private readonly RootService service;
 			private readonly string pathName;
 			private readonly NetworkTreeSystem treeSystem;
 			
-			public PathConnection(RootServer server, string pathName, 
+			public PathConnection(RootService service, string pathName, 
 			                      IServiceConnector connector, ServiceAddress manager, 
 			                      INetworkCache networkCache) {
-				this.server = server;
+				this.service = service;
 				this.pathName = pathName;
 				treeSystem = new NetworkTreeSystem(connector, manager, networkCache);
 			}
 			
 			public DataAddress GetSnapshot() {
 				try {
-					return server.GetSnapshot(pathName);
+					return service.GetSnapshot(pathName);
 				} catch(IOException e) {
 					throw new ApplicationException("IO Error: " + e.Message);
 				}
@@ -642,7 +602,7 @@ namespace Deveel.Data.Net {
 			
 			public DataAddress[] GetSnapshots(DateTime start, DateTime end) {
 				try {
-					return server.GetSnapshots(pathName, start, end);
+					return service.GetSnapshots(pathName, start, end);
 				} catch(IOException e) {
 					throw new ApplicationException("IO Error: " + e.Message);
 				}
@@ -650,7 +610,7 @@ namespace Deveel.Data.Net {
 			
 			public DataAddress[] GetSnapshots(DataAddress rootNode) {
 				try {
-					return server.GetSnapshots(pathName, rootNode);
+					return service.GetSnapshots(pathName, rootNode);
 				} catch(IOException e) {
 					throw new ApplicationException("IO Error: " + e.Message);
 				}
@@ -658,7 +618,7 @@ namespace Deveel.Data.Net {
 			
 			public void Publish(DataAddress rootNode) {
 				try {
-					server.PublishPath(pathName, rootNode);
+					service.PublishPath(pathName, rootNode);
 				} catch(IOException e) {
 					throw new ApplicationException("IO Error: " + e.Message);
 				}

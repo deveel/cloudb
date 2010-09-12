@@ -142,7 +142,7 @@ namespace Deveel.Data {
 				debug = new DefaultLogger();
 				debug.SetDebugLevel(1000000);
 				bufferManager = new LoggingBufferManager(path, path, false, maxPageCount, pageSize, fileExt, fileRolloverSize,
-				                                          debug, true);
+				                                          new Logger("data", GetType(), debug), true);
 				bufferManager.Start();
 
 				// The backing store

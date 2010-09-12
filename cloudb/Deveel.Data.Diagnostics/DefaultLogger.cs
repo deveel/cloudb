@@ -57,7 +57,7 @@ namespace Deveel.Data.Diagnostics {
 		/// </summary>
 		private TextWriter output;
 
-		private void Write(LogEntry entry) {
+		public void Log(LogEntry entry) {
 			lock (output) {
 				StringBuilder sb = new StringBuilder();
 
@@ -242,19 +242,19 @@ namespace Deveel.Data.Diagnostics {
 			return (level >= debug_level);
 		}
 
-		public void Write(LogLevel level, object ob, string message) {
-			Write(level, ob.GetType().Name, message);
+		public void Log(LogLevel level, object ob, string message) {
+			Log(level, ob.GetType().Name, message);
 		}
 
-		public void Write(LogLevel level, Type type, string message) {
-			Write(level, type.FullName, message);
+		public void Log(LogLevel level, Type type, string message) {
+			Log(level, type.FullName, message);
 		}
 
-		public void Write(LogLevel level, string type_string, string message) {
+		public void Log(LogLevel level, string type_string, string message) {
 			if (IsInterestedIn(level)) {
 				// InternalWrite(output, level, type_string, message);
 				Thread thread = Thread.CurrentThread;
-				Write(new LogEntry(thread.Name, message, type_string, level, DateTime.Now));
+				Log(new LogEntry(thread.Name, type_string, level, message, null, DateTime.Now));
 			}
 		}
 
@@ -268,31 +268,6 @@ namespace Deveel.Data.Diagnostics {
 			}
 		}
 		*/
-
-		public void WriteException(Exception e) {
-			WriteException(LogLevel.Error, e);
-		}
-
-		public void WriteException(LogLevel level, Exception e) {
-			lock (this) {
-				StringBuilder sb = new StringBuilder();
-				sb.AppendLine(e.Message);
-				sb.Append(e.StackTrace);
-				Write(new LogEntry(Thread.CurrentThread.Name, sb.ToString(), null, level, DateTime.Now));
-				/*
-				if (IsInterestedIn(level)) {
-					// we keep this way for exceptions, but we need to change it...
-					lock (output) {
-						WriteTime();
-						output.Write("% ");
-						output.WriteLine(e.Message);
-						output.WriteLine(e.StackTrace);
-						output.Flush();
-					}
-				}
-				*/
-			}
-		}
 
 		public void Dispose() {
 			if (output != null)

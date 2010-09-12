@@ -35,22 +35,16 @@ namespace Deveel.Data.Diagnostics {
 		private readonly string message;
 		private readonly string source;
 		private readonly LogLevel level;
+		private readonly Exception error;
 		private readonly DateTime time;
 
-		/// <summary>
-		/// Internal constructor to avoid the use externally.
-		/// </summary>
-		/// <param name="thread"></param>
-		/// <param name="message"></param>
-		/// <param name="source"></param>
-		/// <param name="level"></param>
-		/// <param name="time"></param>
-		internal LogEntry(string thread, string message, string source, LogLevel level, DateTime time) {
+		internal LogEntry(string thread, string source, LogLevel level, string message, Exception error, DateTime time) {
 			this.thread = thread;
 			this.message = message;
 			this.time = time;
 			this.level = level;
 			this.source = source;
+			this.error = error;
 		}
 
 		/// <summary>
@@ -90,6 +84,10 @@ namespace Deveel.Data.Diagnostics {
 		/// </summary>
 		public string Message {
 			get { return message; }
+		}
+
+		public Exception Error {
+			get { return error; }
 		}
 
 		/// <inheritdoc/>
