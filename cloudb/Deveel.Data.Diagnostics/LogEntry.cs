@@ -27,14 +27,14 @@ namespace Deveel.Data.Diagnostics {
 	/// The class <see cref="LogEntry"/> represents a new entry in a log.
 	/// </summary>
 	/// <remarks>
-	/// This is only used in <see cref="DefaultDebugLogger"/> to maintain
+	/// This is only used in <see cref="DefaultLogger"/> to maintain
 	/// information concerning a log entry.
 	/// </remarks>
 	public sealed class LogEntry {
 		private readonly string thread;
 		private readonly string message;
 		private readonly string source;
-		private readonly DebugLevel level;
+		private readonly LogLevel level;
 		private readonly DateTime time;
 
 		/// <summary>
@@ -45,7 +45,7 @@ namespace Deveel.Data.Diagnostics {
 		/// <param name="source"></param>
 		/// <param name="level"></param>
 		/// <param name="time"></param>
-		internal LogEntry(string thread, string message, string source, DebugLevel level, DateTime time) {
+		internal LogEntry(string thread, string message, string source, LogLevel level, DateTime time) {
 			this.thread = thread;
 			this.message = message;
 			this.time = time;
@@ -70,7 +70,7 @@ namespace Deveel.Data.Diagnostics {
 		/// <summary>
 		/// Gets the level of the logged entry.
 		/// </summary>
-		public DebugLevel Level {
+		public LogLevel Level {
 			get { return level; }
 		}
 

@@ -59,18 +59,15 @@
   <ItemGroup>
     <Compile Include="Deveel.Data.Caching\Cache.cs" />
     <Compile Include="Deveel.Data.Caching\ICache.cs" />
-    <Compile Include="Deveel.Data.Control\ConfigProperty.cs" />
-    <Compile Include="Deveel.Data.Control\DbConfig.cs" />
-    <Compile Include="Deveel.Data.Control\DefaultDbConfig.cs" />
-    <Compile Include="Deveel.Data.Control\IDbConfig.cs" />
     <Compile Include="Deveel.Data.Diagnostics\Analytics.cs" />
     <Compile Include="Deveel.Data.Diagnostics\AnalyticsRecord.cs" />
-    <Compile Include="Deveel.Data.Diagnostics\DebugLevel.cs" />
-    <Compile Include="Deveel.Data.Diagnostics\DefaultDebugLogger.cs" />
-    <Compile Include="Deveel.Data.Diagnostics\EmptyDebugLogger.cs" />
-    <Compile Include="Deveel.Data.Diagnostics\IDebugLogger.cs" />
-    <Compile Include="Deveel.Data.Diagnostics\Log.cs" />
+    <Compile Include="Deveel.Data.Diagnostics\LoggerNameAttribute.cs" />
+    <Compile Include="Deveel.Data.Diagnostics\LogLevel.cs" />
+    <Compile Include="Deveel.Data.Diagnostics\DefaultLogger.cs" />
+    <Compile Include="Deveel.Data.Diagnostics\EmptyLogger.cs" />
+    <Compile Include="Deveel.Data.Diagnostics\ILogger.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LogEntry.cs" />
+    <Compile Include="Deveel.Data.Diagnostics\Logger.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LogWriter.cs" />
     <Compile Include="Deveel.Data.Net\AdminServer.cs" />
     <Compile Include="Deveel.Data.Net\BlockReadException.cs" />
@@ -100,8 +97,7 @@
     <Compile Include="Deveel.Data.Net\MessageStreamSerializer.cs" />
     <Compile Include="Deveel.Data.Net\NetworkAdminException.cs" />
     <Compile Include="Deveel.Data.Net\NetworkClient.cs" />
-    <Compile Include="Deveel.Data.Net\NetworkConfiguration.cs" />
-    <Compile Include="Deveel.Data.Net\NetworkConfigurationSource.cs" />
+    <Compile Include="Deveel.Data.Net\NetworkConfigSource.cs" />
     <Compile Include="Deveel.Data.Net\NetworkException.cs" />
     <Compile Include="Deveel.Data.Net\NetworkProfile.cs" />
     <Compile Include="Deveel.Data.Net\NetworkProfile_Admin.cs" />
@@ -121,6 +117,7 @@
     <Compile Include="Deveel.Data.Net\TcpProxyServiceConnector.cs" />
     <Compile Include="Deveel.Data.Net\TcpServiceConnector.cs" />
     <Compile Include="Deveel.Data.Util\StrongPagedAccess.cs" />
+    <Compile Include="Deveel.Data\ConfigSource.cs" />
     <Compile Include="Deveel.Data\TreeGraph.cs" />
     <Compile Include="Deveel.Data.Store\AbstractStore.cs" />
     <Compile Include="Deveel.Data.Store\AreaInputStream.cs" />

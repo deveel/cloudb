@@ -1,5 +1,5 @@
 //  
-//  IDebugLogger.cs
+//  ILogger.cs
 //  
 //  Author:
 //       Antonello Provenzano <antonello@deveel.com>
@@ -22,8 +22,6 @@
 
 using System;
 
-using Deveel.Data.Control;
-
 namespace Deveel.Data.Diagnostics {
 	/// <summary>
 	/// An interface for logging errors, warnings, messages, and exceptions 
@@ -33,14 +31,14 @@ namespace Deveel.Data.Diagnostics {
 	/// The implementation of where the log is written (to the console, file, 
 	/// window, etc) is implementation defined.
 	/// </remarks>
-	public interface IDebugLogger : IDisposable {
+	public interface ILogger : IDisposable {
 		/// <summary>
 		/// Initialize the logger instance with the configuration
 		/// properties specified.
 		/// </summary>
 		/// <param name="config">The configurations used to configure
 		/// the logger.</param>
-		void Init(IDbConfig config);
+		void Init(ConfigSource config);
 
 		/// <summary>
 		/// Queries the current debug level.
@@ -55,7 +53,7 @@ namespace Deveel.Data.Diagnostics {
 		/// Returns <b>true</b> if the debug listener is interested in debug 
 		/// information of this given level.
 		/// </returns>
-		bool IsInterestedIn(DebugLevel level);
+		bool IsInterestedIn(LogLevel level);
 
 		/// <summary>
 		/// This writes the given debugging string.
@@ -65,11 +63,11 @@ namespace Deveel.Data.Diagnostics {
 		/// of 255 is always printed).</param>
 		/// <param name="ob">The object instance which issued the call.</param>
 		/// <param name="message">The message to log.</param>
-		void Write(DebugLevel level, object ob, string message);
+		void Write(LogLevel level, object ob, string message);
 
-		void Write(DebugLevel level, Type type, string message);
+		void Write(LogLevel level, Type type, string message);
 
-		void Write(DebugLevel level, string typeString, string message);
+		void Write(LogLevel level, string typeString, string message);
 
 		/// <summary>
 		/// This writes the given <see cref="Exception"/>.
@@ -89,6 +87,6 @@ namespace Deveel.Data.Diagnostics {
 		/// <remarks>
 		/// This method is used to output a warning exception.
 		/// </remarks>
-		void WriteException(DebugLevel level, Exception e);
+		void WriteException(LogLevel level, Exception e);
 	}
 }

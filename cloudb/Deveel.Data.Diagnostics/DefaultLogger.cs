@@ -1,5 +1,5 @@
 //  
-//  DefaultDebugLogger.cs
+//  DefaultLogger.cs
 //  
 //  Author:
 //       Antonello Provenzano <antonello@deveel.com>
@@ -25,12 +25,9 @@ using System.IO;
 using System.Text;
 using System.Threading;
 
-using Deveel.Data;
-using Deveel.Data.Control;
-
 namespace Deveel.Data.Diagnostics {
 	/// <summary>
-	/// A default implementation of <see cref="IDebugLogger"/> that logs 
+	/// A default implementation of <see cref="ILogger"/> that logs 
 	/// messages to a <see cref="TextWriter"/> object.
 	/// </summary>
 	/// <remarks>
@@ -38,7 +35,7 @@ namespace Deveel.Data.Diagnostics {
 	/// depth.  So for example, only message above or equal to level Alert are
 	/// shown.
 	/// </remarks>
-	public class DefaultDebugLogger : IDebugLogger {
+	public class DefaultLogger : ILogger {
 		/// <summary>
 		/// The debug Lock object.
 		/// </summary>
@@ -64,7 +61,7 @@ namespace Deveel.Data.Diagnostics {
 			lock (output) {
 				StringBuilder sb = new StringBuilder();
 
-				if (entry.Level < DebugLevel.Message) {
+				if (entry.Level < LogLevel.Message) {
 					sb.Append("> ");
 				} else {
 					sb.Append("% ");
@@ -174,13 +171,13 @@ namespace Deveel.Data.Diagnostics {
 			return res;
 		}
 
-		// ---------- Implemented from IDebugLogger ----------
+		// ---------- Implemented from ILogger ----------
 
-		public void Init(IDbConfig config) {
-			string log_path_string = config.GetValue("log_path");
-			string root_path_var = config.GetValue("root_path");
-			string read_only_access = config.GetValue("read_only");
-			string debug_logs = config.GetValue("debug_logs");
+		public void Init(ConfigSource config) {
+			string log_path_string = config.GetString("log_path");
+			string root_path_var = config.GetString("root_path");
+			string read_only_access = config.GetString("read_only");
+			string debug_logs = config.GetString("debug_logs");
 			bool read_only_bool = false;
 			if (read_only_access != null) {
 				read_only_bool = String.Compare(read_only_access, "enabled", true) == 0;
@@ -197,7 +194,7 @@ namespace Deveel.Data.Diagnostics {
 			if (debug_logs_bool && !read_only_bool &&
 				log_path_string != null && !log_path_string.Equals("")) {
 				// First set up the debug information in this VM for the 'Debug' class.
-				string log_path = ParseFileString(config.CurrentPath, root_path_var, log_path_string);
+				string log_path = ParseFileString(Environment.CurrentDirectory, root_path_var, log_path_string);
 				// If the path doesn't exist the make it.
 				if (!Directory.Exists(log_path))
 					Directory.CreateDirectory(log_path);
@@ -205,7 +202,7 @@ namespace Deveel.Data.Diagnostics {
 				LogWriter f_writer;
 				String dlog_file_name = "";
 				try {
-					dlog_file_name = config.GetValue("debug_log_file");
+					dlog_file_name = config.GetString("log_file");
 					string debug_log_file = Path.Combine(Path.GetFullPath(log_path), dlog_file_name);
 
 					// Allow log size to grow to 512k and allow 12 archives of the log
@@ -227,12 +224,12 @@ namespace Deveel.Data.Diagnostics {
 				output = new EmptyTextWriter();
 			}
 
-			debug_level = Int32.Parse(config.GetValue("debug_level"));
+			debug_level = config.GetInt32("log_level");
 			if (debug_level == -1)
 				// stops all the output
 				debug_level = 255;
 
-			string format = config.GetValue("debug_format");
+			string format = config.GetString("log_format");
 			if (format != null)
 				message_format = format;
 		}
@@ -241,19 +238,19 @@ namespace Deveel.Data.Diagnostics {
 			debug_level = value;
 		}
 
-		public bool IsInterestedIn(DebugLevel level) {
+		public bool IsInterestedIn(LogLevel level) {
 			return (level >= debug_level);
 		}
 
-		public void Write(DebugLevel level, object ob, string message) {
+		public void Write(LogLevel level, object ob, string message) {
 			Write(level, ob.GetType().Name, message);
 		}
 
-		public void Write(DebugLevel level, Type type, string message) {
+		public void Write(LogLevel level, Type type, string message) {
 			Write(level, type.FullName, message);
 		}
 
-		public void Write(DebugLevel level, string type_string, string message) {
+		public void Write(LogLevel level, string type_string, string message) {
 			if (IsInterestedIn(level)) {
 				// InternalWrite(output, level, type_string, message);
 				Thread thread = Thread.CurrentThread;
@@ -273,10 +270,10 @@ namespace Deveel.Data.Diagnostics {
 		*/
 
 		public void WriteException(Exception e) {
-			WriteException(DebugLevel.Error, e);
+			WriteException(LogLevel.Error, e);
 		}
 
-		public void WriteException(DebugLevel level, Exception e) {
+		public void WriteException(LogLevel level, Exception e) {
 			lock (this) {
 				StringBuilder sb = new StringBuilder();
 				sb.AppendLine(e.Message);

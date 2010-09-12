@@ -7,7 +7,7 @@ using Deveel.Data.Store;
 namespace Deveel.Data {
 	public sealed class FileSystemDatabase : IDatabase {
 		private readonly string path;
-		private DefaultDebugLogger debug;
+		private DefaultLogger debug;
 		private LoggingBufferManager bufferManager;
 		private JournalledFileStore fileStore;
 		private StoreTreeSystem treeSystem;
@@ -25,7 +25,7 @@ namespace Deveel.Data {
 
 		public FileSystemDatabase(string path) {
 			this.path = path;
-			debug = new DefaultDebugLogger();
+			debug = new DefaultLogger();
 			debug.SetDebugLevel(1000000);
 
 			// set the defaults ...
@@ -139,7 +139,7 @@ namespace Deveel.Data {
 				const string fileExt = "db";
 				const string dbFileName = "data";
 
-				debug = new DefaultDebugLogger();
+				debug = new DefaultLogger();
 				debug.SetDebugLevel(1000000);
 				bufferManager = new LoggingBufferManager(path, path, false, maxPageCount, pageSize, fileExt, fileRolloverSize,
 				                                          debug, true);

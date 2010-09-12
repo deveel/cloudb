@@ -10,7 +10,7 @@ namespace Deveel.Data.Net {
 		private const string ManagerRunFile = "runmanager";
 		private const string RootRunFile = "runroot";
 
-		public TcpFileAdminServer(NetworkConfiguration config, IPAddress address, int port, string password, string basePath) 
+		public TcpFileAdminServer(NetworkConfigSource config, IPAddress address, int port, string password, string basePath) 
 			: base(config, address, port, password) {
 
 			if (!Directory.Exists(basePath))

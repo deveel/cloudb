@@ -10,40 +10,21 @@ namespace Deveel.Data.Net {
 			this.network_connector = connector;
 		}
 
-		private NetworkConfiguration network_config;
+		private NetworkConfigSource network_config;
 		private readonly IServiceConnector network_connector;
 		private List<MachineProfile> machine_profiles;
 
-		public NetworkConfiguration Configuration {
+		public NetworkConfigSource Configuration {
 			get { return network_config; }
-			set {
-				network_config = value;
-				network_config.Reload();
-			}
+			set { network_config = value; }
 		}
 
-		public List<ServiceAddress> SortedServerList {
+		public ServiceAddress[] SortedServerList {
 			get {
-				String node_list = network_config.NetworkNodelist;
-				if (node_list == null || node_list.Length == 0)
-					return new List<ServiceAddress>(0);
-
-				List<ServiceAddress> slist = new List<ServiceAddress>();
-				try {
-					string[] nodes = node_list.Split(',');
-					foreach (string node in nodes) {
-						slist.Add(ServiceAddress.Parse(node.Trim()));
-					}
-				} catch (ApplicationException e) {
-					throw new Exception("Unable to parse network configuration node list.", e);
-				} catch (IOException e) {
-					throw new Exception("IO Error parsing network configuration node list.", e);
-				}
-
+				ServiceAddress[] node_list = network_config.NetworkNodes;
 				// Sort the list of service addresses (the list is probably already sorted)
-				slist.Sort();
-
-				return slist;
+				Array.Sort(node_list);
+				return node_list;
 			}
 		}
 

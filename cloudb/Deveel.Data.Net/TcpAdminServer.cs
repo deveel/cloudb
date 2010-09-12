@@ -8,11 +8,11 @@ using System.Threading;
 namespace Deveel.Data.Net {
 	public abstract class TcpAdminServer : AdminServer {
 		private readonly string password;
-		private readonly NetworkConfiguration config;
+		private readonly NetworkConfigSource config;
 		private readonly ServiceAddress serviceAddress;
 		private bool polling;
 
-		protected TcpAdminServer(NetworkConfiguration config, IPAddress address, int port, string  password) {
+		protected TcpAdminServer(NetworkConfigSource config, IPAddress address, int port, string  password) {
 			this.config = config;
 			serviceAddress = new ServiceAddress(address, port);
 			this.password = password;

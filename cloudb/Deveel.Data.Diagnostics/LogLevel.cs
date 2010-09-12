@@ -1,5 +1,5 @@
 //  
-//  DebugLevel.cs
+//  LogLevel.cs
 //  
 //  Author:
 //       Antonello Provenzano <antonello@deveel.com>
@@ -25,8 +25,8 @@ namespace Deveel.Data.Diagnostics {
 	///<summary>
 	/// Debug level static values.
 	///</summary>
-	public sealed class DebugLevel {
-		private DebugLevel(string name, int value) {
+	public sealed class LogLevel {
+		private LogLevel(string name, int value) {
 			this.name = name;
 			this.value = value;
 		}
@@ -37,32 +37,32 @@ namespace Deveel.Data.Diagnostics {
 		///<summary>
 		/// General processing 'noise'
 		///</summary>
-		public static readonly DebugLevel Information = new DebugLevel("INFO", 100);
+		public static readonly LogLevel Information = new LogLevel("INFO", 100);
 
 		///<summary>
 		/// Query information 'noise'
 		///</summary>
-		public static readonly DebugLevel QueryInformation = new DebugLevel("QUERY_INFO", 101);
+		public static readonly LogLevel QueryInformation = new LogLevel("QUERY_INFO", 101);
 
 		///<summary>
 		/// A message of some importance
 		///</summary>
-		public static readonly DebugLevel Warning = new DebugLevel("WARN", 20);
+		public static readonly LogLevel Warning = new LogLevel("WARN", 20);
 
 		///<summary>
 		/// Crackers, etc
 		///</summary>
-		public static readonly DebugLevel Alert = new DebugLevel("ALERT", 30);
+		public static readonly LogLevel Alert = new LogLevel("ALERT", 30);
 
 		///<summary>
 		/// Errors, exceptions
 		///</summary>
-		public static readonly DebugLevel Error = new DebugLevel("ERROR", 100);
+		public static readonly LogLevel Error = new LogLevel("ERROR", 100);
 
 		///<summary>
 		/// Always printed messages (not error's however)
 		///</summary>
-		public static readonly DebugLevel Message = new DebugLevel("MESSAGE", 10000);
+		public static readonly LogLevel Message = new LogLevel("MESSAGE", 10000);
 
 		public string Name {
 			get { return name; }
@@ -73,7 +73,7 @@ namespace Deveel.Data.Diagnostics {
 		}
 
 		public override bool Equals(object obj) {
-			DebugLevel level = obj as DebugLevel;
+			LogLevel level = obj as LogLevel;
 			return level != null && value == level.value;
 		}
 
@@ -85,55 +85,55 @@ namespace Deveel.Data.Diagnostics {
 			return name;
 		}
 
-		internal static DebugLevel Create(string name, int value) {
-			return new DebugLevel(name, value);
+		internal static LogLevel Create(string name, int value) {
+			return new LogLevel(name, value);
 		}
 
-		public static bool operator >(DebugLevel a, DebugLevel b) {
+		public static bool operator >(LogLevel a, LogLevel b) {
 			return a.value > b.value;
 		}
 
-		public static bool operator >(DebugLevel a, int value) {
+		public static bool operator >(LogLevel a, int value) {
 			return a.value > value;
 		}
 
-		public static bool operator <(DebugLevel a, DebugLevel b) {
+		public static bool operator <(LogLevel a, LogLevel b) {
 			return a.value < b.value;
 		}
 
-		public static bool operator <(DebugLevel a, int value) {
+		public static bool operator <(LogLevel a, int value) {
 			return a.value < value;
 		}
 
-		public static bool operator >=(DebugLevel a, DebugLevel b) {
+		public static bool operator >=(LogLevel a, LogLevel b) {
 			return a.value >= b.value;
 		}
 
-		public static bool operator >=(DebugLevel a, int value) {
+		public static bool operator >=(LogLevel a, int value) {
 			return a.value >= value;
 		}
 
-		public static bool operator <=(DebugLevel a, DebugLevel b) {
+		public static bool operator <=(LogLevel a, LogLevel b) {
 			return a.value <= b.value;
 		}
 
-		public static bool operator <=(DebugLevel a, int value) {
+		public static bool operator <=(LogLevel a, int value) {
 			return a.value <= value;
 		}
 
-		public static bool operator ==(DebugLevel a, DebugLevel b) {
+		public static bool operator ==(LogLevel a, LogLevel b) {
 			return a.Equals(b);
 		}
 
-		public static bool operator ==(DebugLevel a, int value) {
+		public static bool operator ==(LogLevel a, int value) {
 			return a.value == value;
 		}
 
-		public static bool operator !=(DebugLevel a, DebugLevel b) {
+		public static bool operator !=(LogLevel a, LogLevel b) {
 			return !(a == b);
 		}
 
-		public static bool operator !=(DebugLevel a, int value) {
+		public static bool operator !=(LogLevel a, int value) {
 			return !(a == value);
 		}
 	}
