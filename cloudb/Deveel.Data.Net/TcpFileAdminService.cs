@@ -47,21 +47,21 @@ namespace Deveel.Data.Net {
 				if (!Directory.Exists(npath))
 					Directory.CreateDirectory(npath);
 				File.Create(Path.Combine(basePath, BlockRunFile));
-				return new FileSystemBlockService(new TcpServiceConnector(Password), npath);
+				return new FileSystemBlockService(Connector, npath);
 			} 
 			if (serviceType == ServiceType.Manager) {
 				string npath = Path.Combine(basePath, "manager");
 				if (!Directory.Exists(npath))
 					Directory.CreateDirectory(npath);
 				File.Create(Path.Combine(basePath, ManagerRunFile));
-				return new FileSystemManagerService(new TcpServiceConnector(Password), basePath, npath, Address);
+				return new FileSystemManagerService(Connector, basePath, npath, Address);
 			} 
 			if (serviceType == ServiceType.Root) {
 				string npath = Path.Combine(basePath, "root");
 				if (!Directory.Exists(npath))
 					Directory.CreateDirectory(npath);
 				File.Create(Path.Combine(basePath, RootRunFile));
-				return new FileSystemRootService(new TcpServiceConnector(Password), npath);
+				return new FileSystemRootService(Connector, npath);
 			}
 
 			throw new ArgumentException();

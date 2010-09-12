@@ -5,7 +5,7 @@ using System.IO;
 namespace Deveel.Data.Net {
 	public sealed class FileSystemManagerService : ManagerService {
 		private readonly string basePath;
-		private readonly string dbpath;
+		private readonly string dbPath;
 		private FileSystemDatabase database;
 		
 		private const string RegisteredBlockServers = "blockservers";
@@ -15,11 +15,11 @@ namespace Deveel.Data.Net {
 		                               string dbPath, ServiceAddress address)
 			: base(connector, address) {
 			this.basePath = basePath;
-			this.dbpath = dbpath;
+			this.dbPath = dbPath;
 		}
 		
 		protected override void OnInit() {
-			database = new FileSystemDatabase(dbpath);
+			database = new FileSystemDatabase(dbPath);
 			database.Start();
 
 			SetBlockDatabase(database);

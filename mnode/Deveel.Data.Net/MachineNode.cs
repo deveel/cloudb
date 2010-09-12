@@ -5,6 +5,7 @@ using System.Net.Sockets;
 
 using Deveel.Configuration;
 using Deveel.Data.Diagnostics;
+using Deveel.Shell;
 
 namespace Deveel.Data.Net {
 	public static class MachineNode {
@@ -20,7 +21,13 @@ namespace Deveel.Data.Net {
 
 		[STAThread]
 		private static int Main(string[] args) {
-			//TODO: print an header and the product version ...
+			ProductInfo libInfo = ProductInfo.GetProductInfo(typeof(TcpFileAdminService));
+			ProductInfo nodeInfo = ProductInfo.GetProductInfo(typeof(MachineNode));
+
+			Console.Out.WriteLine("{0} {1} ( {2} )", nodeInfo.Title, nodeInfo.Version, nodeInfo.Copyright);
+			Console.Out.WriteLine(nodeInfo.Description);
+			Console.Out.WriteLine();
+			Console.Out.WriteLine("{0} {1} ( {2} )", libInfo.Title, libInfo.Version, libInfo.Copyright);
 
 			string nodeConfig = null, netConfig = null;
 			string hostArg = null, port_arg = null;
@@ -28,18 +35,18 @@ namespace Deveel.Data.Net {
 			StringWriter wout = new StringWriter();
 			CommandLineOptions options = GetOptions();
 
-			CommandLine command_line;
+			CommandLine commandLine;
 
 			bool failed = false;
 
 			try {
 				ICommandLineParser parser = CommandLineParser.CreateParse(ParseStyle.Gnu);
-				command_line = parser.Parse(options, args);
+				commandLine = parser.Parse(options, args);
 
-				nodeConfig = command_line.GetOptionValue("nodeconfig", "node.conf");
-				netConfig = command_line.GetOptionValue("netconfig", "network.conf");
-				hostArg = command_line.GetOptionValue("host");
-				port_arg = command_line.GetOptionValue("port");
+				nodeConfig = commandLine.GetOptionValue("nodeconfig", "node.conf");
+				netConfig = commandLine.GetOptionValue("netconfig", "network.conf");
+				hostArg = commandLine.GetOptionValue("host");
+				port_arg = commandLine.GetOptionValue("port");
 			} catch(CommandLineParseException) {
 				wout.WriteLine("Error parsing arguments.");
 				failed = true;
@@ -71,25 +78,25 @@ namespace Deveel.Data.Net {
 
 			try {
 				// Get the node configuration file,
-				ConfigSource node_config_resource = new ConfigSource();
+				ConfigSource nodeConfigSource = new ConfigSource();
 				using (FileStream fin = new FileStream(nodeConfig, FileMode.Open, FileAccess.Read, FileShare.None)) {
-					node_config_resource.Load(new BufferedStream(fin));
+					nodeConfigSource.Load(new BufferedStream(fin));
 				}
 
 				// Parse the network configuration string,
-				NetworkConfigSource net_config_resource;
+				NetworkConfigSource netConfigSource;
 				using(FileStream stream = new FileStream(netConfig, FileMode.Open, FileAccess.Read, FileShare.None)) {
-					net_config_resource = new NetworkConfigSource(stream);
+					netConfigSource = new NetworkConfigSource(stream);
 				}
 
-				string password = net_config_resource.GetString("network_password", null);
+				string password = netConfigSource.GetString("network_password", null);
 				if (password == null) {
 					Console.Out.WriteLine("Error: couldn't determine the network password.");
 					return 1;
 				}
 
 				// configure the loggers
-				LogManager.Init(node_config_resource);
+				LogManager.Init(nodeConfigSource);
 
 				//TODO: support also IPv6
 
@@ -122,10 +129,10 @@ namespace Deveel.Data.Net {
 				if (hostArg != null)
 					hostArg = hostArg + " ";
 
-				string nodeDir = net_config_resource.GetString("node_directory", Environment.CurrentDirectory);
+				string nodeDir = netConfigSource.GetString("node_directory", Environment.CurrentDirectory);
 
 				Console.Out.WriteLine("Machine Node, " + (hostArg != null ? hostArg : "") + "port: " + port_arg);
-				TcpAdminService inst = new TcpFileAdminService(net_config_resource, host, port, password, nodeDir);
+				TcpAdminService inst = new TcpFileAdminService(netConfigSource, host, port, password, nodeDir);
 				inst.Init();
 			} catch(Exception e) {
 				Console.Out.WriteLine(e.Message);

@@ -14,7 +14,7 @@ namespace Deveel.Data.Net {
 		protected override void OnInit() {
 			try {
 				// Read the manager service address from the properties file,
-				Deveel.Data.Util.Properties p = new Deveel.Data.Util.Properties();
+				Util.Properties p = new Util.Properties();
 
 				// Contains the root properties,
 				string propFile = Path.Combine(basePath, "00.properties");
@@ -48,7 +48,7 @@ namespace Deveel.Data.Net {
 
 			// Create a summary file for storing information about the path
 			string summaryFile = Path.Combine(basePath, pathName + ".summary");
-			Deveel.Data.Util.Properties p = new Deveel.Data.Util.Properties();
+			Util.Properties p = new Util.Properties();
 			p.SetProperty("path_type", pathTypeName);
 			using (FileStream fileStream = new FileStream(summaryFile, FileMode.CreateNew, FileAccess.Write)) {
 				p.Store(fileStream, null);

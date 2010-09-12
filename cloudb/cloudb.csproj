@@ -88,7 +88,9 @@
     <Compile Include="Deveel.Data.Net\FileSystemBlockService.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Deveel.Data.Net\FileSystemManagerService.cs" />
+    <Compile Include="Deveel.Data.Net\FileSystemManagerService.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Deveel.Data.Net\FileSystemRootService.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -104,7 +106,17 @@
     <Compile Include="Deveel.Data.Net\ManagerService.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Deveel.Data.Net\MemoryBlockService.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Deveel.Data.Net\MemoryBlockStore.cs" />
+    <Compile Include="Deveel.Data.Net\MemoryManagerService.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Deveel.Data.Net\MemoryNetworkCache.cs" />
+    <Compile Include="Deveel.Data.Net\MemoryRootService.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Deveel.Data.Net\MessageStreamSerializer.cs" />
     <Compile Include="Deveel.Data.Net\NetworkAdminException.cs" />
     <Compile Include="Deveel.Data.Net\NetworkClient.cs" />
@@ -129,12 +141,18 @@
     <Compile Include="Deveel.Data.Net\TcpFileAdminService.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Deveel.Data.Net\TcpMemoryAdminService.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Deveel.Data.Net\TcpNetworkClient.cs" />
     <Compile Include="Deveel.Data.Net\TcpProxyNetworkClient.cs" />
     <Compile Include="Deveel.Data.Net\TcpProxyServiceConnector.cs" />
     <Compile Include="Deveel.Data.Net\TcpServiceConnector.cs" />
+    <Compile Include="ComponentAce.Compression.Libs.zlib\Adler32.cs" />
+    <Compile Include="Deveel.Data.Util\ProductInfo.cs" />
     <Compile Include="Deveel.Data.Util\StrongPagedAccess.cs" />
     <Compile Include="Deveel.Data\ConfigSource.cs" />
+    <Compile Include="Deveel.Data\MemoryDatabase.cs" />
     <Compile Include="Deveel.Data\TreeGraph.cs" />
     <Compile Include="Deveel.Data.Store\AbstractStore.cs" />
     <Compile Include="Deveel.Data.Store\AreaInputStream.cs" />

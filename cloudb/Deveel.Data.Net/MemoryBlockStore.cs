@@ -6,64 +6,46 @@ using ComponentAce.Compression.Libs.zlib;
 using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
-	public sealed class FileBlockStore : IBlockStore {
+	public sealed class MemoryBlockStore : IBlockStore {
 		private readonly long blockId;
-		private readonly string fileName;
-		private FileStream content;
+		private MemoryStream content;
 		private int length;
 		private StrongPagedAccess pagedAccess;
-		
-		public FileBlockStore(long blockId, string fileName) {
-			this.blockId = blockId;
-			this.fileName = fileName;
-		}
-		
+
 		private const int Header = 6 * 16384;
-		
-		public string FileName {
-			get { return fileName; }
+
+		internal MemoryBlockStore(long blockId) {
+			this.blockId = blockId;
 		}
-		
+
 		public bool Exists {
-			get { return File.Exists(fileName); }
+			get { return true; }
 		}
-		
+
 		public int Type {
-			get { return 1;	}
+			get { return 1; }
 		}
-		
+
 		public bool Open() {
-			// If the store file doesn't exist, create it
-			if (!File.Exists(fileName)) {
-				content = new FileStream(fileName, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.Read, 2048, FileOptions.WriteThrough);
-				// Set the header table in the newly created file,
-				content.SetLength(Header);
-				content.Seek(0, SeekOrigin.Begin);
-				length = Header;
-				pagedAccess = new StrongPagedAccess(content, 2048);
-				return true;
-			} else {
-				content = new FileStream(fileName, FileMode.Open, FileAccess.ReadWrite, FileShare.Read, 2048, FileOptions.WriteThrough);
-				length = (int)content.Length;
-				pagedAccess = new StrongPagedAccess(content, 2048);
-				return false;
-			}
+			content = new MemoryStream(1024);
+			content.SetLength(Header);
+			content.Seek(0, SeekOrigin.Begin);
+			length = Header;
+			pagedAccess = new StrongPagedAccess(content, 2048);
+			return true;
 		}
-		
+
 		public void Write(int dataId, byte[] buffer, int offset, int count) {
 			// Arg checks
-			if (count < 0 || count >= 65536) {
-				throw new ArgumentException("len < 0 || len > 65535");
-			}
-			if (count + offset > buffer.Length) {
+			if (count < 0 || count >= 65536)
+				throw new ArgumentException("count < 0 || count > 65535");
+			if (count + offset > buffer.Length)
 				throw new ArgumentException();
-			}
-			if (offset < 0) {
+			if (offset < 0)
 				throw new ArgumentException();
-			}
-			if (dataId < 0 || dataId >= 16384) {
-				throw new ArgumentException("data_id out of range");
-			}
+
+			if (dataId < 0 || dataId >= 16384)
+				throw new ArgumentException("dataId out of range");
 
 			byte[] tmp_area = new byte[6];
 
@@ -75,44 +57,45 @@ namespace Deveel.Data.Net {
 			// These values should be 0, if not we've already written data here,
 			if (dataIdPos != 0 || dataIdLength != 0)
 				throw new ApplicationException("data_id previously written");
-			
+
 			// Write the content to the end of the file,
 			content.Seek(length, SeekOrigin.Begin);
 			content.Write(buffer, offset, count);
 			pagedAccess.InvalidateSection(length, count);
-			
+
 			// Write the table entry,
 			ByteBuffer.WriteInt4(length, tmp_area, 0);
 			ByteBuffer.WriteInt2((short)count, tmp_area, 4);
 			content.Seek(pos, SeekOrigin.Begin);
 			content.Write(tmp_area, 0, 6);
 			pagedAccess.InvalidateSection(pos, 6);
-			
+
 			// Set the new content length
 			length = length + count;
 		}
 
-		public int Read(int dataId, byte[] buffer, int offset, int len) {
+		public int Read(int dataId, byte[] buffer, int offset, int count) {
 			if (dataId < 0 || dataId >= 16384)
 				throw new ArgumentException("data_id out of range");
 
 			// Seek to the position of this data id in the table,
-			int pos = dataId*6;
+			int pos = dataId * 6;
 			int dataIdPos = pagedAccess.ReadInt32(pos);
-			int dataIdLength = ((int) pagedAccess.ReadInt16(pos + 4)) & 0x0FFFF;
+			int dataIdLength = ((int)pagedAccess.ReadInt16(pos + 4)) & 0x0FFFF;
 
 			// If position for the data_id is 0, the data hasn't been written,
-			len = Math.Min(len, dataIdLength);
+			count = Math.Min(count, dataIdLength);
 			if (dataIdPos == 0)
-				throw new BlockReadException("Data id " + dataId + " is empty (block " + blockId + ")");
+				throw new BlockReadException("Data id " + dataId + " is empty");
 
 			// Fetch the content,
 			content.Seek(dataIdPos, SeekOrigin.Begin);
-			return content.Read(buffer, offset, len);
+			return content.Read(buffer, offset, count);
 		}
 
 		public Stream OpenInputStream() {
-			return new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.Read);
+			byte[] buffer = content.ToArray();
+			return new MemoryStream(buffer);
 		}
 
 		public NodeSet GetNodeSet(int dataId) {
@@ -120,9 +103,9 @@ namespace Deveel.Data.Net {
 				throw new ArgumentException("data_id out of range");
 
 			// Seek to the position of this data id in the table,
-			int pos = dataId*6;
+			int pos = dataId * 6;
 			int dataIdPos = pagedAccess.ReadInt32(pos);
-			int dataIdLength = ((int) pagedAccess.ReadInt16(pos + 4)) & 0x0FFFF;
+			int dataIdLength = ((int)pagedAccess.ReadInt16(pos + 4)) & 0x0FFFF;
 
 			// If position for the data_id is 0, the data hasn't been written,
 			byte[] buf = new byte[dataIdLength];
@@ -157,19 +140,19 @@ namespace Deveel.Data.Net {
 			content.Write(tmp_area, 0, 6);
 			pagedAccess.InvalidateSection(pos, 6);
 		}
-		
+
 		public void Flush() {
 			if (content != null)
 				content.Flush();
 		}
-		
+
 		public void Close() {
 			content.Close();
 			content = null;
 			length = 0;
 			pagedAccess = null;
 		}
-		
+
 		public long CreateChecksum() {
 			Adler32 adler32 = new Adler32();
 			long a1 = 0, a2 = 0;

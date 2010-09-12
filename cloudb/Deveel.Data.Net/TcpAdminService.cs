@@ -11,6 +11,7 @@ namespace Deveel.Data.Net {
 		private readonly NetworkConfigSource config;
 		private readonly ServiceAddress serviceAddress;
 		private bool polling;
+		private TcpServiceConnector connector;
 
 		protected TcpAdminService(NetworkConfigSource config, IPAddress address, int port, string  password) {
 			this.config = config;
@@ -18,12 +19,16 @@ namespace Deveel.Data.Net {
 			this.password = password;
 		}
 
-		protected string Password {
-			get { return password; }
-		}
-
 		protected ServiceAddress Address {
 			get { return serviceAddress; }
+		}
+
+		protected TcpServiceConnector Connector {
+			get {
+				if (connector == null)
+					connector = new TcpServiceConnector(password);
+				return connector;
+			}
 		}
 
 		private void ConfigLog() {
