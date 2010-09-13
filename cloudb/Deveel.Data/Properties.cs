@@ -16,8 +16,17 @@ namespace Deveel.Data {
 			collection = new StringCollection(file, DefaultPropertyComparer);
 		}
 
-		public ISortedCollection<string> Keys {
+		public KeysCollection Keys {
 			get { return new KeysCollection(collection); }
+		}
+
+		public int Count {
+			get { return collection.Count; }
+		}
+
+		public string this[string name] {
+			get { return GetValue(name); }
+			set { SetValue(name, value); }
 		}
 
 		private static String KeyValuePart(string value) {
@@ -35,7 +44,7 @@ namespace Deveel.Data {
 			}
 		}
 
-		public void SetProperty(string key, string value) {
+		public void SetValue(string key, string value) {
 			CheckValidKey(key);
 
 			// If the value is being removed, remove the key from the set,
@@ -44,7 +53,7 @@ namespace Deveel.Data {
 				collection.Remove(key);
 			} else {
 				// Get the current value for this key in the set
-				String cur_val = GetProperty(key);
+				String cur_val = GetValue(key);
 				// If there's a value currently stored,
 				if (cur_val != null) {
 					// If we are setting the key to the same value, we exit the function
@@ -65,7 +74,15 @@ namespace Deveel.Data {
 			}
 		}
 
-		public string GetProperty(string key) {
+		public void SetValue<T>(string  key, T value) where  T : IConvertible {
+			if (value == null || value.Equals(default(T))) {
+				SetValue(key,  null);
+			} else {
+				SetValue(key, Convert.ToString(value));
+			}
+		}
+
+		public string GetValue(string key) {
 			CheckValidKey(key);
 			StringCollection s1 = collection.Tail(key);
 			if (!s1.IsEmpty) {
@@ -79,17 +96,28 @@ namespace Deveel.Data {
 			return null;
 		}
 
-		public string GetProperty(string key, string defaultValue) {
-			string str = GetProperty(key);
+		public string GetValue(string key, string defaultValue) {
+			string str = GetValue(key);
 			if (str == null)
 				return defaultValue;
 			return str;
 		}
 
-		private sealed class KeysCollection : ISortedCollection<string> {
+		public T GetValue<T>(string key, T defaultValue) where T: IConvertible {
+			string s = GetValue(key);
+			if (String.IsNullOrEmpty(s))
+				return defaultValue;
+			return (T) Convert.ChangeType(s, typeof(T));
+		}
+
+		public T GetValue<T>(string key) where T : IConvertible {
+			return GetValue(key, default(T));
+		}
+
+		public sealed class KeysCollection : ISortedCollection<string> {
 			private readonly StringCollection collection;
 
-			public KeysCollection(StringCollection collection) {
+			internal KeysCollection(StringCollection collection) {
 				this.collection = collection;
 			}
 
@@ -107,7 +135,7 @@ namespace Deveel.Data {
 
 			#region Implementation of ICollection<string>
 
-			public void Add(string item) {
+			void ICollection<string>.Add(string item) {
 				throw new NotSupportedException();
 			}
 
@@ -119,7 +147,7 @@ namespace Deveel.Data {
 				return collection.Contains(item);
 			}
 
-			public void CopyTo(string[] array, int arrayIndex) {
+			void ICollection<string>.CopyTo(string[] array, int arrayIndex) {
 				throw new NotImplementedException();
 			}
 
@@ -131,7 +159,7 @@ namespace Deveel.Data {
 				get { return collection.Count; }
 			}
 
-			public bool IsReadOnly {
+			bool ICollection<string>.IsReadOnly {
 				get { return false; }
 			}
 

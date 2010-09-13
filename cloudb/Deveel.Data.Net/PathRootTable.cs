@@ -3,7 +3,7 @@
 using Deveel.Data.Store;
 
 namespace Deveel.Data.Net {
-	public sealed class PathRootTable {
+	class PathRootTable {
 		public PathRootTable(DataFile data) {
 			properties = new Properties(data);
 		}
@@ -19,11 +19,11 @@ namespace Deveel.Data.Net {
 			if (rootAddress != null)
 				rootAddrStr = rootAddress.ToString();
 
-			properties.SetProperty(path, rootAddrStr);
+			properties.SetValue(path, rootAddrStr);
 		}
 
 		public IServiceAddress Get(string path) {
-			string rootServerStr = properties.GetProperty(path);
+			string rootServerStr = properties.GetValue(path);
 			if (rootServerStr == null)
 				return null;
 

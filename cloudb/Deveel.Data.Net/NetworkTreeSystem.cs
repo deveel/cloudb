@@ -252,9 +252,9 @@ namespace Deveel.Data.Net {
 			return node;
 		}
 
-		private void DoReachCheck(TextWriter warning_log, long node, NumberList node_list, int cur_depth) {
+		private void DoReachCheck(TextWriter warning_log, long node, IIndex node_list, int cur_depth) {
 			// Is the node in the list?
-			bool inserted = node_list.InsertUnique(node, node, NumberList.KeyComparer);
+			bool inserted = node_list.InsertUnique(node, node, SortedIndex.KeyComparer);
 
 			if (inserted) {
 				// Fetch the node,
@@ -269,7 +269,7 @@ namespace Deveel.Data.Net {
 							// Recurse,
 							if (cur_depth + 1 == reachability_tree_depth) {
 								// It's a known leaf node, so insert now without traversing
-								node_list.InsertUnique(child_node_ref, child_node_ref, NumberList.KeyComparer);
+								node_list.InsertUnique(child_node_ref, child_node_ref, SortedIndex.KeyComparer);
 							} else {
 								// Recurse,
 								DoReachCheck(warning_log, child_node_ref, node_list, cur_depth + 1);
@@ -967,7 +967,7 @@ namespace Deveel.Data.Net {
 
 		#endregion
 
-		public void CreateReachabilityList(TextWriter warning_log, long node, NumberList node_list) {
+		public void CreateReachabilityList(TextWriter warning_log, long node, IIndex node_list) {
 			CheckErrorState();
 
 			lock (reachability_lock) {

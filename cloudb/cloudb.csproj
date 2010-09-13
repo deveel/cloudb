@@ -95,6 +95,11 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Deveel.Data.Net\IBlockStore.cs" />
+    <Compile Include="Deveel.Data\IIndexCursor.cs" />
+    <Compile Include="Deveel.Data\IIndex.cs" />
+    <Compile Include="Deveel.Data\IInteractiveEnumerator.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Deveel.Data\IPathConnection.cs" />
     <Compile Include="Deveel.Data\IPath.cs" />
     <Compile Include="Deveel.Data.Net\IMessageProcessor.cs" />
@@ -157,6 +162,7 @@
     <Compile Include="Deveel.Data.Util\StrongPagedAccess.cs" />
     <Compile Include="Deveel.Data\ConfigSource.cs" />
     <Compile Include="Deveel.Data\MemoryDatabase.cs" />
+    <Compile Include="Deveel.Data\SortedIndex.cs" />
     <Compile Include="Deveel.Data\TreeGraph.cs" />
     <Compile Include="Deveel.Data.Store\AbstractStore.cs" />
     <Compile Include="Deveel.Data.Store\AreaInputStream.cs" />
@@ -200,10 +206,7 @@
     <Compile Include="Deveel.Data\FixedSizeCollection.cs" />
     <Compile Include="Deveel.Data\IDatabase.cs" />
     <Compile Include="Deveel.Data\IIndexedObjectComparer_T.cs" />
-    <Compile Include="Deveel.Data\IInteractiveEnumerator.cs" />
-    <Compile Include="Deveel.Data\INumberEnumerator.cs" />
     <Compile Include="Deveel.Data\ISortedCollection_T.cs" />
-    <Compile Include="Deveel.Data\ISortedList_T.cs" />
     <Compile Include="Deveel.Data\ITransaction.cs" />
     <Compile Include="Deveel.Data\ITreeNode.cs" />
     <Compile Include="Deveel.Data\ITreeNodeCache.cs" />
@@ -211,7 +214,6 @@
     <Compile Include="Deveel.Data\Key.cs" />
     <Compile Include="Deveel.Data\KeyBase.cs" />
     <Compile Include="Deveel.Data.Caching\MemoryCache.cs" />
-    <Compile Include="Deveel.Data\NumberList.cs" />
     <Compile Include="Deveel.Data\Properties.cs" />
     <Compile Include="Deveel.Data\SparseLeafNode.cs" />
     <Compile Include="Deveel.Data\StoreTreeSystem.cs" />
