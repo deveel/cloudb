@@ -28,7 +28,7 @@ namespace Deveel.Data.Net {
 
 		protected override IService CreateService(ServiceType serviceType) {
 			if (serviceType == ServiceType.Manager)
-				return new MemoryManagerService(connector, new ServiceAddress(IPAddress.Loopback, 1212));
+				return new MemoryManagerService(connector, FakeServiceAddress.Local);
 			if (serviceType == ServiceType.Root)
 				return new MemoryRootService(connector);
 			if (serviceType == ServiceType.Block)

@@ -9,17 +9,17 @@ namespace Deveel.Data.Net {
 	public abstract class TcpAdminService : AdminService {
 		private readonly string password;
 		private readonly NetworkConfigSource config;
-		private readonly ServiceAddress serviceAddress;
+		private readonly IPServiceAddress serviceAddress;
 		private bool polling;
 		private TcpServiceConnector connector;
 
 		protected TcpAdminService(NetworkConfigSource config, IPAddress address, int port, string  password) {
 			this.config = config;
-			serviceAddress = new ServiceAddress(address, port);
+			serviceAddress = new IPServiceAddress(address, port);
 			this.password = password;
 		}
 
-		protected ServiceAddress Address {
+		protected IPServiceAddress Address {
 			get { return serviceAddress; }
 		}
 

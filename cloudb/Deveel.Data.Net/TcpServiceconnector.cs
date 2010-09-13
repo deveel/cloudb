@@ -9,7 +9,7 @@ using System.Threading;
 namespace Deveel.Data.Net {
 	public class TcpServiceConnector : IServiceConnector {
 		public TcpServiceConnector(string password) {
-			connections = new Dictionary<ServiceAddress, TcpConnection>();
+			connections = new Dictionary<IPServiceAddress, TcpConnection>();
 			this.password = password;
 
 			// This thread kills connections that have timed out.
@@ -19,7 +19,7 @@ namespace Deveel.Data.Net {
 			backgroundThread.Start();
 		}
 
-		private readonly Dictionary<ServiceAddress, TcpConnection> connections;
+		private readonly Dictionary<IPServiceAddress, TcpConnection> connections;
 		private readonly string password;
 
 		private readonly Thread backgroundThread;
@@ -35,9 +35,9 @@ namespace Deveel.Data.Net {
 						// We check the connections every 2 minutes,
 						Monitor.Wait(connections, 2 * 60 * 1000);
 						DateTime now = DateTime.Now;
-						List<ServiceAddress> toRemove = new List<ServiceAddress>();
+						List<IPServiceAddress> toRemove = new List<IPServiceAddress>();
 						// For each key entry,
-						foreach (KeyValuePair<ServiceAddress, TcpConnection> connection in connections) {
+						foreach (KeyValuePair<IPServiceAddress, TcpConnection> connection in connections) {
 							// If lock is 0, and past timeout, we can safely remove it.
 							// The timeout on a connection is 5 minutes plus the poll artifact
 							if (connection.Value.lock_count == 0 &&
@@ -49,7 +49,7 @@ namespace Deveel.Data.Net {
 						}
 
 						if (toRemove.Count > 0) {
-							foreach (ServiceAddress address in toRemove)
+							foreach (IPServiceAddress address in toRemove)
 								connections.Remove(address);
 						}
 
@@ -78,7 +78,7 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		private TcpConnection GetConnection(ServiceAddress address) {
+		private TcpConnection GetConnection(IPServiceAddress address) {
 			TcpConnection c;
 			lock (connections) {
 				// If there isn't, establish a connection,
@@ -87,7 +87,7 @@ namespace Deveel.Data.Net {
 					Socket socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 #if DEBUG
 					socket.ReceiveTimeout = Int32.MaxValue;
-#endif
+#else
 					socket.ReceiveTimeout = 8 * 1000;  // 8 second timeout,
 #endif
 					socket.NoDelay = true;
@@ -111,7 +111,7 @@ namespace Deveel.Data.Net {
 			return c;
 		}
 
-		private void InvalidateConnection(ServiceAddress address) {
+		private void InvalidateConnection(IPServiceAddress address) {
 			lock (connections) {
 				connections.Remove(address);
 			}
@@ -140,8 +140,12 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		public IMessageProcessor Connect(ServiceAddress address, ServiceType type) {
+		public IMessageProcessor Connect(IPServiceAddress address, ServiceType type) {
 			return new TcpMessageProcessor(this, address, type);
+		}
+		
+		IMessageProcessor IServiceConnector.Connect(IServiceAddress address, ServiceType type) {
+			return Connect((IPServiceAddress)address, type);
 		}
 
 		#endregion
@@ -149,13 +153,13 @@ namespace Deveel.Data.Net {
 		#region TcpMessageProcessor
 
 		private class TcpMessageProcessor : IMessageProcessor {
-			public TcpMessageProcessor(TcpServiceConnector connector, ServiceAddress address, ServiceType serviceType) {
+			public TcpMessageProcessor(TcpServiceConnector connector, IPServiceAddress address, ServiceType serviceType) {
 				this.connector = connector;
 				this.address = address;
 				this.serviceType = serviceType;
 			}
 
-			private readonly ServiceAddress address;
+			private readonly IPServiceAddress address;
 			private readonly ServiceType serviceType;
 			private readonly TcpServiceConnector connector;
 

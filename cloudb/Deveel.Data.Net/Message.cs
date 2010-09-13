@@ -44,10 +44,17 @@ namespace Deveel.Data.Net {
 		}
 
 		public object this[int index] {
-			get { return args[index]; }
+			get { 
+				object value = args[index];
+				if (value is MessageStream.StringArgument)
+					value = ((MessageStream.StringArgument)value).Value;
+				return value;
+			}
 		}
 
 		public Message AddArgument(object value) {
+			if (value is string)
+				value = new MessageStream.StringArgument((string)value);
 			args.Add(value);
 			return this;
 		}

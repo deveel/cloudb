@@ -19,9 +19,11 @@ namespace Deveel.Data.Net {
 			set { network_config = value; }
 		}
 
-		public ServiceAddress[] SortedServerList {
+		public IServiceAddress[] SortedServerList {
 			get {
-				ServiceAddress[] node_list = network_config.NetworkNodes;
+				if (network_config == null)
+					return new IServiceAddress[0];
+				IServiceAddress[] node_list = network_config.NetworkNodes;
 				// Sort the list of service addresses (the list is probably already sorted)
 				Array.Sort(node_list);
 				return node_list;
@@ -75,7 +77,7 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		private Message Command(ServiceAddress machine, ServiceType serviceType, MessageStream outputStream) {
+		private Message Command(IServiceAddress machine, ServiceType serviceType, MessageStream outputStream) {
 			IMessageProcessor proc = network_connector.Connect(machine, serviceType);
 			MessageStream inputStream = proc.Process(outputStream);
 			Message message = null;
@@ -85,7 +87,7 @@ namespace Deveel.Data.Net {
 			return message;
 		}
 
-		private MachineProfile CheckMachineInNetwork(ServiceAddress machine) {
+		private MachineProfile CheckMachineInNetwork(IServiceAddress machine) {
 			InspectNetwork();
 
 			foreach (MachineProfile m in machine_profiles) {
@@ -101,7 +103,7 @@ namespace Deveel.Data.Net {
 			InspectNetwork();
 		}
 
-		public bool IsMachineInNetwork(ServiceAddress machine_addr) {
+		public bool IsMachineInNetwork(IServiceAddress machine_addr) {
 			InspectNetwork();
 
 			foreach (MachineProfile machine in machine_profiles) {
@@ -112,7 +114,7 @@ namespace Deveel.Data.Net {
 			return false;
 		}
 
-		public MachineProfile GetMachineProfile(ServiceAddress address) {
+		public MachineProfile GetMachineProfile(IServiceAddress address) {
 			InspectNetwork();
 
 			foreach (MachineProfile p in machine_profiles) {

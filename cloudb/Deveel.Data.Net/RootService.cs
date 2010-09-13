@@ -11,7 +11,7 @@ namespace Deveel.Data.Net {
 			pathCache = new Dictionary<string, PathAccess>(128);
 		}		
 		
-		private ServiceAddress managerAddress;
+		private IServiceAddress managerAddress;
 		private ErrorStateException errorState;
 		private readonly IServiceConnector connector;
 		private readonly Dictionary<string, PathAccess> pathCache;
@@ -20,7 +20,7 @@ namespace Deveel.Data.Net {
 			get { return ServiceType.Root; }
 		}
 		
-		protected ServiceAddress ManagerAddress {
+		protected IServiceAddress ManagerAddress {
 			get { return managerAddress; }
 			set { managerAddress = value; }
 		}
@@ -340,7 +340,7 @@ namespace Deveel.Data.Net {
 			return path.Commit(connection, proposal);
 		}
 		
-		private void BindWithManager(ServiceAddress managerAddress) {
+		private void BindWithManager(IServiceAddress managerAddress) {
 			if (this.managerAddress != null)
 				throw new ApplicationException("This root service is already bound to a manager service");
 			
@@ -353,7 +353,7 @@ namespace Deveel.Data.Net {
 			this.managerAddress = managerAddress;
 		}
 		
-		private void UnbindWithManager(ServiceAddress managerAddress) {
+		private void UnbindWithManager(IServiceAddress managerAddress) {
 			if (this.managerAddress == null)
 				throw new ApplicationException("This root service is not bound to a manager service");
 			
@@ -384,10 +384,10 @@ namespace Deveel.Data.Net {
 		}
 
 		
-		protected virtual void OnBindingWithManager(ServiceAddress managerAddress) {
+		protected virtual void OnBindingWithManager(IServiceAddress managerAddress) {
 		}
 		
-		protected virtual void OnUnbindingWithManager(ServiceAddress managerAddress) {
+		protected virtual void OnUnbindingWithManager(IServiceAddress managerAddress) {
 		}
 		
 		protected override void OnDispose(bool disposing) {
@@ -541,13 +541,13 @@ namespace Deveel.Data.Net {
 								break;
 							}
 							case "bindWithManager": {
-								ServiceAddress manager = (ServiceAddress)m[0];
+								IServiceAddress manager = (IServiceAddress)m[0];
 								service.BindWithManager(manager);
 								responseStream.AddMessage("R", 1);
 								break;
 							}
 							case "unbindWithManager": {
-								ServiceAddress manager = (ServiceAddress)m[0];
+								IServiceAddress manager = (IServiceAddress)m[0];
 								service.UnbindWithManager(manager);
 								responseStream.AddMessage("R", 1);
 								break;
@@ -585,7 +585,7 @@ namespace Deveel.Data.Net {
 			private readonly NetworkTreeSystem treeSystem;
 			
 			public PathConnection(RootService service, string pathName, 
-			                      IServiceConnector connector, ServiceAddress manager, 
+			                      IServiceConnector connector, IServiceAddress manager, 
 			                      INetworkCache networkCache) {
 				this.service = service;
 				this.pathName = pathName;

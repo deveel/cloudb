@@ -20,7 +20,7 @@ namespace Deveel.Data.Net {
 		public void Close() {
 		}
 
-		public IMessageProcessor Connect(ServiceAddress address, ServiceType type) {
+		public IMessageProcessor Connect(IServiceAddress address, ServiceType type) {
 			return new MessageProcessor(this, type);
 		}
 

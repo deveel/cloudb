@@ -47,11 +47,11 @@ namespace Deveel.Data.Net {
 		}
 
 		private void InitService(string  serviceTypeName) {
-			InitService((ServiceType)Enum.Parse(typeof(ServiceType), serviceTypeName));
+			InitService((ServiceType)Enum.Parse(typeof(ServiceType), serviceTypeName, true));
 		}
 
 		private void DisposeService(string  serviceTypeName) {
-			DisposeService((ServiceType)Enum.Parse(typeof(ServiceType), serviceTypeName));
+			DisposeService((ServiceType)Enum.Parse(typeof(ServiceType), serviceTypeName, true));
 		}
 
 		protected void InitService(ServiceType service_type) {
@@ -172,7 +172,7 @@ namespace Deveel.Data.Net {
 								long fm = 0;		// Free Memory
 								long td = 0;		// Total Space
 								long fd = 0;		// Free Space
-								outputStream.AddMessage("R");
+								outputStream.StartMessage("R");
 								if (service.blockService == null) {
 									outputStream.AddMessageArgument("block=no");
 								} else {

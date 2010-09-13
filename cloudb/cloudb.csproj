@@ -100,6 +100,8 @@
     <Compile Include="Deveel.Data.Net\IMessageProcessor.cs" />
     <Compile Include="Deveel.Data.Net\INetworkCache.cs" />
     <Compile Include="Deveel.Data.Net\IService.cs" />
+    <Compile Include="Deveel.Data.Net\IServiceAddress.cs" />
+    <Compile Include="Deveel.Data.Net\IServiceAddressHandler.cs" />
     <Compile Include="Deveel.Data.Net\IServiceConnector.cs" />
     <Compile Include="Deveel.Data.Net\MachineProfile.cs" />
     <Compile Include="Deveel.Data.Net\ManagerCacheState.cs" />
@@ -135,6 +137,8 @@
     <Compile Include="Deveel.Data.Net\RootService.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Deveel.Data.Net\ServiceAddresses.cs" />
+    <Compile Include="Deveel.Data.Net\IPServiceAddressHandler.cs" />
     <Compile Include="Deveel.Data.Net\TcpAdminService.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -173,7 +177,7 @@
     <Compile Include="Deveel.Data.Net\Service.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Deveel.Data.Net\ServiceAddress.cs" />
+    <Compile Include="Deveel.Data.Net\IPServiceAddress.cs" />
     <Compile Include="Deveel.Data.Net\ServiceException.cs" />
     <Compile Include="Deveel.Data.Net\ServiceType.cs" />
     <Compile Include="Deveel.Data.Net\SingleNodeSet.cs" />

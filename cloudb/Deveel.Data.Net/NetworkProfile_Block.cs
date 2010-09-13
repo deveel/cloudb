@@ -2,7 +2,7 @@
 
 namespace Deveel.Data.Net {
 	public sealed partial class NetworkProfile {
-		public long GetBlockGuid(ServiceAddress block) {
+		public long GetBlockGuid(IServiceAddress block) {
 			InspectNetwork();
 
 			// Check machine is in the schema,
@@ -22,7 +22,7 @@ namespace Deveel.Data.Net {
 			return (long)m[0];
 		}
 
-		public long[] GetBlockList(ServiceAddress block) {
+		public long[] GetBlockList(IServiceAddress block) {
 			InspectNetwork();
 
 			MachineProfile machine_p = CheckMachineInNetwork(block);
@@ -40,7 +40,7 @@ namespace Deveel.Data.Net {
 			return (long[])m[1];
 		}
 
-		public void ProcessSendBlock(long block_id, ServiceAddress source_block_server, ServiceAddress dest_block_server, long dest_server_sguid) {
+		public void ProcessSendBlock(long block_id, IServiceAddress source_block_server, IServiceAddress dest_block_server, long dest_server_sguid) {
 			InspectNetwork();
 
 			// Get the current manager server,
@@ -48,7 +48,7 @@ namespace Deveel.Data.Net {
 			if (man == null)
 				throw new NetworkAdminException("No manager server found");
 
-			ServiceAddress manager_server = man.Address;
+			IServiceAddress manager_server = man.Address;
 
 			MessageStream msg_out = new MessageStream(6);
 			msg_out.AddMessage("sendBlockTo", block_id, dest_block_server, dest_server_sguid, manager_server);

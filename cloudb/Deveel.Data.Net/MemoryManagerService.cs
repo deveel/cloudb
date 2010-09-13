@@ -5,7 +5,7 @@ namespace Deveel.Data.Net {
 	public sealed class MemoryManagerService : ManagerService {
 		private MemoryDatabase database;
 
-		public MemoryManagerService(IServiceConnector connector, ServiceAddress address) 
+		public MemoryManagerService(IServiceConnector connector, IServiceAddress address) 
 			: base(connector, address) {
 		}
 

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Deveel.Data.Net {
 	public sealed partial class NetworkProfile {
-		public void AddPath(ServiceAddress root, string pathName, string pathType) {
+		public void AddPath(IServiceAddress root, string pathName, string pathType) {
 			InspectNetwork();
 
 			// Check machine is in the schema,
@@ -24,7 +24,7 @@ namespace Deveel.Data.Net {
 			if (m.IsError)
 				throw new NetworkAdminException("Type '" + pathType + "' doesn't instantiate on the root");
 
-			ServiceAddress managerServer = man.Address;
+			IServiceAddress managerServer = man.Address;
 
 			// Create a new empty database,
 			NetworkClient client = new NetworkClient(managerServer, network_connector);
@@ -49,7 +49,7 @@ namespace Deveel.Data.Net {
 				throw new NetworkAdminException(message.ErrorMessage);
 		}
 
-		public void RemovePath(ServiceAddress root, string path_name) {
+		public void RemovePath(IServiceAddress root, string path_name) {
 			InspectNetwork();
 
 			MachineProfile machine_p = CheckMachineInNetwork(root);
@@ -61,7 +61,7 @@ namespace Deveel.Data.Net {
 			if (man == null)
 				throw new NetworkAdminException("No manager server found");
 
-			ServiceAddress manager_server = man.Address;
+			IServiceAddress manager_server = man.Address;
 
 			// Perform the command,
 			MessageStream msg_out = new MessageStream(7);
@@ -80,7 +80,7 @@ namespace Deveel.Data.Net {
 				throw new NetworkAdminException(m.ErrorMessage);
 		}
 
-		public String GetPathStats(ServiceAddress root, string pathName) {
+		public String GetPathStats(IServiceAddress root, string pathName) {
 			InspectNetwork();
 
 			// Check machine is in the schema,
@@ -101,7 +101,7 @@ namespace Deveel.Data.Net {
 			return (string)m[0];
 		}
 
-		public PathProfile[] GetPathsFromRoot(ServiceAddress root) {
+		public PathProfile[] GetPathsFromRoot(IServiceAddress root) {
 			InspectNetwork();
 
 			// Check machine is in the schema,

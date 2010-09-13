@@ -1,6 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
+# SharpDevelop 3.2.0.5777
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudb", "cloudb\cloudb.csproj", "{A18511ED-5BA6-4811-B44F-F730FAD84CE8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudb-nunit", "cloudb-nunit\cloudb-nunit.csproj", "{05D455D6-1EA4-4C27-A4F2-797A518FE00A}"
@@ -71,6 +72,16 @@ Global
 		{565F703F-AE85-4414-96D6-663BF78613C2}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{565F703F-AE85-4414-96D6-663BF78613C2}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{565F703F-AE85-4414-96D6-663BF78613C2}.Release|x86.ActiveCfg = Release|Any CPU
+		{565F703F-AE85-4414-96D6-663BF78613C2}.Debug|x86.Build.0 = Debug|x86
+		{565F703F-AE85-4414-96D6-663BF78613C2}.Release|x86.Build.0 = Release|x86
+		{25723CF3-678A-4596-BD05-1B0DB2DED301}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{25723CF3-678A-4596-BD05-1B0DB2DED301}.Release|Any CPU.Build.0 = Release|Any CPU
+		{70D79060-3F5A-4CF4-A8F0-6B83F364BED8}.Debug|x86.Build.0 = Debug|x86
+		{70D79060-3F5A-4CF4-A8F0-6B83F364BED8}.Release|x86.Build.0 = Release|x86
+		{05D455D6-1EA4-4C27-A4F2-797A518FE00A}.Debug|x86.Build.0 = Debug|x86
+		{05D455D6-1EA4-4C27-A4F2-797A518FE00A}.Release|x86.Build.0 = Release|x86
+		{A18511ED-5BA6-4811-B44F-F730FAD84CE8}.Debug|x86.Build.0 = Debug|x86
+		{A18511ED-5BA6-4811-B44F-F730FAD84CE8}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

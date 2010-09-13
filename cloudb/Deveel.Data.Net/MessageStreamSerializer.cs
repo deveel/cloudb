@@ -4,6 +4,9 @@ using System.Text;
 
 namespace Deveel.Data.Net {
 	public sealed class MessageStreamSerializer {
+		public MessageStreamSerializer() {
+		}
+				
 		public void Serialize(MessageStream messageStream, BinaryWriter writer) {
 			if (messageStream == null)
 				throw new ArgumentNullException("messageStream");
@@ -67,12 +70,17 @@ namespace Deveel.Data.Net {
 					writer.Write(e.Source);
 					writer.Write(e.Message);
 					writer.Write(e.StackTrace);
-				} else if (item is ServiceAddress[]) {
+				} else if (item is IServiceAddress[]) {
 					writer.Write((byte)11);
-					ServiceAddress[] arr = (ServiceAddress[])item;
+					IServiceAddress[] arr = (IServiceAddress[])item;
 					writer.Write(arr.Length);
-					foreach (ServiceAddress s in arr) {
-						s.WriteTo(writer);
+					foreach (IServiceAddress s in arr) {
+						IServiceAddressHandler handler = ServiceAddresses.GetHandler(s);
+						byte[] buffer = handler.ToBytes(s);
+						int code = handler.GetCode(s.GetType());
+						writer.Write(code);
+						writer.Write(buffer.Length);
+						writer.Write(buffer);
 					}
 				} else if (item is DataAddress[]) {
 					writer.Write((byte)12);
@@ -82,9 +90,15 @@ namespace Deveel.Data.Net {
 						writer.Write(addr.DataId);
 						writer.Write(addr.BlockId);
 					}
-				} else if (item is ServiceAddress) {
+				} else if (item is IServiceAddress) {
 					writer.Write((byte)13);
-					((ServiceAddress)item).WriteTo(writer);
+					IServiceAddress address = (IServiceAddress)item;
+					IServiceAddressHandler handler = ServiceAddresses.GetHandler(address);
+					byte[] buffer = handler.ToBytes(address);
+					int code = handler.GetCode(address.GetType());
+					writer.Write(code);
+					writer.Write(buffer.Length);
+					writer.Write(buffer);
 				} else if (item is String[]) {
 					writer.Write((byte)14);
 					String[] arr = (String[])item;
@@ -161,9 +175,14 @@ namespace Deveel.Data.Net {
 					messageStream.AddMessageArgument(new ServiceException(source, message, stackTrace));
 				} else if (type == 11) {
 					int sz = reader.ReadInt32();
-					ServiceAddress[] arr = new ServiceAddress[sz];
+					IServiceAddress[] arr = new IServiceAddress[sz];
 					for (int n = 0; n < sz; ++n) {
-						arr[n] = ServiceAddress.ReadFrom(reader);
+						int typeCode = reader.ReadInt32();
+						Type addressType = ServiceAddresses.GetAddressType(typeCode);
+						IServiceAddressHandler handler = ServiceAddresses.GetHandler(addressType);						
+						int length = reader.ReadInt32();
+						byte[] buffer = reader.ReadBytes(length);
+						arr[n] = handler.FromBytes(buffer);
 					}
 					messageStream.AddMessageArgument(arr);
 				} else if (type == 12) {
@@ -176,7 +195,12 @@ namespace Deveel.Data.Net {
 					}
 					messageStream.AddMessageArgument(arr);
 				} else if (type == 13) {
-					messageStream.AddMessageArgument(ServiceAddress.ReadFrom(reader));
+					int typeCode = reader.ReadInt32();
+					Type addressType = ServiceAddresses.GetAddressType(typeCode);
+					IServiceAddressHandler handler = ServiceAddresses.GetHandler(addressType);						
+					int length = reader.ReadInt32();
+					byte[] buffer = reader.ReadBytes(length);
+					messageStream.AddMessageArgument(handler.FromBytes(buffer));
 				} else if (type == 14) {
 					int sz = reader.ReadInt32();
 					String[] arr = new String[sz];

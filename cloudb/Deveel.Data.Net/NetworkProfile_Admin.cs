@@ -9,11 +9,11 @@ namespace Deveel.Data.Net {
 			// If cached,
 			if (machine_profiles == null) {
 				// The sorted list of all servers in the schema,
-				ServiceAddress[] slist = SortedServerList;
+				IServiceAddress[] slist = SortedServerList;
 
 				List<MachineProfile> machines = new List<MachineProfile>();
 
-				foreach (ServiceAddress server in slist) {
+				foreach (IServiceAddress server in slist) {
 					MachineProfile machine_profile = new MachineProfile(server);
 
 					// Request a report from the administration role on the machine,
@@ -82,7 +82,7 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		public bool IsValidNode(ServiceAddress machine) {
+		public bool IsValidNode(IServiceAddress machine) {
 			// Request a report from the administration role on the machine,
 			IMessageProcessor mp = network_connector.Connect(machine, ServiceType.Admin);
 			MessageStream msg_out = new MessageStream(16);
@@ -103,7 +103,7 @@ namespace Deveel.Data.Net {
 			return true;
 		}
 
-		public void StartService(ServiceAddress machine, ServiceType serviceType) {
+		public void StartService(IServiceAddress machine, ServiceType serviceType) {
 			if (serviceType == ServiceType.Admin)
 				throw new ArgumentException("Invalid service type.", "serviceType");
 
@@ -123,7 +123,7 @@ namespace Deveel.Data.Net {
 			ChangeRole(machine_p, "init", serviceType.ToString().ToLower());
 		}
 
-		public void StopService(ServiceAddress machine, ServiceType serviceType) {
+		public void StopService(IServiceAddress machine, ServiceType serviceType) {
 			if (serviceType == ServiceType.Admin)
 				throw new ArgumentException("Invalid service type.", "serviceType");
 
@@ -137,7 +137,7 @@ namespace Deveel.Data.Net {
 			ChangeRole(machine_p, "dispose", serviceType.ToString().ToLower());
 		}
 
-		public AnalyticsRecord[] GetAnalyticsStats(ServiceAddress server) {
+		public AnalyticsRecord[] GetAnalyticsStats(IServiceAddress server) {
 			MessageStream msg_out = new MessageStream(7);
 			msg_out.AddMessage(new Message("reportStats"));
 			Message m = Command(server, ServiceType.Admin, msg_out);

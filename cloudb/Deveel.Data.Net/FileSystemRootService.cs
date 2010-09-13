@@ -27,7 +27,7 @@ namespace Deveel.Data.Net {
 				// Fetch the manager service property,
 				string v = p.GetProperty("manager_server_address");
 				if (v != null) {
-					ManagerAddress = ServiceAddress.Parse(v);
+					ManagerAddress = ServiceAddresses.ParseString(v);
 				}
 			} catch (IOException e) {
 				throw new ApplicationException("IO Error: " + e.Message);

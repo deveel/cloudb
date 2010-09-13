@@ -14,7 +14,7 @@ namespace Deveel.Data.Net {
 			get { return properties.Keys; }
 		}
 
-		public void Set(String path, ServiceAddress rootAddress) {
+		public void Set(String path, IServiceAddress rootAddress) {
 			string rootAddrStr = null;
 			if (rootAddress != null)
 				rootAddrStr = rootAddress.ToString();
@@ -22,13 +22,13 @@ namespace Deveel.Data.Net {
 			properties.SetProperty(path, rootAddrStr);
 		}
 
-		public ServiceAddress Get(string path) {
+		public IServiceAddress Get(string path) {
 			string rootServerStr = properties.GetProperty(path);
 			if (rootServerStr == null)
 				return null;
 
 			try {
-				return ServiceAddress.Parse(rootServerStr);
+				return ServiceAddresses.ParseString(rootServerStr);
 			} catch (Exception e) {
 				throw new FormatException("Unable to parse service address: " + e.Message);
 			}

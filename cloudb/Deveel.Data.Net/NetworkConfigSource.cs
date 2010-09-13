@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using System.Text;
 
 namespace Deveel.Data.Net {
 	public class NetworkConfigSource : ConfigSource {
@@ -9,7 +10,7 @@ namespace Deveel.Data.Net {
 		private readonly object stateLock = new object();
 		private DateTime lastReadTime;
 
-		private ServiceAddress[] networkNodes;
+		private IServiceAddress[] networkNodes;
 
 		public const string ConnectWhiteList = "connect_whitelist";
 		public const string NetworkNodeList = "network_nodelist";
@@ -23,8 +24,12 @@ namespace Deveel.Data.Net {
 			this.source = source;
 			Reload();
 		}
+		
+		public NetworkConfigSource()
+			: this((string)null) {
+		}
 
-		public ServiceAddress[] NetworkNodes {
+		public IServiceAddress[] NetworkNodes {
 			get {
 				lock(stateLock) {
 					if (networkNodes == null) {
@@ -61,13 +66,13 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		private static ServiceAddress[] ParseAddress(string value) {
-			List<ServiceAddress> addresses = new List<ServiceAddress>();
+		private static IServiceAddress[] ParseAddress(string value) {
+			List<IServiceAddress> addresses = new List<IServiceAddress>();
 			string[] sp = value.Split(',');
 			for (int i = 0; i < sp.Length; i++) {
 				string s = sp[i].Trim();
 				if (s.Length > 0)
-					addresses.Add(ServiceAddress.Parse(s));
+					addresses.Add(ServiceAddresses.ParseString(s));
 			}
 
 			return addresses.ToArray();
@@ -96,6 +101,68 @@ namespace Deveel.Data.Net {
 						}
 					}
 				}
+			}
+		}
+		
+		public void AddNetworkNode(IServiceAddress address) {
+			lock(stateLock) {
+				IServiceAddress[] nodes;
+				string value = GetString(NetworkNodeList, null);
+				if (value != null) {
+					nodes = ParseAddress(value);
+					int index = Array.BinarySearch(nodes, address);
+					if (index >= 0)
+						throw new ArgumentException("The address '" + address +  "' is already present.");
+					IServiceAddress[] oldNodes = nodes;
+					nodes = new IServiceAddress[oldNodes.Length + 1];
+					Array.Copy(oldNodes, 0, nodes, 0, oldNodes.Length);
+					nodes[nodes.Length - 1] = address;
+				} else {
+					nodes = new IServiceAddress[] { address };
+				}
+				
+				StringBuilder sb = new StringBuilder();
+				for (int i = 0; i < nodes.Length; i++) {
+					IServiceAddressHandler handler = ServiceAddresses.GetHandler(nodes[i]);
+					sb.Append(handler.ToString(nodes[i]));
+					
+					if (i < nodes.Length - 1)
+						sb.Append(", ");
+				}
+				
+				SetValue(NetworkNodeList, sb.ToString());
+			}
+		}
+		
+		public void AddAllowedIp(string address) {
+			lock(stateLock) {
+				string[] addresses;
+				string whiteList = GetString(ConnectWhiteList);
+				if (!String.IsNullOrEmpty(whiteList)) {
+					if (address.Equals("*") &&
+					    whiteList.Equals("*"))
+						return;
+					
+					string[] sp = whiteList.Split(',');
+					addresses = new string[sp.Length];
+					for(int i = 0; i < sp.Length; i++) {
+						string s = sp[i].Trim();
+						if (s.Equals(address))
+							throw new ArgumentException("The address '" + address + "' is already present in the whitelist.");
+						
+						addresses[i] = s;
+					}
+					
+					string[] oldAddresses = addresses;
+					addresses = new string[oldAddresses.Length + 1];
+					Array.Copy(oldAddresses, 0, addresses, 0, oldAddresses.Length);
+					addresses[addresses.Length - 1] = address;
+				} else {
+					addresses = new string[] { address };
+				}
+				
+				whiteList = String.Join(", ", addresses);
+				SetValue(ConnectWhiteList, whiteList);
 			}
 		}
 
@@ -127,6 +194,9 @@ namespace Deveel.Data.Net {
 		}
 
 		internal void Reload() {
+			if (String.IsNullOrEmpty(source))
+				return;
+			
 			Uri uri;
 			if (Uri.TryCreate(source,UriKind.RelativeOrAbsolute, out uri)) {
 				if (uri.Scheme == Uri.UriSchemeFile) {

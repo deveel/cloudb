@@ -2,15 +2,15 @@
 
 namespace Deveel.Data.Net {
 	public class BlockServerElement {
-		public BlockServerElement(ServiceAddress address, string status) {
+		public BlockServerElement(IServiceAddress address, string status) {
 			this.address = address;
 			this.status = status;
 		}
 
-		private readonly ServiceAddress address;
+		private readonly IServiceAddress address;
 		private readonly String status;
 
-		public ServiceAddress Address {
+		public IServiceAddress Address {
 			get { return address; }
 		}
 

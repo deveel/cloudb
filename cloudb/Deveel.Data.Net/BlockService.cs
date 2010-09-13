@@ -287,9 +287,9 @@ namespace Deveel.Data.Net {
 				}
 			}
 			
-			private long SendBlockTo(long blockId, ServiceAddress destination,
+			private long SendBlockTo(long blockId, IServiceAddress destination,
 									 long destServerGuid,
-									 ServiceAddress managerAddress) {
+									 IServiceAddress managerAddress) {
 				lock (service.processLock) {
 					long processId = service.processId;
 					service.processId = service.processId + 1;
@@ -465,9 +465,9 @@ namespace Deveel.Data.Net {
 								// Returns immediately. There's currently no way to determine
 								// when this process will happen or if it will happen.
 								long blockId = (long)m[0];
-								ServiceAddress destAddress = (ServiceAddress)m[1];
+								IServiceAddress destAddress = (IServiceAddress)m[1];
 								long destServerGuid = (long)m[2];
-								ServiceAddress managerAddress = (ServiceAddress)m[3];
+								IServiceAddress managerAddress = (IServiceAddress)m[3];
 								long processId = SendBlockTo(blockId, destAddress, destServerGuid, managerAddress);
 								responseStream.AddMessage("R", processId);
 								break;
@@ -516,8 +516,8 @@ namespace Deveel.Data.Net {
 		#region SendBlockInfo
 		
 		private struct SendBlockInfo {
-			public SendBlockInfo(long processId, long blockId, ServiceAddress destination, 
-			                     long destServerGuid, ServiceAddress managerAddress) {
+			public SendBlockInfo(long processId, long blockId, IServiceAddress destination, 
+			                     long destServerGuid, IServiceAddress managerAddress) {
 				this.processId = processId;
 				this.blockId = blockId;
 				this.destination = destination;
@@ -527,9 +527,9 @@ namespace Deveel.Data.Net {
 
 			public long processId;
 			public long blockId;
-			public ServiceAddress destination;
+			public IServiceAddress destination;
 			public long destServerGuid;
-			public ServiceAddress managerAddress;
+			public IServiceAddress managerAddress;
 		}
 		
 		#endregion

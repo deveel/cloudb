@@ -6,7 +6,7 @@ using System.Threading;
 namespace Deveel.Data.Net {
 	public abstract class ManagerService : Service {
 		private readonly IServiceConnector connector;
-		private readonly ServiceAddress address;
+		private readonly IServiceAddress address;
 
 		private DataAddress currentAddressSpaceEnd;
 		private readonly object allocationLock = new object();
@@ -19,14 +19,14 @@ namespace Deveel.Data.Net {
 		private readonly Random random;
 
 		private readonly object heartbeatLock = new object();
-		private readonly Dictionary<ServiceAddress, DateTime> failureFloodControl;
+		private readonly Dictionary<IServiceAddress, DateTime> failureFloodControl;
 		private readonly List<BlockServerInfo> monitoredServers = new List<BlockServerInfo>(32);
 		private readonly Thread heartbeatThread;
 
 		private static readonly Key BlockServerKey = new Key(12, 0, 10);
 		private static readonly Key PathRootKey = new Key(12, 0, 20);
 
-		protected ManagerService(IServiceConnector connector, ServiceAddress address) {
+		protected ManagerService(IServiceConnector connector, IServiceAddress address) {
 			this.connector = connector;
 			this.address = address;
 
@@ -35,7 +35,7 @@ namespace Deveel.Data.Net {
 			rootServers = new List<RootServerInfo>(256);
 			random = new Random();
 
-			failureFloodControl = new Dictionary<ServiceAddress, DateTime>();
+			failureFloodControl = new Dictionary<IServiceAddress, DateTime>();
 
 			heartbeatThread = new Thread(Heartbeat);
 			heartbeatThread.IsBackground = true;
@@ -204,7 +204,7 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		private void RegisterBlockServer(ServiceAddress serviceAddress) {
+		private void RegisterBlockServer(IServiceAddress serviceAddress) {
 			// Open a connection with the block service,
 			IMessageProcessor processor = connector.Connect(serviceAddress, ServiceType.Block);
 
@@ -276,7 +276,7 @@ namespace Deveel.Data.Net {
 			UpdateAddressSpaceEnd();
 		}
 
-		private void UnregisterBlockServer(ServiceAddress serviceAddress) {
+		private void UnregisterBlockServer(IServiceAddress serviceAddress) {
 			// Open a connection with the block service,
 			IMessageProcessor processor = connector.Connect(serviceAddress, ServiceType.Block);
 
@@ -379,7 +379,7 @@ namespace Deveel.Data.Net {
 			return GetServersInfo(server_ids);
 		}
 
-		private void RegisterRootServer(ServiceAddress serviceAddress) {
+		private void RegisterRootServer(IServiceAddress serviceAddress) {
 			// Open a connection with the root service,
 			IMessageProcessor processor = connector.Connect(serviceAddress, ServiceType.Root);
 
@@ -437,7 +437,7 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		private void UnregisterRootServer(ServiceAddress serviceAddress) {
+		private void UnregisterRootServer(IServiceAddress serviceAddress) {
 			// Open a connection with the block service,
 			IMessageProcessor processor = connector.Connect(serviceAddress, ServiceType.Root);
 
@@ -495,7 +495,7 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		private ServiceAddress GetRootForPath(string pathName) {
+		private IServiceAddress GetRootForPath(string pathName) {
 			// Perform this under a lock. This lock is also active for block queries
 			// and administration updates.
 			lock (blockDbWriteLock) {
@@ -585,7 +585,7 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		private void AddPathRootMapping(string pathName, ServiceAddress serviceAddress) {
+		private void AddPathRootMapping(string pathName, IServiceAddress serviceAddress) {
 			// Perform this under a lock. This lock is also active for block queries
 			// and administration updates.
 			lock (blockDbWriteLock) {
@@ -665,7 +665,7 @@ namespace Deveel.Data.Net {
 			return servers;
 		}
 
-		private void NotifyBlockServerFailure(ServiceAddress serviceAddress) {
+		private void NotifyBlockServerFailure(IServiceAddress serviceAddress) {
 			// This ensures that if we get flooded with failure notifications, the
 			// load is not too great. Failure flooding should be capped by the
 			// client also.
@@ -742,7 +742,7 @@ namespace Deveel.Data.Net {
 		}
 
 		private void MonitorServer(BlockServerInfo blockServer) {
-			lock (this) {
+			lock (heartbeatLock) {
 				if (!monitoredServers.Contains(blockServer))
 					monitoredServers.Add(blockServer);
 			}
@@ -798,7 +798,7 @@ namespace Deveel.Data.Net {
 					List<BlockServerInfo> servers;
 					lock (heartbeatLock) {
 						// Wait a minute,
-						Monitor.Wait(this, 1 * 60 * 1000);
+						Monitor.Wait(heartbeatLock, 1 * 60 * 1000);
 						// If there are no servers to monitor, continue the loop,
 						if (monitoredServers.Count == 0)
 							continue;
@@ -819,7 +819,7 @@ namespace Deveel.Data.Net {
 			}
 		}
 		
-		protected void AddRegisteredBlockServer(long serverGuid, ServiceAddress address) {
+		protected void AddRegisteredBlockServer(long serverGuid, IServiceAddress address) {
 			lock (blockServersMap) {
 				BlockServerInfo blockServer = new BlockServerInfo(serverGuid, address, ServerStatus.Up);
 				// Add to the internal map/list
@@ -830,7 +830,7 @@ namespace Deveel.Data.Net {
 			UpdateAddressSpaceEnd();
 		}
 
-		protected void AddRegisteredRootServer(ServiceAddress address) {
+		protected void AddRegisteredRootServer(IServiceAddress address) {
 			lock (rootServers) {
 				// Add to the internal map/list
 				rootServers.Add(new RootServerInfo(address, ServerStatus.Up));
@@ -883,13 +883,13 @@ namespace Deveel.Data.Net {
 								break;
 							}
 							case "registerBlockServer": {
-								ServiceAddress address = (ServiceAddress) m[0];
+								IServiceAddress address = (IServiceAddress) m[0];
 								service.RegisterBlockServer(address);
 								responseStream.AddMessage("R", 1);
 								break;
 							}
 							case "unregisterBlockServer": {
-								ServiceAddress address = (ServiceAddress) m[0];
+								IServiceAddress address = (IServiceAddress) m[0];
 								service.UnregisterBlockServer(address);
 								responseStream.AddMessage("R", 1);
 								break;
@@ -902,13 +902,13 @@ namespace Deveel.Data.Net {
 
 								// root servers
 							case "registerRootServer": {
-								ServiceAddress address = (ServiceAddress) m[0];
+								IServiceAddress address = (IServiceAddress) m[0];
 								service.RegisterRootServer(address);
 								responseStream.AddMessage("R", 1);
 								break;
 							}
 							case "unregisterRootServer": {
-								ServiceAddress address = (ServiceAddress) m[0];
+								IServiceAddress address = (IServiceAddress) m[0];
 								service.UnregisterRootServer(address);
 								responseStream.AddMessage("R", 1);
 								break;
@@ -920,13 +920,13 @@ namespace Deveel.Data.Net {
 							}
 							case "getRootForPath": {
 								string pathName = (string) m[0];
-								ServiceAddress address = service.GetRootForPath(pathName);
+								IServiceAddress address = service.GetRootForPath(pathName);
 								responseStream.AddMessage("R", address);
 								break;
 							}
 							case "addPathRootMapping": {
 								string pathName = (string) m[0];
-								ServiceAddress address = (ServiceAddress) m[1];
+								IServiceAddress address = (IServiceAddress) m[1];
 								service.AddPathRootMapping(pathName, address);
 								responseStream.AddMessage("R", 1);
 								break;
@@ -963,7 +963,7 @@ namespace Deveel.Data.Net {
 								break;
 							}
 							case "notifyBlockServerFailure": {
-								ServiceAddress address = (ServiceAddress) m[0];
+								IServiceAddress address = (IServiceAddress) m[0];
 								service.NotifyBlockServerFailure(address);
 								responseStream.AddMessage("R", 1);
 								break;
@@ -1002,15 +1002,15 @@ namespace Deveel.Data.Net {
 		#region RootServerInfo
 
 		protected sealed class RootServerInfo {
-			private readonly ServiceAddress address;
+			private readonly IServiceAddress address;
 			private readonly ServerStatus status;
 
-			internal RootServerInfo(ServiceAddress address, ServerStatus status) {
+			internal RootServerInfo(IServiceAddress address, ServerStatus status) {
 				this.address = address;
 				this.status = status;
 			}
 
-			public ServiceAddress Address {
+			public IServiceAddress Address {
 				get { return address; }
 			}
 
@@ -1033,10 +1033,10 @@ namespace Deveel.Data.Net {
 
 		protected sealed class BlockServerInfo {
 			private readonly long guid;
-			private readonly ServiceAddress address;
+			private readonly IServiceAddress address;
 			private ServerStatus status;
 
-			internal BlockServerInfo(long guid, ServiceAddress address, ServerStatus status) {
+			internal BlockServerInfo(long guid, IServiceAddress address, ServerStatus status) {
 				this.guid = guid;
 				this.address = address;
 				this.status = status;
@@ -1051,7 +1051,7 @@ namespace Deveel.Data.Net {
 				get { return guid; }
 			}
 
-			public ServiceAddress Address {
+			public IServiceAddress Address {
 				get { return address; }
 			}
 

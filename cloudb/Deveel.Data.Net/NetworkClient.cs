@@ -3,18 +3,18 @@ using System.IO;
 
 namespace Deveel.Data.Net {
 	public class NetworkClient : IDisposable {
-		public NetworkClient(ServiceAddress managerAddress, IServiceConnector connector)
+		public NetworkClient(IServiceAddress managerAddress, IServiceConnector connector)
 			: this(managerAddress, connector, ManagerCacheState.GetCache(managerAddress)) {
 		}
 
-		public NetworkClient(ServiceAddress managerAddress, IServiceConnector connector, INetworkCache cache) {
+		public NetworkClient(IServiceAddress managerAddress, IServiceConnector connector, INetworkCache cache) {
 			this.connector = connector;
 			this.managerAddress = managerAddress;
 			this.cache = cache;
 		}
 
 		private IServiceConnector connector;
-		private readonly ServiceAddress managerAddress;
+		private readonly IServiceAddress managerAddress;
 		private NetworkTreeSystem storageSystem;
 		private readonly INetworkCache cache;
 
@@ -64,7 +64,7 @@ namespace Deveel.Data.Net {
 		}
 
 		public DataAddress Commit(string pathName, DataAddress proposal) {
-			ServiceAddress rootAddress = storageSystem.GetRootServer(pathName);
+			IServiceAddress rootAddress = storageSystem.GetRootServer(pathName);
 			return storageSystem.Commit(rootAddress, pathName, proposal);
 		}
 
@@ -77,12 +77,12 @@ namespace Deveel.Data.Net {
 		}
 
 		public DataAddress[] GetHistoricalSnapshots(string pathName, DateTime timeStart, DateTime timeEnd) {
-			ServiceAddress rootAddress = storageSystem.GetRootServer(pathName);
+			IServiceAddress rootAddress = storageSystem.GetRootServer(pathName);
 			return storageSystem.GetPathHistorical(rootAddress, pathName, timeStart, timeEnd);
 		}
 
 		public DataAddress GetCurrentSnapshot(string pathName) {
-			ServiceAddress rootAddress = storageSystem.GetRootServer(pathName);
+			IServiceAddress rootAddress = storageSystem.GetRootServer(pathName);
 
 			if (rootAddress == null)
 				throw new Exception("There are no root servers in the network for path '" + pathName + "'");

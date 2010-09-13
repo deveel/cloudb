@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Deveel.Data.Net {
 	public sealed partial class NetworkProfile {
-		private void RegisterService(ServiceAddress address, ServiceType serviceType) {
+		private void RegisterService(IServiceAddress address, ServiceType serviceType) {
 			InspectNetwork();
 
 			// Check machine is in the schema,
@@ -26,7 +26,7 @@ namespace Deveel.Data.Net {
 				throw new NetworkAdminException(m.ErrorMessage);
 		}
 
-		private void DeregisterService(ServiceAddress address, ServiceType serviceType) {
+		private void DeregisterService(IServiceAddress address, ServiceType serviceType) {
 			InspectNetwork();
 
 			// Check machine is in the schema,
@@ -49,23 +49,23 @@ namespace Deveel.Data.Net {
 				throw new NetworkAdminException(m.ErrorMessage);
 		}
 
-		public void RegisterRoot(ServiceAddress root) {
+		public void RegisterRoot(IServiceAddress root) {
 			RegisterService(root, ServiceType.Root);
 		}
 
-		public void DeregisterRoot(ServiceAddress root) {
+		public void DeregisterRoot(IServiceAddress root) {
 			DeregisterService(root, ServiceType.Root);
 		}
 
-		public void RegisterBlock(ServiceAddress block) {
+		public void RegisterBlock(IServiceAddress block) {
 			RegisterService(block, ServiceType.Block);
 		}
 
-		public void DeregisterBlock(ServiceAddress block) {
+		public void DeregisterBlock(IServiceAddress block) {
 			DeregisterService(block, ServiceType.Block);
 		}
 
-		public ServiceAddress GetRoot(string pathName) {
+		public IServiceAddress GetRoot(string pathName) {
 			InspectNetwork();
 
 			// Get the current manager server,
@@ -73,7 +73,7 @@ namespace Deveel.Data.Net {
 			if (man == null)
 				throw new NetworkAdminException("No manager server found");
 
-			ServiceAddress manager_server = man.Address;
+			IServiceAddress manager_server = man.Address;
 
 			MessageStream msg_out = new MessageStream(7);
 			msg_out.AddMessage("getRootFor", pathName);
@@ -83,7 +83,7 @@ namespace Deveel.Data.Net {
 				throw new NetworkAdminException(m.ErrorMessage);
 
 			// Return the service address for the root server,
-			return (ServiceAddress)m[0];
+			return (IServiceAddress)m[0];
 		}
 
 		public long GetBlockMappingCount() {
@@ -94,7 +94,7 @@ namespace Deveel.Data.Net {
 			if (man == null)
 				throw new NetworkAdminException("No manager server found");
 
-			ServiceAddress manager_server = man.Address;
+			IServiceAddress manager_server = man.Address;
 
 			MessageStream msg_out = new MessageStream(7);
 			msg_out.AddMessage(new Message("getBlockMappingCount"));
@@ -115,7 +115,7 @@ namespace Deveel.Data.Net {
 			if (man == null)
 				throw new NetworkAdminException("No manager server found");
 
-			ServiceAddress manager_server = man.Address;
+			IServiceAddress manager_server = man.Address;
 
 			MessageStream msg_out = new MessageStream(7);
 			msg_out.AddMessage(new Message("getBlockMappingRange", new object[] { p1, p2 }));
@@ -128,7 +128,7 @@ namespace Deveel.Data.Net {
 			return (long[])m[0];
 		}
 
-		public IDictionary<ServiceAddress, String> GetBlocksStatus() {
+		public IDictionary<IServiceAddress, String> GetBlocksStatus() {
 			InspectNetwork();
 
 			// Get the current manager server,
@@ -136,7 +136,7 @@ namespace Deveel.Data.Net {
 			if (man == null)
 				throw new NetworkAdminException("No manager server found");
 
-			ServiceAddress manager_server = man.Address;
+			IServiceAddress manager_server = man.Address;
 
 			MessageStream msg_out = new MessageStream(7);
 			msg_out.AddMessage(new Message("getRegisteredServerList"));
@@ -146,10 +146,10 @@ namespace Deveel.Data.Net {
 				throw new NetworkAdminException(m.ErrorMessage);
 
 			// The list of block servers registered with the manager,
-			ServiceAddress[] regservers = (ServiceAddress[])m[0];
+			IServiceAddress[] regservers = (IServiceAddress[])m[0];
 			String[] regservers_status = (String[])m[1];
 
-			Dictionary<ServiceAddress, string> map = new Dictionary<ServiceAddress, string>();
+			Dictionary<IServiceAddress, string> map = new Dictionary<IServiceAddress, string>();
 			for (int i = 0; i < regservers.Length; ++i)
 				map.Add(regservers[i], regservers_status[i]);
 
@@ -165,7 +165,7 @@ namespace Deveel.Data.Net {
 			if (man == null)
 				throw new NetworkAdminException("No manager server found");
 
-			ServiceAddress manager_server = man.Address;
+			IServiceAddress manager_server = man.Address;
 
 			MessageStream msg_out = new MessageStream(7);
 			msg_out.AddMessage(new Message("addBlockServerMapping", new object[] { block_id, server_guid }));
@@ -183,7 +183,7 @@ namespace Deveel.Data.Net {
 			if (man == null)
 				throw new NetworkAdminException("No manager server found");
 
-			ServiceAddress manager_server = man.Address;
+			IServiceAddress manager_server = man.Address;
 
 			MessageStream msg_out = new MessageStream(7);
 			msg_out.AddMessage(new Message("removeBlockServerMapping", new object[] { block_id, server_guid }));

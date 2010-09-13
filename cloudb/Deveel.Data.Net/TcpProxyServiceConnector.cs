@@ -79,8 +79,12 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		public IMessageProcessor Connect(ServiceAddress address, ServiceType type) {
+		public IMessageProcessor Connect(IPServiceAddress address, ServiceType type) {
 			return new MessageProcessor(this, address, type);
+		}
+		
+		IMessageProcessor IServiceConnector.Connect(IServiceAddress address, ServiceType type) {
+			return Connect((IPServiceAddress)address, type);
 		}
 
 		#endregion
@@ -88,14 +92,14 @@ namespace Deveel.Data.Net {
 		#region MessageProcessor
 
 		private class MessageProcessor : IMessageProcessor {
-			public MessageProcessor(TcpProxyServiceConnector connector, ServiceAddress address, ServiceType serviceType) {
+			public MessageProcessor(TcpProxyServiceConnector connector, IPServiceAddress address, ServiceType serviceType) {
 				this.connector = connector;
 				this.address = address;
 				this.serviceType = serviceType;
 			}
 
 			private readonly TcpProxyServiceConnector connector;
-			private readonly ServiceAddress address;
+			private readonly IPServiceAddress address;
 			private readonly ServiceType serviceType;
 
 			#region Implementation of IMessageProcessor
@@ -117,7 +121,9 @@ namespace Deveel.Data.Net {
 
 						// Write the message.
 						connector.pout.Write(code);
-						address.WriteTo(connector.pout);
+						IPServiceAddressHandler handler = new IPServiceAddressHandler();
+						byte[] addressBytes = handler.ToBytes(address);
+						connector.pout.Write(addressBytes);
 						serializer.Serialize(messageStream, connector.pout.BaseStream);
 						connector.pout.Flush();
 

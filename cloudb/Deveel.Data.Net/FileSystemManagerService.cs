@@ -12,7 +12,7 @@ namespace Deveel.Data.Net {
 		private const string RegisteredRootServers = "rootservers";
 
 		public FileSystemManagerService(IServiceConnector connector, string basePath, 
-		                               string dbPath, ServiceAddress address)
+		                               string dbPath, IServiceAddress address)
 			: base(connector, address) {
 			this.basePath = basePath;
 			this.dbPath = dbPath;
@@ -33,7 +33,7 @@ namespace Deveel.Data.Net {
 					while ((line = rin.ReadLine()) != null) {
 						int p = line.IndexOf(",");
 						long guid = Int64.Parse(line.Substring(0, p));
-						ServiceAddress addr = ServiceAddress.Parse(line.Substring(p + 1));
+						IServiceAddress addr = ServiceAddresses.ParseString(line.Substring(p + 1));
 						AddRegisteredBlockServer(guid, addr);
 					}
 				}
@@ -46,7 +46,7 @@ namespace Deveel.Data.Net {
 				using (StreamReader rin = new StreamReader(f)) {
 					string line;
 					while ((line = rin.ReadLine()) != null) {
-						ServiceAddress addr = ServiceAddress.Parse(line);
+						IServiceAddress addr = ServiceAddresses.ParseString(line);
 						AddRegisteredRootServer(addr);
 					}
 				}

@@ -2,11 +2,11 @@
 
 namespace Deveel.Data.Net {
 	public sealed class MachineProfile {
-		internal MachineProfile(ServiceAddress address) {
+		internal MachineProfile(IServiceAddress address) {
 			this.address = address;
 		}
 
-		private readonly ServiceAddress address;
+		private readonly IServiceAddress address;
 		private ServiceType type;
 
 		private long memoryUsed;
@@ -34,7 +34,7 @@ namespace Deveel.Data.Net {
 			get { return (type & ServiceType.Root) != 0; }
 		}
 
-		public ServiceAddress Address {
+		public IServiceAddress Address {
 			get { return address; }
 		}
 

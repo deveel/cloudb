@@ -11,21 +11,21 @@ using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
 	internal class NetworkTreeSystem : ITreeSystem {
-		internal NetworkTreeSystem(IServiceConnector connector, ServiceAddress managerAddress, INetworkCache networkCache) {
+		internal NetworkTreeSystem(IServiceConnector connector, IServiceAddress managerAddress, INetworkCache networkCache) {
 			this.connector = connector;
 			this.managerAddress = managerAddress;
 			this.networkCache = networkCache;
-			failures = new Dictionary<ServiceAddress, DateTime>();
-			pathToRoot = new Dictionary<string, ServiceAddress>();
+			failures = new Dictionary<IServiceAddress, DateTime>();
+			pathToRoot = new Dictionary<string, IServiceAddress>();
 		}
 
 		private readonly IServiceConnector connector;
-		private readonly ServiceAddress managerAddress;
+		private readonly IServiceAddress managerAddress;
 		private readonly INetworkCache networkCache;
 
-		private readonly Dictionary<ServiceAddress, DateTime> failures;
-		private readonly Dictionary<string, ServiceAddress> pathToRoot;
-		private readonly Dictionary<ServiceAddress, int> proximityMap = new Dictionary<ServiceAddress, int>();
+		private readonly Dictionary<IServiceAddress, DateTime> failures;
+		private readonly Dictionary<string, IServiceAddress> pathToRoot;
+		private readonly Dictionary<IServiceAddress, int> proximityMap = new Dictionary<IServiceAddress, int>();
 
 		private readonly Object reachability_lock = new Object();
 		private int reachability_tree_depth;
@@ -37,7 +37,7 @@ namespace Deveel.Data.Net {
 		private const short LeafType = 0x019EC;
 		private const short BranchType = 0x022EB;
 
-		private void ReportBlockServerFailure(ServiceAddress address) {
+		private void ReportBlockServerFailure(IServiceAddress address) {
 			//TODO: WARN log ...
 
 			// Failure throttling,
@@ -65,12 +65,16 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		private int GetProximity(ServiceAddress node) {
+		//TODO: should this work also for other kind of addresses?
+		private int GetProximity(IServiceAddress node) {
+			if (!(node is IPServiceAddress))
+				throw new NotSupportedException();
+			
 			lock (proximityMap) {
 				int closeness;
 				if (!proximityMap.TryGetValue(node, out closeness)) {
 					try {
-						IPAddress machine_address = node.ToIPAddress();
+						IPAddress machine_address = ((IPServiceAddress) node).ToIPAddress();
 
 						NetworkInterface[] local_interfaces = NetworkInterface.GetAllNetworkInterfaces();
 						bool is_local = false;
@@ -144,7 +148,7 @@ namespace Deveel.Data.Net {
 				int sz = (int) m[0];
 				List<BlockServerElement> srvs = new List<BlockServerElement>(sz);
 				for (int i = 0; i < sz; ++i) {
-					ServiceAddress address = (ServiceAddress) m[1 + (i*2)];
+					IServiceAddress address = (IServiceAddress) m[1 + (i*2)];
 					string status = (string) m[1 + (i*2) + 1];
 					srvs.Add(new BlockServerElement(address, status));
 				}
@@ -448,7 +452,7 @@ namespace Deveel.Data.Net {
 				IMessageProcessor[] block_server_procs = new IMessageProcessor[bssz];
 				// Make the block server connections,
 				for (int o = 0; o < bssz; ++o) {
-					ServiceAddress address = block_servers[o].Address;
+					IServiceAddress address = block_servers[o].Address;
 					block_server_procs[o] = connector.Connect(address, ServiceType.Block);
 					MessageStream message_in = block_server_procs[o].Process(message_out);
 					//DEBUG: ++network_comm_count;
@@ -463,7 +467,7 @@ namespace Deveel.Data.Net {
 
 							// Rollback any server writes already successfully made,
 							for (int p = 0; p < success_process.Count; p += 2) {
-								ServiceAddress blocks_addr = (ServiceAddress)success_process[p];
+								IServiceAddress blocks_addr = (IServiceAddress)success_process[p];
 								MessageStream to_rollback = (MessageStream)success_process[p + 1];
 
 								List<DataAddress> rollback_nodes = new List<DataAddress>(128);
@@ -554,11 +558,11 @@ namespace Deveel.Data.Net {
 			return new DataAddress(root_id);
 		}
 
-		public ServiceAddress GetRootServer(string pathName) {
+		public IServiceAddress GetRootServer(string pathName) {
 
 			// Check if this is stored in the cache first,
 			lock (pathToRoot) {
-				ServiceAddress saddr;
+				IServiceAddress saddr;
 				if (pathToRoot.TryGetValue(pathName, out saddr))
 					return saddr;
 			}
@@ -576,7 +580,7 @@ namespace Deveel.Data.Net {
 					throw new Exception(m.ErrorMessage, m.Error);
 
 				// Return the service address result,
-				ServiceAddress saddr = (ServiceAddress) m[0];
+				IServiceAddress saddr = (IServiceAddress) m[0];
 				// Put it in the map,
 				lock(pathToRoot) {
 					pathToRoot[pathName] = saddr;
@@ -612,7 +616,7 @@ namespace Deveel.Data.Net {
 			((Transaction)transaction).Dispose();
 		}
 
-		public DataAddress Commit(ServiceAddress root_server, String path_name, DataAddress proposal) {
+		public DataAddress Commit(IServiceAddress root_server, String path_name, DataAddress proposal) {
 			IMessageProcessor processor = connector.Connect(root_server, ServiceType.Root);
 			MessageStream msg_out = new MessageStream(16);
 			msg_out.AddMessage(new Message("commit", new object[] { path_name, proposal }));
@@ -651,7 +655,7 @@ namespace Deveel.Data.Net {
 			throw new Exception("Bad formatted message stream");
 		}
 
-		public DataAddress GetPathNow(ServiceAddress root_server, String name) {
+		public DataAddress GetPathNow(IServiceAddress root_server, String name) {
 			IMessageProcessor processor = connector.Connect(root_server, ServiceType.Root);
 			MessageStream msg_out = new MessageStream(16);
 			msg_out.AddMessage(new Message("getPathNow", new object[] { name }));
@@ -665,7 +669,7 @@ namespace Deveel.Data.Net {
 			throw new Exception("Bad formatted message stream");
 		}
 
-		public DataAddress[] GetPathHistorical(ServiceAddress rootServer, string name, DateTime timeStart, DateTime timeEnd) {
+		public DataAddress[] GetPathHistorical(IServiceAddress rootServer, string name, DateTime timeStart, DateTime timeEnd) {
 			IMessageProcessor processor = connector.Connect(rootServer, ServiceType.Root);
 			MessageStream msg_out = new MessageStream(16);
 			msg_out.AddMessage(new Message("getPathHistorical", new object[] { name, timeStart.Ticks, timeEnd.Ticks }));

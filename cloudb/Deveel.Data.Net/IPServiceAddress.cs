@@ -1,58 +1,39 @@
 ﻿using System;
 using System.IO;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 
 namespace Deveel.Data.Net {
-	public sealed class ServiceAddress : IComparable<ServiceAddress> {
-		public ServiceAddress(byte[] address, int port) {
-			if (address.Length != 16) {
-				throw new ArgumentException("Address must be a 16 byte IPv6 format.", "address");
-			}
-			this.address = (byte[])address.Clone();
-			this.port = port;
+	public sealed class IPServiceAddress : IServiceAddress {
+		public IPServiceAddress(byte[] address, int port)
+			: this(new IPAddress(address), port) {
+			if (address.Length != 16)
+				throw new ArgumentException("Address must be a 16 byte IPv6 format.", "address");			
+		}
+		
+		public IPServiceAddress(string address, int port)
+			: this(IPAddress.Parse(address), port) {
 		}
 
-		public ServiceAddress(IPAddress address, int port) {
-			this.address = new byte[16];
+		public IPServiceAddress(IPAddress address, int port) {
+			if (address.AddressFamily != AddressFamily.InterNetwork &&
+			    address.AddressFamily != AddressFamily.InterNetworkV6)
+				throw new ArgumentException("Only IPv4 and IPv6 addresses are permitted", "address");
+			
 			this.port = port;
+			family = address.AddressFamily;
+			
 			if (IPAddress.IsLoopback(address))
 				address = Dns.GetHostEntry(address).AddressList[0];
+			
 			byte[] b = address.GetAddressBytes();
-			// If the address is ipv4,
-			if (b.Length == 4) {
-				// Format the network address as an 16 byte ipv6 on ipv4 network address.
-				//net_address[10] = (byte)0x0FF;
-				//net_address[11] = (byte)0x0FF;
-				for (int i = 0; i < 11; i++)
-					this.address[i] = 0;
-				/*
-				if (IPAddress.IsLoopback(inet_address)) {
-					net_address[12] = 0;
-					net_address[13] = 0;
-					net_address[14] = 0;
-					net_address[15] = 1;
-				} else {
-				*/
-				this.address[12] = b[0];
-				this.address[13] = b[1];
-				this.address[14] = b[2];
-				this.address[15] = b[3];
-				//}
-			}
-				// If the address is ipv6
-			else if (b.Length == 16) {
-				for (int i = 0; i < 16; ++i) {
-					this.address[i] = b[i];
-				}
-			} else {
-				// Some future inet_address format?
-				throw new ArgumentException("Invalid IP address format");
-			}
+			this.address = (byte[])b.Clone();
 		}
-
-		private readonly byte[] address;
-		private readonly int port;
+		
+		private AddressFamily family;
+		private byte[] address;
+		private int port;
 
 		public byte[] Address {
 			get { return (byte[]) address.Clone(); }
@@ -61,10 +42,25 @@ namespace Deveel.Data.Net {
 		public int Port {
 			get { return port; }
 		}
+		
+		internal bool IsIPv4 {
+			get { return address.Length == 4; }
+		}
+		
+		internal bool IsIPv6 {
+			get { return address.Length == 16; }
+		}
 
-		#region Implementation of IComparable<ServiceAddress>
+		#region Implementation of IComparable<IServiceAddress>
+		
+		int IComparable<IServiceAddress>.CompareTo(IServiceAddress other) {
+			return CompareTo((IPServiceAddress)other);
+		}
 
-		public int CompareTo(ServiceAddress other) {
+		public int CompareTo(IPServiceAddress other) {
+			if (family != other.family)
+				throw new ArgumentException("The given address is not of the same family of this address.");
+			
 			for (int i = 0; i < address.Length; ++i) {
 				byte dbi = other.address[i];
 				byte sbi = address[i];
@@ -78,8 +74,10 @@ namespace Deveel.Data.Net {
 		#endregion
 
 		public override bool Equals(object obj) {
-			ServiceAddress dest_ob = (ServiceAddress)obj;
+			IPServiceAddress dest_ob = (IPServiceAddress)obj;
 			if (port != dest_ob.port)
+				return false;
+			if (family != dest_ob.family)
 				return false;
 
 			for (int i = 0; i < address.Length; ++i) {
@@ -125,22 +123,7 @@ namespace Deveel.Data.Net {
 			return buf.ToString();
 		}
 
-		internal static ServiceAddress ReadFrom(BinaryReader input) {
-			byte[] buf = new byte[16];
-			for (int i = 0; i < 16; ++i)
-				buf[i] = input.ReadByte();
-			int port = input.ReadInt32();
-			return new ServiceAddress(buf, port);
-		}
-
-		internal void WriteTo(BinaryWriter output) {
-			for (int i = 0; i < 16; ++i) {
-				output.Write(address[i]);
-			}
-			output.Write(port);
-		}
-
-		public static ServiceAddress Parse(string s) {
+		public static IPServiceAddress Parse(string s) {
 			int p = s.LastIndexOf(":");
 			if (p == -1)
 				throw new FormatException("Invalid format for the input string: " + s);
@@ -152,15 +135,18 @@ namespace Deveel.Data.Net {
 			if (!Int32.TryParse(servicePort, out port))
 				throw new FormatException("The port number is invalid.");
 
-			IPAddress ipAddress;
+			IPAddress ipAddress = null;
 
 			try {
-				ipAddress = Dns.GetHostAddresses(serviceAddr)[0];
+				ipAddress = IPAddress.Parse(serviceAddr);
 			} catch(Exception) {
 				throw new FormatException("Unable to resolve the address '" + serviceAddr + "'.");
 			}
+			
+			if (ipAddress == null)
+				throw new FormatException("Unable to resolve the address '" + serviceAddr + "'.");
 
-			return new ServiceAddress(ipAddress, port);
+			return new IPServiceAddress(ipAddress, port);
 		}
 	}
 }
