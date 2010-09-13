@@ -65,11 +65,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Deveel.Data.Net\FakeAdminService.cs" />
+    <Compile Include="Deveel.Data.Net\FakeAdminService.cs">
+    </Compile>
     <Compile Include="Deveel.Data.Net\FakeServiceAddress.cs" />
     <Compile Include="Deveel.Data.Net\FakeServiceAddressHandler.cs" />
     <Compile Include="Deveel.Data.Net\FakeServiceConnector.cs" />
-    <Compile Include="Deveel.Data.Net\FakeNetworkTestBase.cs" />
+    <Compile Include="Deveel.Data.Net\FakeNetworkTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

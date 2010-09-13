@@ -1,6 +1,8 @@
 ﻿using System;
 
-namespace Deveel.Data.Net {
+using Deveel.Data.Net;
+
+namespace Deveel.Data {
 	/// <summary>
 	/// Defines the functionalities to manage a <i>path</i> within a network
 	/// system, coordinating the management and access of data.

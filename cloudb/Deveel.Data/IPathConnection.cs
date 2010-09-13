@@ -1,6 +1,8 @@
 ﻿using System;
 
-namespace Deveel.Data.Net {
+using Deveel.Data.Net;
+
+namespace Deveel.Data {
 	/// <summary>
 	/// Provides functionalities for communicating with a distributed
 	/// network within a coordination environment.
