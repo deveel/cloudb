@@ -5,7 +5,7 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProductVersion>9.0.30729</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{6DC4F2A2-2F7E-412B-96EC-027B4F47883C}</ProjectGuid>
+    <ProjectGuid>{A2099A92-DA13-4440-B2F9-7890750E0E70}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>cloudbase</RootNamespace>
@@ -38,7 +38,12 @@
   <ItemGroup>
     <Compile Include="Deveel.Data\DbDataFile.cs" />
     <Compile Include="Deveel.Data\BasePath.cs" />
+    <Compile Include="Deveel.Data\DbIndex.cs" />
+    <Compile Include="Deveel.Data\DbRow.cs" />
+    <Compile Include="Deveel.Data\DbRowCursor.cs" />
+    <Compile Include="Deveel.Data\DbTable.cs" />
     <Compile Include="Deveel.Data\DbTransaction.cs" />
+    <Compile Include="Deveel.Data\Directory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup />
