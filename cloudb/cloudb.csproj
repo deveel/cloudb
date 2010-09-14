@@ -94,7 +94,12 @@
     <Compile Include="Deveel.Data.Net\FileSystemRootService.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Deveel.Data.Net\HttpServiceAddressHandler.cs" />
+    <Compile Include="Deveel.Data.Net\HttpServiceConnector.cs" />
     <Compile Include="Deveel.Data.Net\IBlockStore.cs" />
+    <Compile Include="Deveel.Data.Net\HttpServiceAddress.cs" />
+    <Compile Include="Deveel.Data.Net\IMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net\XmlMessageStreamSerializer.cs" />
     <Compile Include="Deveel.Data\IIndexCursor.cs" />
     <Compile Include="Deveel.Data\IIndex.cs" />
     <Compile Include="Deveel.Data\IInteractiveEnumerator.cs">
@@ -124,7 +129,7 @@
     <Compile Include="Deveel.Data.Net\MemoryRootService.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Deveel.Data.Net\MessageStreamSerializer.cs" />
+    <Compile Include="Deveel.Data.Net\BinaryMessageStreamSerializer.cs" />
     <Compile Include="Deveel.Data.Net\NetworkAdminException.cs" />
     <Compile Include="Deveel.Data.Net\NetworkClient.cs" />
     <Compile Include="Deveel.Data.Net\NetworkConfigSource.cs" />
@@ -143,7 +148,7 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Deveel.Data.Net\ServiceAddresses.cs" />
-    <Compile Include="Deveel.Data.Net\IPServiceAddressHandler.cs" />
+    <Compile Include="Deveel.Data.Net\TcpServiceAddressHandler.cs" />
     <Compile Include="Deveel.Data.Net\TcpAdminService.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -183,7 +188,7 @@
     <Compile Include="Deveel.Data.Net\Service.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Deveel.Data.Net\IPServiceAddress.cs" />
+    <Compile Include="Deveel.Data.Net\TcpServiceAddress.cs" />
     <Compile Include="Deveel.Data.Net\ServiceException.cs" />
     <Compile Include="Deveel.Data.Net\ServiceType.cs" />
     <Compile Include="Deveel.Data.Net\SingleNodeSet.cs" />

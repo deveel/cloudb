@@ -5,18 +5,18 @@ using System.Net.Sockets;
 using System.Text;
 
 namespace Deveel.Data.Net {
-	public sealed class IPServiceAddress : IServiceAddress {
-		public IPServiceAddress(byte[] address, int port)
+	public sealed class TcpServiceAddress : IServiceAddress {
+		public TcpServiceAddress(byte[] address, int port)
 			: this(new IPAddress(address), port) {
 			if (address.Length != 16)
 				throw new ArgumentException("Address must be a 16 byte IPv6 format.", "address");			
 		}
 		
-		public IPServiceAddress(string address, int port)
+		public TcpServiceAddress(string address, int port)
 			: this(IPAddress.Parse(address), port) {
 		}
 
-		public IPServiceAddress(IPAddress address, int port) {
+		public TcpServiceAddress(IPAddress address, int port) {
 			if (address.AddressFamily != AddressFamily.InterNetwork &&
 			    address.AddressFamily != AddressFamily.InterNetworkV6)
 				throw new ArgumentException("Only IPv4 and IPv6 addresses are permitted", "address");
@@ -54,10 +54,10 @@ namespace Deveel.Data.Net {
 		#region Implementation of IComparable<IServiceAddress>
 		
 		int IComparable<IServiceAddress>.CompareTo(IServiceAddress other) {
-			return CompareTo((IPServiceAddress)other);
+			return CompareTo((TcpServiceAddress)other);
 		}
 
-		public int CompareTo(IPServiceAddress other) {
+		public int CompareTo(TcpServiceAddress other) {
 			if (family != other.family)
 				throw new ArgumentException("The given address is not of the same family of this address.");
 			
@@ -74,7 +74,7 @@ namespace Deveel.Data.Net {
 		#endregion
 
 		public override bool Equals(object obj) {
-			IPServiceAddress dest_ob = (IPServiceAddress)obj;
+			TcpServiceAddress dest_ob = (TcpServiceAddress)obj;
 			if (port != dest_ob.port)
 				return false;
 			if (family != dest_ob.family)
@@ -123,7 +123,7 @@ namespace Deveel.Data.Net {
 			return buf.ToString();
 		}
 
-		public static IPServiceAddress Parse(string s) {
+		public static TcpServiceAddress Parse(string s) {
 			int p = s.LastIndexOf(":");
 			if (p == -1)
 				throw new FormatException("Invalid format for the input string: " + s);
@@ -146,7 +146,7 @@ namespace Deveel.Data.Net {
 			if (ipAddress == null)
 				throw new FormatException("Unable to resolve the address '" + serviceAddr + "'.");
 
-			return new IPServiceAddress(ipAddress, port);
+			return new TcpServiceAddress(ipAddress, port);
 		}
 	}
 }

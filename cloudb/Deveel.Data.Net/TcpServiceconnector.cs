@@ -9,7 +9,7 @@ using System.Threading;
 namespace Deveel.Data.Net {
 	public class TcpServiceConnector : IServiceConnector {
 		public TcpServiceConnector(string password) {
-			connections = new Dictionary<IPServiceAddress, TcpConnection>();
+			connections = new Dictionary<TcpServiceAddress, TcpConnection>();
 			this.password = password;
 
 			// This thread kills connections that have timed out.
@@ -19,7 +19,7 @@ namespace Deveel.Data.Net {
 			backgroundThread.Start();
 		}
 
-		private readonly Dictionary<IPServiceAddress, TcpConnection> connections;
+		private readonly Dictionary<TcpServiceAddress, TcpConnection> connections;
 		private readonly string password;
 
 		private readonly Thread backgroundThread;
@@ -35,9 +35,9 @@ namespace Deveel.Data.Net {
 						// We check the connections every 2 minutes,
 						Monitor.Wait(connections, 2 * 60 * 1000);
 						DateTime now = DateTime.Now;
-						List<IPServiceAddress> toRemove = new List<IPServiceAddress>();
+						List<TcpServiceAddress> toRemove = new List<TcpServiceAddress>();
 						// For each key entry,
-						foreach (KeyValuePair<IPServiceAddress, TcpConnection> connection in connections) {
+						foreach (KeyValuePair<TcpServiceAddress, TcpConnection> connection in connections) {
 							// If lock is 0, and past timeout, we can safely remove it.
 							// The timeout on a connection is 5 minutes plus the poll artifact
 							if (connection.Value.lock_count == 0 &&
@@ -49,7 +49,7 @@ namespace Deveel.Data.Net {
 						}
 
 						if (toRemove.Count > 0) {
-							foreach (IPServiceAddress address in toRemove)
+							foreach (TcpServiceAddress address in toRemove)
 								connections.Remove(address);
 						}
 
@@ -78,7 +78,7 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		private TcpConnection GetConnection(IPServiceAddress address) {
+		private TcpConnection GetConnection(TcpServiceAddress address) {
 			TcpConnection c;
 			lock (connections) {
 				// If there isn't, establish a connection,
@@ -111,7 +111,7 @@ namespace Deveel.Data.Net {
 			return c;
 		}
 
-		private void InvalidateConnection(IPServiceAddress address) {
+		private void InvalidateConnection(TcpServiceAddress address) {
 			lock (connections) {
 				connections.Remove(address);
 			}
@@ -140,12 +140,12 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		public IMessageProcessor Connect(IPServiceAddress address, ServiceType type) {
+		public IMessageProcessor Connect(TcpServiceAddress address, ServiceType type) {
 			return new TcpMessageProcessor(this, address, type);
 		}
 		
 		IMessageProcessor IServiceConnector.Connect(IServiceAddress address, ServiceType type) {
-			return Connect((IPServiceAddress)address, type);
+			return Connect((TcpServiceAddress)address, type);
 		}
 
 		#endregion
@@ -153,13 +153,13 @@ namespace Deveel.Data.Net {
 		#region TcpMessageProcessor
 
 		private class TcpMessageProcessor : IMessageProcessor {
-			public TcpMessageProcessor(TcpServiceConnector connector, IPServiceAddress address, ServiceType serviceType) {
+			public TcpMessageProcessor(TcpServiceConnector connector, TcpServiceAddress address, ServiceType serviceType) {
 				this.connector = connector;
 				this.address = address;
 				this.serviceType = serviceType;
 			}
 
-			private readonly IPServiceAddress address;
+			private readonly TcpServiceAddress address;
 			private readonly ServiceType serviceType;
 			private readonly TcpServiceConnector connector;
 
@@ -185,7 +185,7 @@ namespace Deveel.Data.Net {
 
 						BinaryWriter writer = new BinaryWriter(c.Output, Encoding.Unicode);
 						writer.Write(code);
-						MessageStreamSerializer serializer = new MessageStreamSerializer();
+						BinaryMessageStreamSerializer serializer = new BinaryMessageStreamSerializer();
 						serializer.Serialize(messageStream, writer);
 						writer.Flush();
 

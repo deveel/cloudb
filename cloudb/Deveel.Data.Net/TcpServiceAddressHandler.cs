@@ -2,21 +2,21 @@
 using System.Net.Sockets;
 
 namespace Deveel.Data.Net {
-	public sealed class IPServiceAddressHandler : IServiceAddressHandler {
+	public sealed class TcpServiceAddressHandler : IServiceAddressHandler {
 		public bool CanHandle(Type type) {
-			return type == typeof(IPServiceAddress);
+			return type == typeof(TcpServiceAddress);
 		}
 		
 		public int GetCode(Type type) {
-			return (type == typeof(IPServiceAddress)) ? 1 : -1;
+			return (type == typeof(TcpServiceAddress)) ? 1 : -1;
 		}
 		
 		public Type GetTypeFromCode(int code) {
-			return code == 1 ? typeof(IPServiceAddress) : null;
+			return code == 1 ? typeof(TcpServiceAddress) : null;
 		}
 		
 		public IServiceAddress FromString(string s) {
-			return IPServiceAddress.Parse(s);
+			return TcpServiceAddress.Parse(s);
 		}
 		
 		public IServiceAddress FromBytes(byte[] bytes) {
@@ -24,7 +24,7 @@ namespace Deveel.Data.Net {
 			byte[] address = new byte[length];
 			Array.Copy(bytes, 2, address, 0, length);
 			int port = Util.ByteBuffer.ReadInt4(bytes, length + 2);
-			return new IPServiceAddress(address, port);
+			return new TcpServiceAddress(address, port);
 		}
 		
 		public string ToString(IServiceAddress address) {
@@ -32,7 +32,7 @@ namespace Deveel.Data.Net {
 		}
 		
 		public byte[] ToBytes(IServiceAddress address) {
-			IPServiceAddress tcpAddress = (IPServiceAddress)address;
+			TcpServiceAddress tcpAddress = (TcpServiceAddress)address;
 			
 			int length = tcpAddress.IsIPv4 ? 4 : 16;
 			byte[] buffer = new byte[length + 2 + 4];

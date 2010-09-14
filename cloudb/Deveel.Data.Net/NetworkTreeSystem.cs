@@ -67,14 +67,14 @@ namespace Deveel.Data.Net {
 
 		//TODO: should this work also for other kind of addresses?
 		private int GetProximity(IServiceAddress node) {
-			if (!(node is IPServiceAddress))
+			if (!(node is TcpServiceAddress))
 				throw new NotSupportedException();
 			
 			lock (proximityMap) {
 				int closeness;
 				if (!proximityMap.TryGetValue(node, out closeness)) {
 					try {
-						IPAddress machine_address = ((IPServiceAddress) node).ToIPAddress();
+						IPAddress machine_address = ((TcpServiceAddress) node).ToIPAddress();
 
 						NetworkInterface[] local_interfaces = NetworkInterface.GetAllNetworkInterfaces();
 						bool is_local = false;

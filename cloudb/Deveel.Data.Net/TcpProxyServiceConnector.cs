@@ -79,12 +79,12 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		public IMessageProcessor Connect(IPServiceAddress address, ServiceType type) {
+		public IMessageProcessor Connect(TcpServiceAddress address, ServiceType type) {
 			return new MessageProcessor(this, address, type);
 		}
 		
 		IMessageProcessor IServiceConnector.Connect(IServiceAddress address, ServiceType type) {
-			return Connect((IPServiceAddress)address, type);
+			return Connect((TcpServiceAddress)address, type);
 		}
 
 		#endregion
@@ -92,14 +92,14 @@ namespace Deveel.Data.Net {
 		#region MessageProcessor
 
 		private class MessageProcessor : IMessageProcessor {
-			public MessageProcessor(TcpProxyServiceConnector connector, IPServiceAddress address, ServiceType serviceType) {
+			public MessageProcessor(TcpProxyServiceConnector connector, TcpServiceAddress address, ServiceType serviceType) {
 				this.connector = connector;
 				this.address = address;
 				this.serviceType = serviceType;
 			}
 
 			private readonly TcpProxyServiceConnector connector;
-			private readonly IPServiceAddress address;
+			private readonly TcpServiceAddress address;
 			private readonly ServiceType serviceType;
 
 			#region Implementation of IMessageProcessor
@@ -107,7 +107,7 @@ namespace Deveel.Data.Net {
 			public MessageStream Process(MessageStream messageStream) {
 				try {
 					lock (connector.proxy_lock) {
-						MessageStreamSerializer serializer = new MessageStreamSerializer();
+						BinaryMessageStreamSerializer serializer = new BinaryMessageStreamSerializer();
 
 						char code = '\0';
 						if (serviceType == ServiceType.Admin)
@@ -121,7 +121,7 @@ namespace Deveel.Data.Net {
 
 						// Write the message.
 						connector.pout.Write(code);
-						IPServiceAddressHandler handler = new IPServiceAddressHandler();
+						TcpServiceAddressHandler handler = new TcpServiceAddressHandler();
 						byte[] addressBytes = handler.ToBytes(address);
 						connector.pout.Write(addressBytes);
 						serializer.Serialize(messageStream, connector.pout.BaseStream);

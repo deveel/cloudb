@@ -3,10 +3,7 @@ using System.IO;
 using System.Text;
 
 namespace Deveel.Data.Net {
-	public sealed class MessageStreamSerializer {
-		public MessageStreamSerializer() {
-		}
-				
+	public sealed class BinaryMessageStreamSerializer : IMessageSerializer {
 		public void Serialize(MessageStream messageStream, BinaryWriter writer) {
 			if (messageStream == null)
 				throw new ArgumentNullException("messageStream");

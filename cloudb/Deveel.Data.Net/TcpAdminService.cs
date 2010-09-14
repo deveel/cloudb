@@ -9,17 +9,17 @@ namespace Deveel.Data.Net {
 	public abstract class TcpAdminService : AdminService {
 		private readonly string password;
 		private readonly NetworkConfigSource config;
-		private readonly IPServiceAddress serviceAddress;
+		private readonly TcpServiceAddress serviceAddress;
 		private bool polling;
 		private TcpServiceConnector connector;
 
 		protected TcpAdminService(NetworkConfigSource config, IPAddress address, int port, string  password) {
 			this.config = config;
-			serviceAddress = new IPServiceAddress(address, port);
+			serviceAddress = new TcpServiceAddress(address, port);
 			this.password = password;
 		}
 
-		protected IPServiceAddress Address {
+		protected TcpServiceAddress Address {
 			get { return serviceAddress; }
 		}
 
@@ -176,7 +176,7 @@ namespace Deveel.Data.Net {
 							return;
 
 						// Read the message stream object
-						MessageStreamSerializer serializer = new MessageStreamSerializer();
+						BinaryMessageStreamSerializer serializer = new BinaryMessageStreamSerializer();
 						MessageStream message_stream = serializer.Deserialize(reader);
 
 						MessageStream message_out;
