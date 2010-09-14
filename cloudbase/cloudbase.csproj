@@ -40,8 +40,10 @@
     <Compile Include="Deveel.Data\BasePath.cs" />
     <Compile Include="Deveel.Data\DbFile.cs" />
     <Compile Include="Deveel.Data\DbIndex.cs" />
+    <Compile Include="Deveel.Data\DbRootAddress.cs" />
     <Compile Include="Deveel.Data\DbRow.cs" />
     <Compile Include="Deveel.Data\DbRowCursor.cs" />
+    <Compile Include="Deveel.Data\DbSession.cs" />
     <Compile Include="Deveel.Data\DbTable.cs" />
     <Compile Include="Deveel.Data\DbTableSchema.cs" />
     <Compile Include="Deveel.Data\DbTransaction.cs" />

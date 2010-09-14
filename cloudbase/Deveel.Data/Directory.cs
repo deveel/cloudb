@@ -7,15 +7,15 @@ using Deveel.Data.Store;
 
 namespace Deveel.Data {
 	internal class Directory {
-		private ITransaction transaction;
-		private Key metaKey;
-		private Key propertiesKey;
-		private Key indexKey;
+		private readonly ITransaction transaction;
+		private readonly Key metaKey;
+		private readonly Key propertiesKey;
+		private readonly Key indexKey;
 
-		private short itemKeyType;
-		private int itemKeyPrimary;
+		private readonly short itemKeyType;
+		private readonly int itemKeyPrimary;
 
-		private IIndexedObjectComparer<string> comparer;
+		private readonly IIndexedObjectComparer<string> comparer;
 
 		private int version;
 
@@ -26,6 +26,8 @@ namespace Deveel.Data {
 			this.indexKey = indexKey;
 			this.propertiesKey = propertiesKey;
 			this.metaKey = metaKey;
+
+			comparer = new ItemComparer(this);
 		}
 
 		private DataFile GetFile(Key key) {
@@ -55,6 +57,12 @@ namespace Deveel.Data {
 			}
 		}
 
+		public Key GetFileKey(string name) {
+			Properties pset = new Properties(GetFile(propertiesKey));
+			long id = pset.GetValue(name, -1);
+			return id == -1 ? null : GetKey(id);
+		}
+
 		public Key CreateFile(string fileName) {
 			++version;
 
@@ -81,9 +89,37 @@ namespace Deveel.Data {
 
 			return item_key;
 		}
+
+		public Key DeleteFile(string name) {
+			++version;
+
+			Properties pset = new Properties(GetFile(propertiesKey));
+			long id = pset.GetValue(name, -1);
+			// Assert the item is stored,
+			if (id == -1)
+				throw new ApplicationException("Item not found: " + name);
+
+			pset.SetValue(name, null);
+			SortedIndex iset = new SortedIndex(GetFile(indexKey));
+			iset.Remove(name, id, comparer);
+
+			// Delete the associated datafile
+			Key k = GetKey(id);
+			DataFile df = GetFile(k);
+			df.Delete();
+
+			return k;
+		}
 		
 		public IList<String> ListFiles() {
 			return new FileList(this, new SortedIndex(GetFile(indexKey)));
+		}
+
+		public long Count {
+			get {
+				SortedIndex iset = new SortedIndex(GetFile(indexKey));
+				return iset.Count;
+			}
 		}
 		
 		public DataFile GetFile(string name) {
@@ -113,6 +149,28 @@ namespace Deveel.Data {
 			
 			df.Position = headerSize;
 			return new SubDataFile(df, headerSize);
+		}
+
+		public void CopyTo(string name, Directory dest) {
+			++dest.version;
+
+			Properties pset = new Properties(GetFile(propertiesKey));
+			long id = pset.GetValue(name, -1);
+			// Assert the item is stored,
+			if (id == -1)
+				throw new ApplicationException("Item not found: " + name);
+
+			// Get the source data file item,
+			Key sourceKey = GetKey(id);
+			DataFile sourceFile = GetFile(sourceKey);
+
+			// Add the item to the destination directory set
+			Key destKey = dest.CreateFile(name);
+			DataFile destFile = dest.GetFile(destKey);
+			destFile.Delete();
+
+			// Copy the data,
+			sourceFile.CopyTo(destFile, sourceFile.Length);
 		}
 		
 		#region FileList
