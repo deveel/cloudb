@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "mnode", "mnode\mnode.csproj
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cadmin", "cadmin\cadmin.csproj", "{565F703F-AE85-4414-96D6-663BF78613C2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudbase", "cloudbase\cloudbase.csproj", "{A2099A92-DA13-4440-B2F9-7890750E0E70}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -82,6 +84,18 @@ Global
 		{05D455D6-1EA4-4C27-A4F2-797A518FE00A}.Release|x86.Build.0 = Release|x86
 		{A18511ED-5BA6-4811-B44F-F730FAD84CE8}.Debug|x86.Build.0 = Debug|x86
 		{A18511ED-5BA6-4811-B44F-F730FAD84CE8}.Release|x86.Build.0 = Release|x86
+		{A2099A92-DA13-4440-B2F9-7890750E0E70}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A2099A92-DA13-4440-B2F9-7890750E0E70}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A2099A92-DA13-4440-B2F9-7890750E0E70}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{A2099A92-DA13-4440-B2F9-7890750E0E70}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{A2099A92-DA13-4440-B2F9-7890750E0E70}.Debug|x86.Build.0 = Debug|Any CPU
+		{A2099A92-DA13-4440-B2F9-7890750E0E70}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A2099A92-DA13-4440-B2F9-7890750E0E70}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A2099A92-DA13-4440-B2F9-7890750E0E70}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A2099A92-DA13-4440-B2F9-7890750E0E70}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{A2099A92-DA13-4440-B2F9-7890750E0E70}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{A2099A92-DA13-4440-B2F9-7890750E0E70}.Release|x86.Build.0 = Release|Any CPU
+		{A2099A92-DA13-4440-B2F9-7890750E0E70}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

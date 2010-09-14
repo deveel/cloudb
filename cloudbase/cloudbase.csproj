@@ -38,10 +38,12 @@
   <ItemGroup>
     <Compile Include="Deveel.Data\DbDataFile.cs" />
     <Compile Include="Deveel.Data\BasePath.cs" />
+    <Compile Include="Deveel.Data\DbFile.cs" />
     <Compile Include="Deveel.Data\DbIndex.cs" />
     <Compile Include="Deveel.Data\DbRow.cs" />
     <Compile Include="Deveel.Data\DbRowCursor.cs" />
     <Compile Include="Deveel.Data\DbTable.cs" />
+    <Compile Include="Deveel.Data\DbTableSchema.cs" />
     <Compile Include="Deveel.Data\DbTransaction.cs" />
     <Compile Include="Deveel.Data\Directory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
