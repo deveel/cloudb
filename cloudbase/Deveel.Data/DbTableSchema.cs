@@ -8,10 +8,10 @@ namespace Deveel.Data {
 	public sealed class DbTableSchema {
 		private readonly DbTable table;
 		
-		private string[] cachedColumns = null;
-		private string[] cachedIndexes = null;
+		private string[] cachedColumns;
+		private string[] cachedIndexes;
 		
-		private Dictionary<string, long> columnIdCache = null;
+		private Dictionary<string, long> columnIdCache;
 
 		
 		internal DbTableSchema(DbTable table) {
@@ -29,8 +29,14 @@ namespace Deveel.Data {
 					throw new ApplicationException("Invalid character in column name");
 			}
 		}
+
+		internal void ClearCache() {
+			columnIdCache = null;
+			cachedColumns = null;
+			cachedIndexes = null;
+		}
 		
-		private CultureInfo GetAndCheckLocale(string locale) {
+		private static CultureInfo GetAndCheckLocale(string locale) {
 			CultureInfo l;
 			
 			if (locale.Length == 2) {
@@ -246,10 +252,10 @@ namespace Deveel.Data {
 			string localeStr = p.GetValue(columnName + "collator", null);
 			if (localeStr == null) {
 				return new LexiStringComparer(table, columnid);
-			} else {
-				CultureInfo locale = GetAndCheckLocale(localeStr);
-				return new LocaleStringComparer(table, columnid, locale);
 			}
+			
+			CultureInfo locale = GetAndCheckLocale(localeStr);
+			return new LocaleStringComparer(table, columnid, locale);
 		}
 
 		
@@ -334,7 +340,7 @@ namespace Deveel.Data {
 			public LocaleStringComparer(DbTable table, long columnid, CultureInfo locale) {
 				this.table = table;
 				this.columnid = columnid;
-				this.comparer = locale.CompareInfo;
+				comparer = locale.CompareInfo;
 			}
 			
 			public int Compare(long reference, string value) {

@@ -2,15 +2,15 @@
 
 namespace Deveel.Data.Net {
 	public class PathProfile {
-		internal PathProfile(IServiceAddress rootAddress, string path, string coordination) {
+		internal PathProfile(IServiceAddress rootAddress, string path, string pathType) {
 			this.rootAddress = rootAddress;
 			this.path = path;
-			this.coordination = coordination;
+			this.pathType = pathType;
 		}
 
 		private readonly IServiceAddress rootAddress;
 		private readonly String path;
-		private readonly String coordination;
+		private readonly String pathType;
 
 		public string Path {
 			get { return path; }
@@ -20,8 +20,8 @@ namespace Deveel.Data.Net {
 			get { return rootAddress; }
 		}
 
-		public string Coordination {
-			get { return coordination; }
+		public string PathType {
+			get { return pathType; }
 		}
 	}
 }

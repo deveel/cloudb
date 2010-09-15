@@ -12,14 +12,14 @@ namespace Deveel.Data {
 		private readonly DbTableSchema schema;
 		private readonly DataFile propFile;
 						
-		private long version = 0;
+		private long version;
 		private long idSeq = -1;
 		
 		private DbRow newRow;
 		
-		private List<long> add_row_list = new List<long>();
-		private List<long> delete_row_list = new List<long>();
-		private bool schemaModified = false;
+		private readonly List<long> addRowList = new List<long>();
+		private readonly List<long> deleteRowList = new List<long>();
+		private bool schemaModified;
 		
 		internal DbTable(DbTransaction transaction, DataFile propFile, int id) {
 			if (id < 1)
@@ -125,7 +125,13 @@ namespace Deveel.Data {
 			row_set.RemoveSortKey(rowid);
 		}
 
-		
+		private static void CopyDataFile(DataFile s, DataFile d) {
+			d.Delete();
+			s.Position = 0;
+			d.Position = 0;
+			s.CopyTo(d, s.Length);
+		}
+
 		internal long UniqueId() {
 			if (idSeq == -1) {
 				Properties p = TableProperties;
@@ -139,9 +145,9 @@ namespace Deveel.Data {
 				
 		internal void OnTransactionEvent(string cmd, long arg) {
 			if (cmd.Equals("InsertRow")) {
-				add_row_list.Add(arg);
+				addRowList.Add(arg);
 			} else if (cmd.Equals("DeleteRow")) {
-				delete_row_list.Add(arg);
+				deleteRowList.Add(arg);
 			} else {
 				throw new ApplicationException("Unknown transaction command: " + cmd);
 			}
@@ -152,6 +158,91 @@ namespace Deveel.Data {
 		internal void OnTransactionEvent(string cmd, string arg) {
 			schemaModified = true;
 		}
+
+		internal void MergeFrom(DbTable from, bool structuralChange, bool historicDataChange) {
+
+			// If structural_change is true, this can only happen if 'from' is the
+			// immediate child of this table.
+			// If 'historic_data_change' is false, this can only happen if 'from' is
+			// the immediate child of this table.
+
+			// Handle structural change,
+			if (structuralChange || !historicDataChange) {
+				// Fetch all the indexes,
+				string[] from_indexes = from.schema.IndexedColumns;
+				List<long> from_index_ids = new List<long>(from_indexes.Length);
+				foreach (String findex in from_indexes) {
+					from_index_ids.Add(from.schema.GetColumnId(findex));
+				}
+				// Copy them into here, 
+				CopyDataFile(from.GetFile(from.RowIndexKey), GetFile(RowIndexKey));
+				foreach (long index_id in from_index_ids) {
+					// Copy all the indexes here,
+					CopyDataFile(from.GetFile(from.GetIndexIdKey(index_id)), GetFile(GetIndexIdKey(index_id)));
+				}
+
+				CopyDataFile(from.propFile, propFile);
+
+				// Copy the transaction logs
+				CopyDataFile(from.GetFile(from.AddLogKey), GetFile(AddLogKey));
+				CopyDataFile(from.GetFile(from.RemoveLogKey), GetFile(RemoveLogKey));
+
+				// Replay the add and remove transaction events
+				SortedIndex add_events = new SortedIndex(from.GetFile(from.AddLogKey));
+				SortedIndex remove_events = new SortedIndex(from.GetFile(from.RemoveLogKey));
+
+				// Adds
+				foreach (long rowid in add_events) {
+					CopyDataFile(from.GetFile(from.GetRowIdKey(rowid)), GetFile(GetRowIdKey(rowid)));
+				}
+
+				// Removes
+				foreach (long rowid in remove_events) {
+					// Delete the row data file,
+					GetFile(GetRowIdKey(rowid)).Delete();
+				}
+			} else {
+				// If we are here, then we are merging a change that isn't a structural
+				// change, and there are historical changes. Basically this means we
+				// need to replay the add and remove events only, but more strictly,
+
+				// Replay the add and remove transaction events
+				SortedIndex add_events = new SortedIndex(from.GetFile(from.AddLogKey));
+				SortedIndex remove_events = new SortedIndex(from.GetFile(from.RemoveLogKey));
+				// Adds
+				foreach (long from_rowid in add_events) {
+					// Generate a new id for the row,
+					long to_rowid = UniqueId();
+					// Copy record to the new id in this table,
+					CopyDataFile(from.GetFile(from.GetRowIdKey(from_rowid)), GetFile(GetRowIdKey(to_rowid)));
+					// Update indexes,
+					AddRowToRowSet(to_rowid);
+					AddRowToIndexSet(to_rowid);
+					// Add this event to the transaction log,
+					OnTransactionEvent("InsertRow", to_rowid);
+				}
+
+				// Removes
+				foreach (long from_rowid in remove_events) {
+					// Update indexes,
+					RemoveRowFromRowSet(from_rowid);
+					RemoveRowFromIndexSet(from_rowid);
+
+					// Delete the row data file,
+					GetFile(GetRowIdKey(from_rowid)).Delete();
+
+					// Add this event to the transaction log,
+					OnTransactionEvent("DeleteRow", from_rowid);
+				}
+
+				// Write out the transaction logs,
+				PrepareCommit();
+			}
+
+			schema.ClearCache();
+
+			++version;
+		}
 		
 		internal void PrepareCommit() {
 			// Write the transaction log for this table,
@@ -159,7 +250,7 @@ namespace Deveel.Data {
 			df.Delete();
 			
 			SortedIndex addlist = new SortedIndex(df);
-			foreach (long v in add_row_list) {
+			foreach (long v in addRowList) {
 				addlist.InsertSortKey(v);
 			}
 			
@@ -167,7 +258,7 @@ namespace Deveel.Data {
 			df.Delete();
 			
 			SortedIndex deletelist = new SortedIndex(df);
-			foreach (long v in delete_row_list) {
+			foreach (long v in deleteRowList) {
 				if (addlist.ContainsSortKey(v)) {
 					addlist.RemoveSortKey(v);
 				} else {
@@ -279,7 +370,7 @@ namespace Deveel.Data {
 			string[] cols = schema.Columns;
 			foreach (string col in cols) {
 				string colValue = row.GetValue(col);
-				builder.SetValue(schema.GetColumnId(col), row[col]);
+				builder.SetValue(schema.GetColumnId(col), colValue);
 			}
 			
 			// Update the indexes
@@ -317,7 +408,7 @@ namespace Deveel.Data {
 			string[] cols = schema.Columns;
 			foreach (string col in cols) {
 				string colValue = row.GetValue(col);
-				builder.SetValue(schema.GetColumnId(col), row[col]);
+				builder.SetValue(schema.GetColumnId(col), colValue);
 			}
 			
 			// Update the indexes

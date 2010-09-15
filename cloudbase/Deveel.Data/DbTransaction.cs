@@ -20,6 +20,7 @@ namespace Deveel.Data {
 		private readonly Directory tables;
 
 		private List<string> fileToCopy;
+		private List<String> tablesToCopy;
 
 		internal static readonly Key MagicKey = new Key(0, 0, 0);
 
@@ -31,7 +32,7 @@ namespace Deveel.Data {
 		private static readonly Key TableSetNamemap = new Key(0, 1, 19);
 		private static readonly Key TableSetIndex = new Key(0, 1, 20);
 
-		private static readonly Key TransactionLogKey = new Key((short)0, 1, 11);
+		private static readonly Key TransactionLogKey = new Key(0, 1, 11);
 
 		internal DbTransaction(DbSession session, DataAddress baseRoot, ITransaction transaction) {
 			this.session = session;
@@ -103,6 +104,41 @@ namespace Deveel.Data {
 					if (!fileToCopy.Contains(name)) {
 						from_transaction.files.CopyTo(name, files);
 						fileToCopy.Add(name);
+					}
+					// Make sure to copy this event into the log in this transaction,
+					log.Add(entry);
+				} else {
+					throw new ApplicationException("Transaction log entry error: " + entry);
+				}
+			} else {
+				throw new ApplicationException("Transaction log entry error: " + entry);
+			}
+		}
+
+		internal void ReplayTableLogEntry(string entry, DbTransaction srcTransaction, bool hasHistoricDataChanges) {
+			char t = entry[0];
+			char op = entry[1];
+			String name = entry.Substring(2);
+			// If this is a table operation,
+			if (t == 'T') {
+				if (op == 'C') {
+					CreateTable(name);
+				} else if (op == 'D') {
+					DeleteTable(name);
+				} else if (op == 'M' || op == 'S') {
+					// If it's a TS event (a structural change to the table), we need to
+					// pass this to the table merge function.
+					bool structural_change = (op == 'S');
+					// To replay a table modification
+					if (tablesToCopy == null)
+						tablesToCopy = new List<string>();
+
+					if (!tablesToCopy.Contains(name)) {
+						DbTable st = srcTransaction.GetTable(name);
+						DbTable dt = GetTable(name);
+						// Merge the source table into the destination table,
+						dt.MergeFrom(st, structural_change, hasHistoricDataChanges);
+						tablesToCopy.Add(name);
 					}
 					// Make sure to copy this event into the log in this transaction,
 					log.Add(entry);
@@ -193,11 +229,10 @@ namespace Deveel.Data {
 			CheckName(fileName);
 
 			Key k = files.GetFileKey(fileName);
-			if (k != null) {
+			if (k != null)
 				return false;
-			}
 
-			k = files.CreateFile(fileName);
+			files.CreateFile(fileName);
 			// Log this operation,
 			log.Add("FC" + fileName);
 
