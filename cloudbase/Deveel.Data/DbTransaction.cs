@@ -56,6 +56,10 @@ namespace Deveel.Data {
 		public long FileCount {
 			get { return files.Count; }
 		}
+		
+		public long TableCount {
+			get { return tables.Count; }
+		}
 
 		private static void CheckName(string name) {
 			// Sanity checks,
@@ -199,11 +203,172 @@ namespace Deveel.Data {
 
 			// File created so return success,
 			return true;
-
 		}
 		
+		public IList<string> ListTables() {
+			CheckValid();
+			return tables.ListFiles();
+		}
+		
+		public bool TableExists(string tableName) {
+			CheckValid();
+			CheckName(tableName);
+			
+			return tables.GetFileKey(tableName) != null;
+		}
+		
+		public bool CreateTable(string tableName) {
+			CheckValid();
+			CheckName(tableName);
+
+			Key k = tables.GetFileKey(tableName);
+			if (k != null)
+				return false;
+			
+			k = tables.CreateFile(tableName);
+			
+			long kid = k.Primary;
+			if (kid > Int64.MaxValue)
+				throw new ApplicationException("Id pool exhausted for table item.");
+			
+			// Log this operation,
+			log.Add("TC" + tableName);
+			
+			// Table created so return success,
+			return true;
+		}
+		
+		public bool DeleteTable(string tableName) {
+			CheckValid();
+			CheckName(tableName);
+			
+			Key k = tables.GetFileKey(tableName);
+			if (k == null)
+				return false;
+			
+			// Fetch the table, and delete all data associated with it,
+			DbTable table;
+			lock (table_map) {
+				table = GetTable(tableName);
+				table_map.Remove(tableName);
+			}
+			
+			table.DeleteFully();
+			
+			// Remove the item from the table directory,
+			tables.DeleteFile(tableName);
+			
+			// Log this operation,
+			log.Add("TD" + tableName);
+			
+			// Table deleted so return success,
+			return true;
+		}
+		
+		public DbTable GetTable(string tableName) {
+			CheckValid();
+			CheckName(tableName);
+			
+			// Is it in the map?
+			lock (table_map) {
+				DbTable table;
+				if (table_map.TryGetValue(tableName, out table))
+					return table;
+				
+				Key k = tables.GetFileKey(tableName);
+				if (k == null)
+					throw new ApplicationException("Table doesn't exist: " + tableName);
+				
+				long kid = k.Primary;
+				if (kid > Int64.MaxValue)
+					throw new ApplicationException("Id pool exhausted for table item.");
+				
+				// Turn the key into an SDBTable,
+				table = new DbTable(this, tables.GetFile(tableName),(int) kid);
+				table_map[tableName] = table;
+				
+				// And return it,
+				return table;
+			}
+		}
+		
+		public DbRootAddress Commit() {
+			CheckValid();
+			
+			try {
+				// Update transaction information on the tables that were modified during
+				// this transaction.
+				lock (table_map) {
+					foreach(KeyValuePair<string, DbTable> pair in table_map) {
+						if (pair.Value.IsModified) {
+							// Log this modification,
+							// If there was a structural change to the table we log as a TS
+							// event
+							if (pair.Value.IsSchemaModified) {
+								log.Add("TS" + pair.Key);
+							} else {
+								// Otherwise we log as a TM event (rows or columns were deleted).
+								log.Add("TM" + pair.Key);
+							}
+							
+							// Write out the table log
+							pair.Value.PrepareCommit();
+						}
+					}
+				}
+				
+				// Process the transaction log and write it out to a DataFile for the
+				// path to handle,
+				
+				// If there are changes to commit,
+				if (log.Count > 0) {
+					// Refresh the transaction log with the entries stored in 'log'
+					RefreshLog();
+
+					// The database client,
+					NetworkClient client = session.Client;
+					
+					// Flush the transaction to the network
+					DataAddress proposal = client.FlushTransaction(transaction);
+					
+					// Perform the commit operation,
+					return new DbRootAddress(session, client.Commit(session.Path, proposal));
+				} else {
+					// No changes, so return base root
+					return new DbRootAddress(session, baseRoot);
+				}
+			} finally {
+				// Make sure transaction is invalidated
+				Invalidate();
+			}
+		}
+		
+		 public DbRootAddress Publish(DbSession destSession) {
+			// Refresh the transaction log with a cleared 'no base root' version.
+			// This operation sets up the transaction log appropriately so that the
+			// 'commit' process of future transactions will understand that this
+			// version is not an iteration of previous versions.
+			ClearLog();
+			
+			// The database client,
+			NetworkClient client = session.Client;
+			// Flush the transaction to the network
+			DataAddress to_publish = client.FlushTransaction(transaction);
+			
+			try {
+				DataAddress published = client.Commit(destSession.Path, to_publish);
+				// Return the root in the destionation session,
+				return new DbRootAddress(destSession, published);
+			} catch (CommitFaultException e) {
+				// This shouldn't be thrown,
+				throw new ApplicationException("Unexpected Commit Fault", e);
+			}
+		}
+
+		
 		public void Dispose() {
-			session.Client.DisposeTransaction(transaction);
+			if (session != null)
+				session.Client.DisposeTransaction(transaction);
 		}
 	}
 }

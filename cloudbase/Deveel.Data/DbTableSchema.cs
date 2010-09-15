@@ -18,7 +18,7 @@ namespace Deveel.Data {
 			this.table = table;
 		}
 		
-		private void CheckColumnName(string columnName) {
+		internal void CheckColumnName(string columnName) {
 			if (columnName.Length <= 0 || columnName.Length > 1024)
 				throw new ApplicationException("Invalid column name size");
 			
@@ -104,6 +104,10 @@ namespace Deveel.Data {
 				
 				return (string[]) cachedColumns.Clone();
 			}
+		}
+		
+		public long ColumnCount {
+			get { return Columns.Length; }
 		}
 		
 		public string[] IndexedColumns {

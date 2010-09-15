@@ -64,6 +64,24 @@ namespace Deveel.Data {
 			get { return schema; }
 		}
 		
+		public long RowCount {
+			get {
+				// Get the main index file
+				// Get the index,
+				SortedIndex index = new SortedIndex(GetFile(RowIndexKey));
+				// Return the row count,
+				return index.Count;
+			}
+		}
+
+		public bool IsModified {
+			get { return version > 0; }
+		}
+		
+		public bool IsSchemaModified {
+			get { return schemaModified; }
+		}
+		
 		private void AddRowToIndexSet(long rowid) {
 			// Get the set of columns that are indexed in this table,
 			string[] indexedCols = schema.IndexedColumns;
@@ -135,6 +153,33 @@ namespace Deveel.Data {
 			schemaModified = true;
 		}
 		
+		internal void PrepareCommit() {
+			// Write the transaction log for this table,
+			DataFile df = GetFile(AddLogKey);
+			df.Delete();
+			
+			SortedIndex addlist = new SortedIndex(df);
+			foreach (long v in add_row_list) {
+				addlist.InsertSortKey(v);
+			}
+			
+			df = GetFile(RemoveLogKey);
+			df.Delete();
+			
+			SortedIndex deletelist = new SortedIndex(df);
+			foreach (long v in delete_row_list) {
+				if (addlist.ContainsSortKey(v)) {
+					addlist.RemoveSortKey(v);
+				} else {
+					deletelist.InsertSortKey(v);
+				}
+			}
+			
+			// Set the id gen key
+			if (idSeq != -1)
+				TableProperties.SetValue("k", idSeq);
+		}
+		
 		private Key GetRowIdKey(long rowid) {
 			// Sanity check to prevent corruption of the table state
 			if (rowid <= 12)
@@ -179,6 +224,37 @@ namespace Deveel.Data {
 				index.Insert(columnValue, rowid, index_collator);
 			}
 		}
+		
+		  internal void DeleteFully() {
+			DataFile df;
+			
+			// Get the index list,
+			string[] cols = schema.IndexedColumns;
+			// Delete all the indexes,
+			foreach (String col in cols) {
+				long columnid = schema.GetColumnId(col);
+				df = GetFile(GetIndexIdKey(columnid));
+				df.Delete();
+			}
+			
+			// Delete all the rows in reverse,
+			foreach (DbRow row in this) {
+				long rowid = row.RowId;
+				df = GetFile(GetRowIdKey(rowid));
+				df.Delete();
+			}
+			
+			// Delete the main index,
+			df = GetFile(RowIndexKey);
+			df.Delete();
+			
+			// Delete the transaction info,
+			df = GetFile(AddLogKey);
+			df.Delete();
+			df = GetFile(RemoveLogKey);
+			df.Delete();
+		}
+
 		
 		public DbRow NewRow() {
 			if (newRow != null)
@@ -257,15 +333,37 @@ namespace Deveel.Data {
 			row_df.Delete();
 			++version;
 		}
-
-
 		
-		public IEnumerator<DbRow> GetEnumerator() {
-			throw new NotImplementedException();
+		 public DbRowCursor GetCursor() {
+			SortedIndex list = new SortedIndex(GetFile(RowIndexKey));
+			return new DbRowCursor(this, version, list.GetCursor());
+		}
+		
+		IEnumerator<DbRow> IEnumerable<DbRow>.GetEnumerator() {
+			return GetCursor();
 		}
 		
 		IEnumerator IEnumerable.GetEnumerator() {
-			return GetEnumerator();
+			return GetCursor();
+		}
+		
+		public DbIndex GetIndex(string columnName) {
+			schema.CheckColumnName(columnName);
+			Properties p = TableProperties;
+			long columnId = p.GetValue(columnName + ".id", -1);
+			if (columnId == -1)
+				throw new ApplicationException("Column '" + columnName + "' not found");
+			
+			bool indexed = p.GetValue(columnName + ".index", false);
+			if (!indexed)
+				throw new ApplicationException("Column '" + columnName + "' is not indexed");
+			
+			// Fetch the index object,
+			SortedIndex list = new SortedIndex(GetFile(GetIndexIdKey(columnId)));
+			
+			// And return it,
+			IIndexedObjectComparer<string> comparer = schema.GetIndexComparerForColumn(columnName, columnId);
+			return new DbIndex(this, version, comparer, columnId, list);
 		}
 		
 		#region RowBuilder

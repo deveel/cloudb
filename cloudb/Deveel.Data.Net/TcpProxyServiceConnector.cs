@@ -22,6 +22,7 @@ namespace Deveel.Data.Net {
 		private BinaryReader pin;
 		private BinaryWriter pout;
 		private readonly object proxy_lock = new object();
+		private IMessageSerializer serializer;
 
 		public int ProxyPort {
 			get { return proxyPort; }
@@ -29,6 +30,15 @@ namespace Deveel.Data.Net {
 
 		public IPAddress ProxyAddress {
 			get { return proxyAddress; }
+		}
+		
+		public IMessageSerializer Serializer {
+			get {
+				if (serializer == null)
+					serializer = new BinaryMessageStreamSerializer();
+				return serializer;
+			}
+			set { serializer = value; }
 		}
 
 		private void Connect() {
@@ -107,7 +117,7 @@ namespace Deveel.Data.Net {
 			public MessageStream Process(MessageStream messageStream) {
 				try {
 					lock (connector.proxy_lock) {
-						BinaryMessageStreamSerializer serializer = new BinaryMessageStreamSerializer();
+						IMessageSerializer serializer = connector.Serializer;
 
 						char code = '\0';
 						if (serviceType == ServiceType.Admin)

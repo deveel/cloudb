@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Xml;
@@ -165,6 +166,10 @@ namespace Deveel.Data.Net {
 				if (nodeType == XmlNodeType.Element) {
 					string elementName = reader.LocalName;
 					object value;
+					
+					if (elementName == "stream")
+						continue;
+					
 					if (elementName == "message") {
 						messageStart = true;
 						continue;
@@ -177,8 +182,8 @@ namespace Deveel.Data.Net {
 						value = ReadIntArray(reader);
 					} else if (elementName == "long") {
 						value = ReadLong(reader);
-					} else if (elementName == "byteArray") {
-						value = ReadByteArray(reader);
+					} else if (elementName == "binary") {
+						value = ReadBinary(reader);
 					} else if (elementName == "string") {
 						value = ReadString(reader);
 					} else if (elementName == "stringArray") {
@@ -202,8 +207,11 @@ namespace Deveel.Data.Net {
 					messageStream.AddMessageArgument(value);
 				} else if (nodeType == XmlNodeType.EndElement) {
 					string elementName = reader.LocalName;
-					if (elementName == "message")
+					if (elementName == "message") {
 						messageStream.CloseMessage();
+					} else if (elementName == "stream") {
+						break;
+					}
 				} else if (nodeType == XmlNodeType.Attribute) {
 					if (messageStart) {
 						if (reader.LocalName != "name")
@@ -216,7 +224,7 @@ namespace Deveel.Data.Net {
 
 			}
 
-			throw new NotImplementedException();
+			return messageStream;
 		}
 
 		private static ServiceException ReadError(XmlReader reader) {
@@ -224,15 +232,121 @@ namespace Deveel.Data.Net {
 		}
 
 		private static NodeSet ReadNodeSet(XmlReader reader) {
-			throw new NotImplementedException();
+			int nodeSetType = 1;
+			long[] nodes = null;
+			byte[] data = null;
+			
+			while (reader.Read()) {
+				XmlNodeType nodeType = reader.NodeType;
+				if (nodeType == XmlNodeType.Attribute) {
+					if (reader.LocalName != "type")
+						throw new FormatException();
+					if (!Int32.TryParse(reader.Value, out nodeSetType))
+						throw new FormatException();
+				}
+				if (nodeType != XmlNodeType.Element)
+					continue;
+				
+				if (reader.LocalName == "nodes") {				
+					nodes = ReadLongArray(reader);
+				} else if (reader.LocalName == "data") {
+					data = ReadBinary(reader);
+				}
+			}
+			
+			if (nodes == null || data == null)
+				throw new FormatException();
+			
+			if (nodeSetType == 1)
+				return new SingleNodeSet(nodes, data);
+			else if (nodeSetType == 2)
+				return new CompressedNodeSet(nodes, data);
+			
+			throw new FormatException();
 		}
 
-		private static byte[ ]ReadByteArray(XmlReader reader) {
-			throw new NotImplementedException();
+		private static byte[] ReadBinary(XmlReader reader) {
+			string base64 = ReadString(reader);
+			return Convert.FromBase64String(base64);
+		}
+		
+		private static void WriteLongArray(XmlWriter writer, long[] array) {
+			writer.WriteStartElement("longArray");
+			for(int i = 0; i < array.Length; i++) {
+				writer.WriteElementString("long", Convert.ToString(array[i], CultureInfo.InvariantCulture));
+			}
+			writer.WriteEndElement();
+		}
+		
+		private static void WriteBinary(XmlWriter writer, byte[] bytes) {
+			writer.WriteElementString("binary", Convert.ToBase64String(bytes));
 		}
 
 		public void Serialize(MessageStream messageStream, Stream output) {
-			throw new NotImplementedException();
+			StreamWriter streamWriter = new StreamWriter(output);
+			XmlTextWriter writer = new XmlTextWriter(streamWriter);
+			Serialize(messageStream, writer);
+			streamWriter.Flush();
+		}
+		
+		public void Serialize(MessageStream messageStream, XmlWriter writer) {
+			writer.WriteStartDocument(true);
+			writer.WriteStartElement("stream");
+			
+			foreach(object item in messageStream.Items) {
+				if (item == null) {
+					writer.WriteStartElement("null");
+					writer.WriteFullEndElement();
+				} else if (item is string) {
+					string s = (string)item;
+					if (s.Equals(MessageStream.MessageOpen)) {
+						continue;
+					} else if (s.Equals(MessageStream.MessageClose)) {
+						writer.WriteEndElement();
+					} else {
+						writer.WriteStartElement("message");
+						writer.WriteAttributeString("name", s);
+					}
+				} else if (item is long) {
+					writer.WriteElementString("long", Convert.ToString(item, CultureInfo.InvariantCulture));
+					writer.WriteEndElement();
+				} else if (item is int) {
+				} else if (item is byte[]) {
+					writer.WriteElementString("binary", Convert.ToBase64String((byte[])item));
+				} else if (item is MessageStream.StringArgument) {
+					string s = ((MessageStream.StringArgument)item).Value;
+					writer.WriteElementString("string", s);
+				} else if (item is long[]) {
+				} else if (item is NodeSet) {
+					NodeSet nodeSet = (NodeSet)item;
+					
+					writer.WriteStartElement("nodeSet");
+					if (nodeSet is SingleNodeSet) {
+						writer.WriteAttributeString("type", "1");
+					} else if (nodeSet is CompressedNodeSet) {
+						writer.WriteAttributeString("type", "2");
+					}
+					writer.WriteStartElement("nodes");
+					WriteLongArray(writer, nodeSet.NodeIds);
+					writer.WriteEndElement();
+					writer.WriteStartElement("data");
+					WriteBinary(writer, nodeSet.Buffer);
+					writer.WriteEndElement();
+					writer.WriteEndElement();
+				} else if (item is DataAddress) {
+				} else if (item is ServiceException) {
+				} else if (item is IServiceAddress[]) {
+				} else if (item is DataAddress[]) {
+				} else if (item is IServiceAddress) {
+				} else if (item is String[]) {
+				} else if (item is int[]) {
+				} else {
+					throw new ArgumentException("Unknown message object in list");
+				}
+			}
+			
+			writer.WriteEndElement();
+			writer.WriteEndDocument();
 		}
 	}
 }

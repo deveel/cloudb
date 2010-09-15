@@ -17,7 +17,7 @@ namespace Deveel.Data.Net {
 			get { return nodeIds; }
 		}
 
-		protected byte [] Buffer {
+		protected internal byte [] Buffer {
 			get { return buffer; }
 		}
 
