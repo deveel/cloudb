@@ -3,47 +3,49 @@
 using Deveel.Data.Diagnostics;
 
 namespace Deveel.Data.Net {
-	public abstract class AdminService : Service {
+	public class AdminService : Service {
+		private readonly IServiceAddress address;
 		private readonly Analytics analytics;
-
+		private readonly IAdminServiceDelegator delegator;
+		private IServiceConnector connector;
 		private readonly object serverManagerLock = new object();
-		private BlockService blockService;
-		private ManagerService managerService;
-		private RootService rootService;
 
-		protected AdminService() {
+		public AdminService(IServiceAddress address, IServiceConnector connector, IAdminServiceDelegator delegator) {
+			if (delegator == null)
+				throw new ArgumentNullException("delegator");
+			
+			this.delegator = delegator;
+			this.address = address;
+			this.connector = connector;
 			analytics = new Analytics();
 		}
 
 		~AdminService() {
 			Dispose(false);
 		}
+		
+		public IServiceAddress Address {
+			get { return address; }
+		}
+		
+		public IServiceConnector Connector {
+			get { return connector; }
+		}
 
 		protected ManagerService Manager {
-			get { return managerService; }
+			get { return (ManagerService) delegator.GetService(ServiceType.Manager); }
 		}
 
 		protected RootService Root {
-			get { return rootService; }
+			get { return (RootService) delegator.GetService(ServiceType.Root); }
 		}
 
 		protected BlockService Block {
-			get { return blockService; }
+			get { return (BlockService) delegator.GetService(ServiceType.Block); }
 		}
 
 		protected Analytics Analytics {
 			get { return analytics; }
-		}
-
-		protected override object GetService(Type service) {
-			if (typeof(BlockService).IsAssignableFrom(service))
-				return blockService;
-			if (typeof(ManagerService).IsAssignableFrom(service))
-				return managerService;
-			if (typeof(RootService).IsAssignableFrom(service))
-				return rootService;
-
-			return null;
 		}
 
 		private void InitService(string  serviceTypeName) {
@@ -60,66 +62,23 @@ namespace Deveel.Data.Net {
 
 			// Start the services,
 			lock (serverManagerLock) {
-				if (service_type == ServiceType.Block) {
-					if (blockService == null) {
-						blockService = (BlockService)CreateService(Net.ServiceType.Block);
-						blockService.Init();
-					}
-				} else if (service_type == ServiceType.Manager) {
-					if (managerService == null) {
-						managerService = (ManagerService)CreateService(Net.ServiceType.Manager);
-						managerService.Init();
-					}
-				} else if (service_type == ServiceType.Root) {
-					if (rootService == null) {
-						rootService = (RootService) CreateService(Net.ServiceType.Root);
-						rootService.Init();
-					}
-				} else {
-					throw new Exception("Unknown service: " + service_type);
-				}
+				IService service = delegator.CreateService(address, service_type, connector);
+				if (service == null)
+					throw new Exception("Unable to create the service " + service_type);
+				
+				service.Init();
 			}
 		}
 
 		protected void DisposeService(ServiceType service_type) {
 			lock (serverManagerLock) {
-				if (service_type == ServiceType.Block) {
-					if (blockService != null) {
-						DisposeService(blockService);
-						blockService = null;
-					}
-				} else if (service_type == ServiceType.Manager) {
-					if (managerService != null) {
-						DisposeService(managerService);
-						managerService = null;
-					}
-				} else if (service_type == ServiceType.Root) {
-					if (rootService != null) {
-						DisposeService(rootService);
-						rootService = null;
-					}
-				} else {
-					throw new Exception("Unknown service: " + service_type);
-				}
+				delegator.DisposeService(service_type);
 			}
 		}
 
-		protected abstract IService CreateService(ServiceType serviceType);
-
-		protected abstract void DisposeService(IService service);
-
 		protected override void OnDispose(bool disposing) {
 			if (disposing) {
-				if (managerService != null)
-					managerService.Dispose();
-				if (rootService != null)
-					rootService.Dispose();
-				if (blockService != null)
-					blockService.Dispose();
-
-				managerService = null;
-				rootService = null;
-				blockService = null;
+				delegator.Dispose();
 			}
 		}
 
@@ -131,9 +90,9 @@ namespace Deveel.Data.Net {
 			return new AdminServerMessageProcessor(this);
 		}
 
-		public new void Init() {
+		protected override void OnInit() {
 			lock(serverManagerLock) {
-				OnInit();
+				delegator.Init(this);
 			}
 		}
 
@@ -173,13 +132,13 @@ namespace Deveel.Data.Net {
 								long td = 0;		// Total Space
 								long fd = 0;		// Free Space
 								outputStream.StartMessage("R");
-								if (service.blockService == null) {
+								if (service.Block == null) {
 									outputStream.AddMessageArgument("block=no");
 								} else {
-									outputStream.AddMessageArgument(service.blockService.BlockCount.ToString());
+									outputStream.AddMessageArgument(service.Block.BlockCount.ToString());
 								}
-								outputStream.AddMessageArgument("manager=" + (service.managerService == null ? "no" : "yes"));
-								outputStream.AddMessageArgument("root=" + (service.rootService == null ? "no" : "yes"));
+								outputStream.AddMessageArgument("manager=" + (service.Manager == null ? "no" : "yes"));
+								outputStream.AddMessageArgument("root=" + (service.Root == null ? "no" : "yes"));
 								outputStream.AddMessageArgument(tm - fm);
 								outputStream.AddMessageArgument(tm);
 								outputStream.AddMessageArgument(td - fd);

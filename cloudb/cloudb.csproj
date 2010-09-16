@@ -84,6 +84,7 @@
     <Compile Include="Deveel.Data.Net\CompressedNodeSet.cs" />
     <Compile Include="Deveel.Data.Net\DataAddress.cs" />
     <Compile Include="Deveel.Data.Net\ErrorMessage.cs" />
+    <Compile Include="Deveel.Data.Net\FileAdminServiceDelegator.cs" />
     <Compile Include="Deveel.Data.Net\FileBlockStore.cs" />
     <Compile Include="Deveel.Data.Net\FileSystemBlockService.cs">
       <SubType>Component</SubType>
@@ -94,11 +95,15 @@
     <Compile Include="Deveel.Data.Net\FileSystemRootService.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Deveel.Data.Net\HttpAdminService.cs" />
     <Compile Include="Deveel.Data.Net\HttpServiceAddressHandler.cs" />
     <Compile Include="Deveel.Data.Net\HttpServiceConnector.cs" />
+    <Compile Include="Deveel.Data.Net\IAdminServiceDelegator.cs" />
     <Compile Include="Deveel.Data.Net\IBlockStore.cs" />
     <Compile Include="Deveel.Data.Net\HttpServiceAddress.cs" />
     <Compile Include="Deveel.Data.Net\IMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net\ITextMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net\MemoryAdminServiceDelegator.cs" />
     <Compile Include="Deveel.Data.Net\XmlMessageStreamSerializer.cs" />
     <Compile Include="Deveel.Data\IIndexCursor.cs" />
     <Compile Include="Deveel.Data\IIndex.cs" />
@@ -150,12 +155,6 @@
     <Compile Include="Deveel.Data.Net\ServiceAddresses.cs" />
     <Compile Include="Deveel.Data.Net\TcpServiceAddressHandler.cs" />
     <Compile Include="Deveel.Data.Net\TcpAdminService.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="Deveel.Data.Net\TcpFileAdminService.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="Deveel.Data.Net\TcpMemoryAdminService.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Deveel.Data.Net\TcpNetworkClient.cs" />

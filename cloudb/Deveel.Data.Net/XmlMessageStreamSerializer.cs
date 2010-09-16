@@ -5,7 +5,38 @@ using System.Text;
 using System.Xml;
 
 namespace Deveel.Data.Net {
-	public sealed class XmlMessageStreamSerializer : IMessageSerializer {
+	public sealed class XmlMessageStreamSerializer : ITextMessageSerializer {
+		private Encoding encoding;
+		
+		public XmlMessageStreamSerializer(string encoding)
+			: this(Encoding.GetEncoding(encoding)) {
+		}
+		
+		public XmlMessageStreamSerializer(Encoding encoding) {
+			this.encoding = encoding;
+		}
+		
+		public XmlMessageStreamSerializer()
+			: this(Encoding.UTF8) {
+		}
+		
+		string ITextMessageSerializer.ContentType {
+			get { return "text/xml"; }
+		}
+		
+		string ITextMessageSerializer.ContentEncoding {
+			get { return this.Encoding.EncodingName; }
+		}
+		
+		public Encoding Encoding {
+			get { 
+				if (encoding == null)
+					encoding = Encoding.UTF8;
+				return encoding;
+			}
+			set { encoding = value; }
+		}
+		
 		private static int ReadInt(XmlReader reader) {
 			string text = ReadString(reader);
 			int value;
@@ -144,11 +175,15 @@ namespace Deveel.Data.Net {
 		private static IServiceAddress[] ReadServiceAddressArray(XmlReader reader) {
 			return (IServiceAddress[]) ReadArray(reader, typeof(IServiceAddress));
 		}
-
+		
 		public MessageStream Deserialize(Stream input) {
 			//TODO: load a XML schema to validate the input?
-			XmlReader reader = new XmlTextReader(input);
+			StreamReader reader = new StreamReader(input, Encoding);
+			XmlReader xmlReader = new XmlTextReader(reader);
+			return Deserialize(xmlReader);
+		}
 
+		public MessageStream Deserialize(XmlReader reader) {
 			MessageStream messageStream = new MessageStream(16);
 
 			bool messageStart = false;
@@ -283,7 +318,7 @@ namespace Deveel.Data.Net {
 		}
 
 		public void Serialize(MessageStream messageStream, Stream output) {
-			StreamWriter streamWriter = new StreamWriter(output);
+			StreamWriter streamWriter = new StreamWriter(output, Encoding);
 			XmlTextWriter writer = new XmlTextWriter(streamWriter);
 			Serialize(messageStream, writer);
 			streamWriter.Flush();
