@@ -20,7 +20,8 @@ namespace Deveel.Data.Diagnostics {
 				for (int j = 0; j < types.Length; j++) {
 					Type type = types[j];
 					if (typeof(ILogger).IsAssignableFrom(type) &&
-						type != typeof(ILogger) &&
+						type != typeof(ILogger) && 
+						type != typeof(Logger) &&
 						!type.IsAbstract) {
 						LoggerNameAttribute nameAttribute =
 							(LoggerNameAttribute) Attribute.GetCustomAttribute(type, typeof(LoggerNameAttribute));
@@ -34,9 +35,12 @@ namespace Deveel.Data.Diagnostics {
 
 		private static Type GetLoggerType(string typeName) {
 			Type type;
-			if (loggerTypeMap.TryGetValue(typeName, out type))
-				return type;
-			return Type.GetType(typeName, false, true);
+			if (loggerTypeMap.TryGetValue(typeName, out type)) {
+				type = Type.GetType(typeName, false, true);
+				if (type != null)
+					loggerTypeMap[typeName] = type;
+			}
+			return type;
 		}
 
 		public static void Init(ConfigSource config) {
@@ -63,14 +67,16 @@ namespace Deveel.Data.Diagnostics {
 
 					loggerConfig.SetValue(LoggerNameKey, loggerName);
 
-					string loggerTypeName = loggerConfig.GetString(loggerName + "_logger_type", null);
-					if (loggerTypeName == null)
-						loggerTypeName = typeof(DefaultLogger).AssemblyQualifiedName;
+					Type loggerType;
+					if (!loggerTypeMap.TryGetValue(loggerName, out loggerType)) {
+						string loggerTypeName = loggerConfig.GetString(loggerName + "_logger_type", null);
+						if (loggerTypeName == null)
+							loggerTypeName = typeof(DefaultLogger).AssemblyQualifiedName;
 
-					Type loggerType = GetLoggerType(loggerTypeName);
-					if (loggerType == null || !typeof(ILogger).IsAssignableFrom(loggerType))
-						continue;
-
+						loggerType = GetLoggerType(loggerTypeName);
+						if (loggerType == null || !typeof(ILogger).IsAssignableFrom(loggerType))
+							continue;
+					}
 					try {
 						ILogger logger = (ILogger) Activator.CreateInstance(loggerType, true);
 						logger.Init(loggerConfig);
@@ -89,8 +95,8 @@ namespace Deveel.Data.Diagnostics {
 			return new Logger(logName, loggingType, logger);
 		}
 
-		public static Logger GetLogger(string  logName) {
-			Type loggingType = new StackFrame(3, false).GetMethod().DeclaringType;
+		public static Logger GetLogger(string logName) {
+			Type loggingType = new StackFrame(1, false).GetMethod().DeclaringType;
 			return GetLogger(logName, loggingType);
 		}
 	}

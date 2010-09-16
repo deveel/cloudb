@@ -95,7 +95,9 @@
     <Compile Include="Deveel.Data.Net\FileSystemRootService.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Deveel.Data.Net\HttpAdminService.cs" />
+    <Compile Include="Deveel.Data.Net\HttpAdminService.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Deveel.Data.Net\HttpServiceAddressHandler.cs" />
     <Compile Include="Deveel.Data.Net\HttpServiceConnector.cs" />
     <Compile Include="Deveel.Data.Net\IAdminServiceDelegator.cs" />

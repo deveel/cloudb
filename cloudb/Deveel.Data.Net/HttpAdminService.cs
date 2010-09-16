@@ -27,6 +27,10 @@ namespace Deveel.Data.Net {
 			}
 			set { serializer = value; }
 		}
+
+		private void ConfigUpdate(object state) {
+			//TODO:
+		}
 		
 		private void Poll() {
 			Timer timer = new Timer(ConfigUpdate);
@@ -79,6 +83,14 @@ namespace Deveel.Data.Net {
 			} finally {
 				timer.Dispose();
 			}
+		}
+
+		protected override void OnInit() {
+			base.OnInit();
+
+			Thread thread = new Thread(Poll);
+			thread.IsBackground = true;
+			thread.Start();
 		}
 		
 		#region HttpConnection
@@ -154,6 +166,8 @@ namespace Deveel.Data.Net {
 							} else {
 								message_out = service.Root.Processor.Process(message_stream);
 							}
+						} else {
+							throw new InvalidOperationException("Invalid destination service.");
 						}
 
 						// Update the stats

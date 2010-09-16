@@ -30,6 +30,7 @@ namespace Deveel.Data.Net {
 		
 		public IServiceConnector Connector {
 			get { return connector; }
+			set { connector = value; }
 		}
 
 		protected ManagerService Manager {

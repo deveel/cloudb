@@ -35,6 +35,7 @@ namespace Deveel.Data.Diagnostics {
 	/// depth.  So for example, only message above or equal to level Alert are
 	/// shown.
 	/// </remarks>
+	[LoggerName("default")]
 	public class DefaultLogger : ILogger {
 		/// <summary>
 		/// The debug Lock object.
@@ -224,12 +225,12 @@ namespace Deveel.Data.Diagnostics {
 				output = new EmptyTextWriter();
 			}
 
-			debug_level = config.GetInt32("log_level");
+			debug_level = config.GetInt32("log_level", -1);
 			if (debug_level == -1)
 				// stops all the output
 				debug_level = 255;
 
-			string format = config.GetString("log_format");
+			string format = config.GetString("log_format", null);
 			if (format != null)
 				message_format = format;
 		}

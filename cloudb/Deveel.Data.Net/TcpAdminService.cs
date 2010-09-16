@@ -6,29 +6,14 @@ using System.Text;
 using System.Threading;
 
 namespace Deveel.Data.Net {
-	public abstract class TcpAdminService : AdminService {
+	public class TcpAdminService : AdminService {
 		private readonly string password;
 		private readonly NetworkConfigSource config;
-		private readonly TcpServiceAddress serviceAddress;
 		private bool polling;
-		private TcpServiceConnector connector;
 
-		protected TcpAdminService(NetworkConfigSource config, IPAddress address, int port, string  password) {
+		public TcpAdminService(NetworkConfigSource config, IAdminServiceDelegator delegator, IPAddress address, int port, string  password)
+			: base(new TcpServiceAddress(address, port), new TcpServiceConnector(password), delegator) {
 			this.config = config;
-			serviceAddress = new TcpServiceAddress(address, port);
-			this.password = password;
-		}
-
-		protected TcpServiceAddress Address {
-			get { return serviceAddress; }
-		}
-
-		protected TcpServiceConnector Connector {
-			get {
-				if (connector == null)
-					connector = new TcpServiceConnector(password);
-				return connector;
-			}
 		}
 
 		private void ConfigLog() {
@@ -50,15 +35,16 @@ namespace Deveel.Data.Net {
 				long second_mix = r.Next(1000);
 				timer.Change(50 * 1000, ((2 * 59) * 1000) + second_mix);
 
-				TcpListener socket;
+				TcpListener listener;
 				try {
-					IPEndPoint endPoint = serviceAddress.ToEndPoint();
-					socket = new TcpListener(endPoint);
-					socket.Server.ReceiveTimeout = 0;
-					socket.Start(150);
-					int curReceiveBufSize = socket.Server.ReceiveBufferSize;
+					TcpServiceAddress tcpAddress = (TcpServiceAddress) Address;
+					IPEndPoint endPoint = tcpAddress.ToEndPoint();
+					listener = new TcpListener(endPoint);
+					listener.Server.ReceiveTimeout = 0;
+					listener.Start(150);
+					int curReceiveBufSize = listener.Server.ReceiveBufferSize;
 					if (curReceiveBufSize < 256 * 1024) {
-						socket.Server.ReceiveBufferSize = 256 * 1024;
+						listener.Server.ReceiveBufferSize = 256 * 1024;
 					}
 				} catch (IOException e) {
 					//TODO: ERROR log ...
@@ -71,7 +57,7 @@ namespace Deveel.Data.Net {
 					Socket s;
 					try {
 						// The socket to run the service,
-						s = socket.AcceptSocket();
+						s = listener.AcceptSocket();
 						s.NoDelay = true;
 						int cur_send_buf_size = s.SendBufferSize;
 						if (cur_send_buf_size < 256 * 1024) {

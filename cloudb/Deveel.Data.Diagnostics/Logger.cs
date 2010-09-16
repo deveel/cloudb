@@ -18,8 +18,12 @@ namespace Deveel.Data.Diagnostics {
 			get { return name; }
 		}
 
+		public ILogger BaseLogger {
+			get { return logger; }
+		}
+
 		public void Dispose() {
-			logger.Dispose();
+			BaseLogger.Dispose();
 		}
 
 		void ILogger.Init(ConfigSource config) {
@@ -27,7 +31,7 @@ namespace Deveel.Data.Diagnostics {
 		}
 
 		public bool IsInterestedIn(LogLevel level) {
-			return logger.IsInterestedIn(level);
+			return BaseLogger.IsInterestedIn(level);
 		}
 
 		private void Log(LogEntry entry) {
@@ -37,7 +41,7 @@ namespace Deveel.Data.Diagnostics {
 			string source = entry.Source;
 			if (String.IsNullOrEmpty(source))
 				source = loggingType.AssemblyQualifiedName;
-			logger.Log(new LogEntry(threadName, source, entry.Level, entry.Message, entry.Error, entry.Time));
+			BaseLogger.Log(new LogEntry(threadName, source, entry.Level, entry.Message, entry.Error, entry.Time));
 		}
 
 		void ILogger.Log(LogEntry entry) {

@@ -66,6 +66,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Deveel.Data.Net\FakeAdminService.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="Deveel.Data.Net\FakeServiceAddress.cs" />
     <Compile Include="Deveel.Data.Net\FakeServiceAddressHandler.cs" />
@@ -73,6 +74,7 @@
     <Compile Include="Deveel.Data.Net\FakeNetworkTest.cs" />
     <Compile Include="Deveel.Data.Net\XmlMessageStreamSerializerTest.cs" />
     <Compile Include="Deveel.Data\BasePathTest.cs" />
+    <Compile Include="Deveel.Data.Diagnostics\LoggerTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

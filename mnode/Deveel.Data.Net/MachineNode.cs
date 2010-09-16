@@ -21,7 +21,7 @@ namespace Deveel.Data.Net {
 
 		[STAThread]
 		private static int Main(string[] args) {
-			ProductInfo libInfo = ProductInfo.GetProductInfo(typeof(TcpFileAdminService));
+			ProductInfo libInfo = ProductInfo.GetProductInfo(typeof(TcpAdminService));
 			ProductInfo nodeInfo = ProductInfo.GetProductInfo(typeof(MachineNode));
 
 			Console.Out.WriteLine("{0} {1} ( {2} )", nodeInfo.Title, nodeInfo.Version, nodeInfo.Copyright);
@@ -132,7 +132,7 @@ namespace Deveel.Data.Net {
 				string nodeDir = netConfigSource.GetString("node_directory", Environment.CurrentDirectory);
 
 				Console.Out.WriteLine("Machine Node, " + (hostArg != null ? hostArg : "") + "port: " + port_arg);
-				TcpAdminService inst = new TcpFileAdminService(netConfigSource, host, port, password, nodeDir);
+				TcpAdminService inst = new TcpAdminService(netConfigSource, new FileAdminServiceDelegator(nodeDir), host, port, password);
 				inst.Init();
 			} catch(Exception e) {
 				Console.Out.WriteLine(e.Message);
