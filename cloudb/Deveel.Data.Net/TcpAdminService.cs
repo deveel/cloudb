@@ -50,16 +50,15 @@ namespace Deveel.Data.Net {
 				long second_mix = r.Next(1000);
 				timer.Change(50 * 1000, ((2 * 59) * 1000) + second_mix);
 
-				Socket socket;
+				TcpListener socket;
 				try {
 					IPEndPoint endPoint = serviceAddress.ToEndPoint();
-					socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-					socket.Bind(endPoint);
-					socket.ReceiveTimeout = 0;
-					socket.Listen(150);
-					int cur_receive_buf_size = socket.ReceiveBufferSize;
-					if (cur_receive_buf_size < 256 * 1024) {
-						socket.ReceiveBufferSize = 256 * 1024;
+					socket = new TcpListener(endPoint);
+					socket.Server.ReceiveTimeout = 0;
+					socket.Start(150);
+					int curReceiveBufSize = socket.Server.ReceiveBufferSize;
+					if (curReceiveBufSize < 256 * 1024) {
+						socket.Server.ReceiveBufferSize = 256 * 1024;
 					}
 				} catch (IOException e) {
 					//TODO: ERROR log ...
@@ -72,7 +71,7 @@ namespace Deveel.Data.Net {
 					Socket s;
 					try {
 						// The socket to run the service,
-						s = socket.Accept();
+						s = socket.AcceptSocket();
 						s.NoDelay = true;
 						int cur_send_buf_size = s.SendBufferSize;
 						if (cur_send_buf_size < 256 * 1024) {
