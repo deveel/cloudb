@@ -16,7 +16,7 @@ namespace Deveel.Data {
 			// Initialize the magic property set, etc
 			DataFile df = transaction.GetFile(DbTransaction.MagicKey, FileAccess.ReadWrite);
 			Properties magicSet = new Properties(df);
-			magicSet.SetValue("ob_type", "BasePath");
+			magicSet.SetValue("type", "BasePath");
 			magicSet.SetValue("version", "1.0");
 			// Flush and publish the change
 			DataAddress finalRoot = connection.CommitTransaction(transaction);

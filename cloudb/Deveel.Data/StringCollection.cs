@@ -9,6 +9,9 @@ namespace Deveel.Data {
 	public sealed class StringCollection : ISortedCollection<string> {
 		public StringCollection(DataFile file, IComparer<string> comparer)
 			: this(file, comparer, null, null) {
+			version = 0;
+			root = this;
+			rootStateDirty = true;
 		}
 
 		public StringCollection(DataFile file)

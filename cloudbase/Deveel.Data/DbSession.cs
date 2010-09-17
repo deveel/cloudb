@@ -32,11 +32,11 @@ namespace Deveel.Data {
 				lock(this) {
 					DataFile df = transaction.GetFile(DbTransaction.MagicKey, FileAccess.Read);
 					Properties magic_set = new Properties(df);
-					string ob_type = magic_set.GetValue("ob_type");
+					string type = magic_set.GetValue("type");
 					string version = magic_set.GetValue("version");
 
 					// Error if the data is incorrect,
-					if (ob_type == null || !ob_type.Equals("BasePath")) {
+					if (type == null || !type.Equals("BasePath")) {
 						throw new ApplicationException("Path '" + path + "' is not valid.");
 					}
 
