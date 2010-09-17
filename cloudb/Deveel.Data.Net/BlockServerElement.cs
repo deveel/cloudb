@@ -2,23 +2,23 @@
 
 namespace Deveel.Data.Net {
 	public class BlockServerElement {
-		public BlockServerElement(IServiceAddress address, string status) {
+		public BlockServerElement(IServiceAddress address, ServiceStatus status) {
 			this.address = address;
 			this.status = status;
 		}
 
 		private readonly IServiceAddress address;
-		private readonly String status;
+		private readonly ServiceStatus status;
 
 		public IServiceAddress Address {
 			get { return address; }
 		}
 
 		public bool IsStatusUp {
-			get { return Status.StartsWith("U"); }
+			get { return Status == ServiceStatus.Up; }
 		}
 
-		public string Status {
+		public ServiceStatus Status {
 			get { return status; }
 		}
 	}

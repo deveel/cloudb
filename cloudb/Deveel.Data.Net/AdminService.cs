@@ -32,7 +32,7 @@ namespace Deveel.Data.Net {
 			get { return connector; }
 			set { connector = value; }
 		}
-
+		
 		protected ManagerService Manager {
 			get { return (ManagerService) delegator.GetService(ServiceType.Manager); }
 		}
@@ -170,7 +170,7 @@ namespace Deveel.Data.Net {
 						}
 
 					} catch (OutOfMemoryException e) {
-						service.Logger.Log(LogLevel.Error, service, "Out Of Memory Error.");
+						service.Logger.Error(service, "Out Of Memory Error.");
 						// This will end the connection);
 						throw;
 					} catch (Exception e) {

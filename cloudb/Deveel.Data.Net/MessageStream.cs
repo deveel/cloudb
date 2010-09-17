@@ -11,12 +11,61 @@ namespace Deveel.Data.Net {
 		}
 
 		private readonly List<object> items;
+		private Message errorMessage;
 
 		internal const string MessageOpen = "[";
 		internal const string MessageClose = "]";
 		
 		internal IList Items {
 			get { return items; }
+		}
+		
+		public Message this[int index] {
+			get {
+				int i = -1;
+				foreach(Message m in this) {
+					i++;
+					
+					if (i < index)
+						continue;
+					if (i == index)
+						return m;
+					if (i > index)
+						break;
+				}
+				
+				return null;
+			}
+		}
+		
+		public Message this[string name] {
+			get {
+				foreach(Message m in this) {
+					if (m.Name == name)
+						return m;
+				}
+				
+				return null;
+			}
+		}
+		
+		public bool HasError {
+			get { return ErrorMessage != null; }
+		}
+		
+		public Message ErrorMessage {
+			get {
+				if (errorMessage == null) {
+					foreach(Message m in this) {
+						if (m.IsError) {
+							errorMessage = m;
+							break;
+						}
+					}
+				}
+				
+				return errorMessage;
+			}
 		}
 
 		public void StartMessage(string messageName) {
@@ -95,7 +144,7 @@ namespace Deveel.Data.Net {
 			public Message Current {
 				get {
 					string msgName = (string)stream.items[index];
-					Message message = msgName.Equals("E") ? new ErrorMessage() : new Message(msgName);
+					Message message = new Message(msgName);
 					while (++index < stream.items.Count) {
 						object v = stream.items[index];
 						if (v == null) {

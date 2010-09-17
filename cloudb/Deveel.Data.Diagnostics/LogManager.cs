@@ -11,6 +11,11 @@ namespace Deveel.Data.Diagnostics {
 		private static readonly object logSyncLock = new object();
 
 		public const string LoggerNameKey = "log_name";
+		public const string NetworkLoggerName = "network";
+		public const string StorageLoggerName = "store";
+		
+		public static readonly Logger NetworkLogger = GetLogger(NetworkLoggerName);
+		public static readonly Logger StorageLogger = GetLogger(StorageLoggerName);
 
 		private static void InspectLoggers() {
 			Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
@@ -50,12 +55,19 @@ namespace Deveel.Data.Diagnostics {
 				string ln = config.GetString("logger", null);
 				if (ln == null)
 					ln = config.GetString("loggers", null);
-				if (ln == null)
-					return;
-
-				string[] sp = ln.Split(',');
-				for (int i = 0; i < sp.Length; i++) {
-					string loggerName = sp[i].Trim();
+				
+				List<string> loggerNames = new List<string>();
+				loggerNames.Add(NetworkLoggerName);
+				loggerNames.Add(StorageLoggerName);
+				
+				if (ln != null) {
+					string[] sp = ln.Split(',');
+					for (int i = 0; i < sp.Length; i++) {
+						loggerNames.Add(sp[i].Trim());
+					}
+				}
+				for (int i = 0; i < loggerNames.Count; i++) {
+					string loggerName = loggerNames[i];
 					ConfigSource loggerConfig = new ConfigSource();
 					foreach(string key in config.Keys) {
 						if (key.StartsWith(loggerName + "_")) {
@@ -88,16 +100,11 @@ namespace Deveel.Data.Diagnostics {
 			}
 		}
 
-		public static Logger GetLogger(string logName, Type loggingType) {
+		public static Logger GetLogger(string logName) {
 			ILogger logger;
 			if (!loggers.TryGetValue(logName, out logger))
 				logger = new EmptyLogger();
-			return new Logger(logName, loggingType, logger);
-		}
-
-		public static Logger GetLogger(string logName) {
-			Type loggingType = new StackFrame(1, false).GetMethod().DeclaringType;
-			return GetLogger(logName, loggingType);
+			return new Logger(logName, logger);
 		}
 	}
 }

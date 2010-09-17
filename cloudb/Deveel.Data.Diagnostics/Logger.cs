@@ -4,15 +4,13 @@ using System.Threading;
 
 namespace Deveel.Data.Diagnostics {
 	public sealed class Logger : ILogger {
-		internal Logger(string name, Type loggingType, ILogger logger) {
+		internal Logger(string name, ILogger logger) {
 			this.name = name;
 			this.logger = logger;
-			this.loggingType = loggingType;
 		}
 
 		private readonly string name;
 		private readonly ILogger logger;
-		private readonly Type loggingType;
 
 		public string Name {
 			get { return name; }
@@ -29,6 +27,10 @@ namespace Deveel.Data.Diagnostics {
 		void ILogger.Init(ConfigSource config) {
 			throw new InvalidOperationException();
 		}
+		
+		private Type GetLoggingType() {
+			return new StackFrame(2, false).GetMethod().DeclaringType;
+		}
 
 		public bool IsInterestedIn(LogLevel level) {
 			return BaseLogger.IsInterestedIn(level);
@@ -38,10 +40,7 @@ namespace Deveel.Data.Diagnostics {
 			string threadName = entry.Thread;
 			if (String.IsNullOrEmpty(threadName))
 				threadName = Thread.CurrentThread.Name;
-			string source = entry.Source;
-			if (String.IsNullOrEmpty(source))
-				source = loggingType.AssemblyQualifiedName;
-			BaseLogger.Log(new LogEntry(threadName, source, entry.Level, entry.Message, entry.Error, entry.Time));
+			BaseLogger.Log(new LogEntry(threadName, entry.Source, entry.Level, entry.Message, entry.Error, entry.Time));
 		}
 
 		void ILogger.Log(LogEntry entry) {
@@ -61,7 +60,7 @@ namespace Deveel.Data.Diagnostics {
 		}
 
 		public void Log(LogLevel level, string message, Exception error) {
-			Log(new LogEntry(null, null, level, message, error, DateTime.Now));
+			Log(new LogEntry(null, GetLoggingType().AssemblyQualifiedName, level, message, error, DateTime.Now));
 		}
 
 		public void Log(LogLevel level, object ob, string message, Exception error) {
@@ -77,12 +76,12 @@ namespace Deveel.Data.Diagnostics {
 		}
 
 		public void Log(LogLevel level, string message) {
-			Log(new LogEntry(null, null, level, message, null, DateTime.Now));
+			Log(new LogEntry(null, GetLoggingType().AssemblyQualifiedName, level, message, null, DateTime.Now));
 		}
 
 
 		public void Log(LogLevel level, Exception e) {
-			Log(new LogEntry(null, null, level, null, e, DateTime.Now));
+			Log(new LogEntry(null, GetLoggingType().AssemblyQualifiedName, level, null, e, DateTime.Now));
 		}
 
 		public void Error(object ob, string message) {
@@ -134,7 +133,11 @@ namespace Deveel.Data.Diagnostics {
 		}
 
 		public void Warning(Exception e) {
-			Log(LogLevel.Warning, e);
+			Log(LogLevel.Warning, GetLoggingType(), null, e);
+		}
+		
+		public void Warning(string message) {
+			Log(LogLevel.Warning, GetLoggingType(), message);
 		}
 
 		public void Info(object ob, string message) {
@@ -150,7 +153,11 @@ namespace Deveel.Data.Diagnostics {
 		}
 
 		public void Info(Exception e) {
-			Log(LogLevel.Information, e);
+			Log(LogLevel.Information, GetLoggingType(), null, e);
+		}
+		
+		public void Info(string message) {
+			Log(LogLevel.Information, GetLoggingType(), message);
 		}
 	}
 }

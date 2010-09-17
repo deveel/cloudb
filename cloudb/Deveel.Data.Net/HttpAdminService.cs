@@ -49,12 +49,12 @@ namespace Deveel.Data.Net {
 					listener.Prefixes.Add(address.ToString());
 					listener.Start();
 				} catch (IOException e) {
-					//TODO: ERROR log ...
+					Logger.Error("Error Starting the HTTP Listener", e);
 					return;
 				}
-
-				//TODO: INFO log ...
-
+				
+				Logger.Info(String.Format("Node started listening HTTP connections on {0}", address));
+				
 				while (polling) {
 					HttpListenerContext context;
 					try {
@@ -63,7 +63,7 @@ namespace Deveel.Data.Net {
 						// Make sure this ip address is allowed,
 						IPAddress ipAddress = ((IPEndPoint)context.Request.RemoteEndPoint).Address;
 
-						//TODO: INFO log ...
+						Logger.Info("Connection opened with HTTP client " + ipAddress);
 
 						// Check it's allowed,
 						if (ipAddress.IsIPv6LinkLocal ||
@@ -73,11 +73,11 @@ namespace Deveel.Data.Net {
 							HttpConnection c = new HttpConnection(this);
 							ThreadPool.QueueUserWorkItem(c.Work, context);
 						} else {
-							//TODO: ERROR log ...
+							Logger.Error(String.Format("The client IP address {0} is not authorized", ipAddress));
 						}
 
 					} catch (IOException e) {
-						//TODO: WARN log ...
+						Logger.Warning(e);
 					}
 				}
 			} finally {

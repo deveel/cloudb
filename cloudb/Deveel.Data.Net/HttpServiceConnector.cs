@@ -81,7 +81,7 @@ namespace Deveel.Data.Net {
 					}
 
 					MessageStream outputStream = new MessageStream(16);
-					outputStream.AddMessage(new ErrorMessage(error));
+					outputStream.AddMessage("E", error);
 					return outputStream;
 				}
 			}

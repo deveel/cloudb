@@ -23,14 +23,15 @@ namespace Deveel.Data {
 			// start a fake network to test in-memory ...
 			networkProfile.StartService(FakeServiceAddress.Local, ServiceType.Manager);
 			networkProfile.StartService(FakeServiceAddress.Local, ServiceType.Root);
+			networkProfile.RegisterRoot(FakeServiceAddress.Local);
 			networkProfile.StartService(FakeServiceAddress.Local, ServiceType.Block);
+			networkProfile.RegisterBlock(FakeServiceAddress.Local);
 			networkProfile.Refresh();
-
 		}
 
 		[Test]
 		public void TestAddPath() {
-			networkProfile.AddPath(FakeServiceAddress.Local, PathName, typeof(BasePath).FullName);
+			networkProfile.AddPath(FakeServiceAddress.Local, PathName, "Deveel.Data.BasePath, cloudbase");
 			networkProfile.Refresh();
 
 			PathProfile[] pathProfiles = networkProfile.GetPathsFromRoot(FakeServiceAddress.Local);

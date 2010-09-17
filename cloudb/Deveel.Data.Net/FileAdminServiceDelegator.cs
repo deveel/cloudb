@@ -1,6 +1,8 @@
 ﻿using System;
 using System.IO;
 
+using Deveel.Data.Diagnostics;
+
 namespace Deveel.Data.Net {
 	public sealed class FileAdminServiceDelegator : IAdminServiceDelegator {
 		private readonly string basePath;
@@ -8,6 +10,7 @@ namespace Deveel.Data.Net {
 		private IService manager;
 		private IService root;
 		private IService block;
+		private Logger logger;
 
 		private const string BlockRunFile = "runblock";
 		private const string ManagerRunFile = "runmanager";
@@ -15,6 +18,8 @@ namespace Deveel.Data.Net {
 		
 		public FileAdminServiceDelegator(string basePath) {
 			this.basePath = basePath;
+			
+			logger = LogManager.GetLogger("network");
 		}
 		
 		public void Init(AdminService adminService) {
@@ -37,8 +42,8 @@ namespace Deveel.Data.Net {
 					root = CreateService(adminService.Address, ServiceType.Root, adminService.Connector);
 					root.Init();
 				}
-			} catch (IOException) {
-				//TODO: ERROR log ...
+			} catch (IOException e) {
+				logger.Error("IO Error on Init", e);
 				throw;
 			}
 		}

@@ -5,8 +5,19 @@ namespace Deveel.Data.Net {
 		public void Init(AdminService adminService) {
 		}
 		
+		private IService manager;
+		private IService root;
+		private IService block;
+		
 		public IService GetService(ServiceType serviceType) {
-			throw new NotImplementedException();
+			if (serviceType == ServiceType.Manager)
+				return manager;
+			if (serviceType == ServiceType.Root)
+				return root;
+			if (serviceType == ServiceType.Block)
+				return block;
+			
+			throw new ArgumentException("Invalid service type specified.");
 		}
 		
 		public IService CreateService(IServiceAddress address, ServiceType serviceType, IServiceConnector connector) {
@@ -21,12 +32,9 @@ namespace Deveel.Data.Net {
 		}
 		
 		public void DisposeService(ServiceType serviceType) {
-			throw new NotImplementedException();
 		}
 		
-		public void Dispose()
-		{
-			throw new NotImplementedException();
+		public void Dispose() {
 		}
 	}
 }

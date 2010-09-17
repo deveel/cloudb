@@ -76,6 +76,7 @@ namespace Deveel.Data {
 		public void Start() {
 			lock (lockObject) {
 				treeSystem = new StoreTreeSystem(store, branchNodeSize, leafNodeSize, heapNodeCacheSize, branchNodeCacheSize);
+				treeSystem.Create();
 				treeSystem.CheckPoint();
 			}
 		}

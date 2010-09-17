@@ -13,7 +13,7 @@ namespace Deveel.Data.Net {
 		private bool initialized;
 
 		protected Service() {
-			log = LogManager.GetLogger("network", GetType());
+			log = LogManager.GetLogger("network");
 		}
 
 		~Service() {

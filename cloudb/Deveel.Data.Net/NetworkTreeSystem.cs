@@ -6,6 +6,7 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 
+using Deveel.Data.Diagnostics;
 using Deveel.Data.Store;
 using Deveel.Data.Util;
 
@@ -17,6 +18,8 @@ namespace Deveel.Data.Net {
 			this.networkCache = networkCache;
 			failures = new Dictionary<IServiceAddress, DateTime>();
 			pathToRoot = new Dictionary<string, IServiceAddress>();
+			
+			logger = LogManager.GetLogger("network");
 		}
 
 		private readonly IServiceConnector connector;
@@ -33,6 +36,7 @@ namespace Deveel.Data.Net {
 		private long max_transaction_node_heap_size;
 
 		private ErrorStateException errorState;
+		private Logger logger;
 
 		private const short LeafType = 0x019EC;
 		private const short BranchType = 0x022EB;
@@ -58,22 +62,19 @@ namespace Deveel.Data.Net {
 			message_out.AddMessage(new Message("notifyBlockServerFailure", new object[] { address }));
 			// Process the failure report message on the manager server,
 			MessageStream message_in = manager.Process(message_out);
-			foreach (Message m in message_in) {
-				if (m.IsError) {
-					//TODO: ERROR log ...
-				}
-			}
+			if (message_in.HasError)
+				logger.Error("Error found while processing 'notifyBlockServerFailure': " + message_in.ErrorMessage.ErrorMessage);
 		}
 
 		//TODO: should this work also for other kind of addresses?
-		private int GetProximity(IServiceAddress node) {
-			if (!(node is TcpServiceAddress))
-				throw new NotSupportedException();
-			
+		private int GetProximity(IServiceAddress node) {			
 			lock (proximityMap) {
 				int closeness;
 				if (!proximityMap.TryGetValue(node, out closeness)) {
 					try {
+						if (!(node is TcpServiceAddress))
+							throw new NotSupportedException("This algorithm is not supported for this kind of service.");
+
 						IPAddress machine_address = ((TcpServiceAddress) node).ToIPAddress();
 
 						NetworkInterface[] local_interfaces = NetworkInterface.GetAllNetworkInterfaces();
@@ -92,10 +93,10 @@ namespace Deveel.Data.Net {
 							closeness = 10000;
 						}
 
-					} catch (SocketException e) {
+					} catch (Exception e) {
 						// Unknown closeness,
 						// Log a severe error,
-						//TODO: ERROR log ...
+						logger.Error("Cannot determine the proximity factor for address " + node);
 						closeness = Int32.MaxValue;
 					}
 
@@ -135,7 +136,7 @@ namespace Deveel.Data.Net {
 			MessageStream message_out = new MessageStream(15);
 
 			foreach (long block_id in noneCached) {
-				message_out.AddMessage(new Message("getServerList", new object[] { block_id }));
+				message_out.AddMessage(new Message("getServerListForBlock", new object[] { block_id }));
 			}
 
 			MessageStream message_in = manager.Process(message_out);
@@ -149,8 +150,8 @@ namespace Deveel.Data.Net {
 				List<BlockServerElement> srvs = new List<BlockServerElement>(sz);
 				for (int i = 0; i < sz; ++i) {
 					IServiceAddress address = (IServiceAddress) m[1 + (i*2)];
-					string status = (string) m[1 + (i*2) + 1];
-					srvs.Add(new BlockServerElement(address, status));
+					int status = (int) m[1 + (i*2) + 1];
+					srvs.Add(new BlockServerElement(address, (ServiceStatus) status));
 				}
 
 				// Shuffle the list
@@ -644,15 +645,12 @@ namespace Deveel.Data.Net {
 			MessageStream msg_out = new MessageStream(16);
 			msg_out.AddMessage(new Message("getAllPaths"));
 			MessageStream msg_in = processor.Process(msg_out);
-			foreach (Message m in msg_in) {
-				if (m.IsError)
-					//TODO: ERROR log ...
-					throw new Exception(m.ErrorMessage);
-
-				return (string[])m[0];
+			if (msg_in.HasError) {
+				logger.Error("An error occurred in 'getAllPath': " + msg_in.ErrorMessage.ErrorMessage);
+				throw new Exception(msg_in.ErrorMessage.ErrorMessage);
 			}
-
-			throw new Exception("Bad formatted message stream");
+			
+			return (string[])msg_in["getAllPaths"][0];
 		}
 
 		public DataAddress GetPathNow(IServiceAddress root_server, String name) {

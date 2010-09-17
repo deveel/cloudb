@@ -90,7 +90,7 @@ namespace Deveel.Data.Net {
 			lock (blockServersMap) {
 				foreach (BlockServerInfo server in blockServers) {
 					// Add the servers with status 'up'
-					if (server.Status == ServerStatus.Up)
+					if (server.Status == ServiceStatus.Up)
 						servSet.Add(server);
 				}
 			}
@@ -179,7 +179,7 @@ namespace Deveel.Data.Net {
 					foreach (BlockServerInfo block_server in blockServers) {
 						// If this matches the guid, and is up, we add to 'ok_server_count'
 						if (block_server.Guid == serverGuid &&
-							block_server.Status == ServerStatus.Up) {
+							block_server.Status == ServiceStatus.Up) {
 							++okServerCount;
 						}
 					}
@@ -264,7 +264,7 @@ namespace Deveel.Data.Net {
 				}
 			}
 
-			BlockServerInfo blockServer = new BlockServerInfo(serverGuid, serviceAddress, ServerStatus.Up);
+			BlockServerInfo blockServer = new BlockServerInfo(serverGuid, serviceAddress, ServiceStatus.Up);
 			// Add it to the map
 			lock (blockServersMap) {
 				blockServersMap[serverGuid] = blockServer;
@@ -432,7 +432,7 @@ namespace Deveel.Data.Net {
 
 			// Add it to the map
 			lock (rootServers) {
-				rootServers.Add(new RootServerInfo(serviceAddress, ServerStatus.Up));
+				rootServers.Add(new RootServerInfo(serviceAddress, ServiceStatus.Up));
 				PersistRootServers(rootServers);
 			}
 		}
@@ -687,8 +687,8 @@ namespace Deveel.Data.Net {
 				foreach (BlockServerInfo block_server in blockServers) {
 					// If the block service is the one that failed,
 					if (block_server.Address.Equals(serviceAddress)) {
-						if (block_server.Status == ServerStatus.Up) {
-							block_server.Status = ServerStatus.DownClientReport;
+						if (block_server.Status == ServiceStatus.Up) {
+							block_server.Status = ServiceStatus.DownClientReport;
 							// Add this block to the heartbeat check thread,
 							MonitorServer(block_server);
 						}
@@ -770,9 +770,9 @@ namespace Deveel.Data.Net {
 				// is 'DownClientReport' or 'DownHeartbeat'
 				// Lock over servers map for safe alteration of the ref.
 				lock (blockServersMap) {
-					if (server.Status == ServerStatus.DownClientReport ||
-						server.Status == ServerStatus.DownHeartbeat) {
-						server.Status = ServerStatus.Up;
+					if (server.Status == ServiceStatus.DownClientReport ||
+						server.Status == ServiceStatus.DownHeartbeat) {
+						server.Status = ServiceStatus.Up;
 					}
 				}
 				// Remove the service from the monitored_servers list.
@@ -784,9 +784,9 @@ namespace Deveel.Data.Net {
 				// failed,
 				// Lock over servers map for safe alteration of the ref.
 				lock (blockServersMap) {
-					if (server.Status == ServerStatus.Up ||
-						server.Status == ServerStatus.DownClientReport) {
-						server.Status = ServerStatus.DownHeartbeat;
+					if (server.Status == ServiceStatus.Up ||
+						server.Status == ServiceStatus.DownClientReport) {
+						server.Status = ServiceStatus.DownHeartbeat;
 					}
 				}
 			}
@@ -815,13 +815,13 @@ namespace Deveel.Data.Net {
 					}
 				}
 			} catch (ThreadInterruptedException) {
-				//TODO: WARN log ...
+				Logger.Warning("Heartbeat thread interrupted");
 			}
 		}
 		
 		protected void AddRegisteredBlockServer(long serverGuid, IServiceAddress address) {
 			lock (blockServersMap) {
-				BlockServerInfo blockServer = new BlockServerInfo(serverGuid, address, ServerStatus.Up);
+				BlockServerInfo blockServer = new BlockServerInfo(serverGuid, address, ServiceStatus.Up);
 				// Add to the internal map/list
 				blockServersMap[serverGuid] = blockServer;
 				blockServers.Add(blockServer);
@@ -833,7 +833,7 @@ namespace Deveel.Data.Net {
 		protected void AddRegisteredRootServer(IServiceAddress address) {
 			lock (rootServers) {
 				// Add to the internal map/list
-				rootServers.Add(new RootServerInfo(address, ServerStatus.Up));
+				rootServers.Add(new RootServerInfo(address, ServiceStatus.Up));
 			}
 		}
 
@@ -984,11 +984,11 @@ namespace Deveel.Data.Net {
 								throw new ApplicationException("Unknown message name: " + m.Name);
 						}
 					} catch (OutOfMemoryException e) {
-						//TODO: ERROR log ...
+						service.Logger.Error("Out of Memory", e);
 						service.SetErrorState(e);
 						throw;
 					} catch (Exception e) {
-						//TODO: ERROR log ...
+						service.Logger.Error("Error while processing message", e);
 						responseStream.AddErrorMessage(new ServiceException(e));
 					}
 				}
@@ -1003,9 +1003,9 @@ namespace Deveel.Data.Net {
 
 		protected sealed class RootServerInfo {
 			private readonly IServiceAddress address;
-			private readonly ServerStatus status;
+			private readonly ServiceStatus status;
 
-			internal RootServerInfo(IServiceAddress address, ServerStatus status) {
+			internal RootServerInfo(IServiceAddress address, ServiceStatus status) {
 				this.address = address;
 				this.status = status;
 			}
@@ -1014,7 +1014,7 @@ namespace Deveel.Data.Net {
 				get { return address; }
 			}
 
-			public ServerStatus Status {
+			public ServiceStatus Status {
 				get { return status; }
 			}
 
@@ -1034,15 +1034,15 @@ namespace Deveel.Data.Net {
 		protected sealed class BlockServerInfo {
 			private readonly long guid;
 			private readonly IServiceAddress address;
-			private ServerStatus status;
+			private ServiceStatus status;
 
-			internal BlockServerInfo(long guid, IServiceAddress address, ServerStatus status) {
+			internal BlockServerInfo(long guid, IServiceAddress address, ServiceStatus status) {
 				this.guid = guid;
 				this.address = address;
 				this.status = status;
 			}
 
-			public ServerStatus Status {
+			public ServiceStatus Status {
 				get { return status; }
 				set { status = value; }
 			}
@@ -1065,17 +1065,6 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-
-		#endregion
-
-		#region ServerStatus
-
-		protected enum ServerStatus {
-			Up = 1,
-			DownShutdown = 2,
-			DownHeartbeat = 3,
-			DownClientReport = 4
-		}
 
 		#endregion
 	}

@@ -28,6 +28,7 @@ namespace Deveel.Data.Net {
 
 			// Create a new empty database,
 			NetworkClient client = new NetworkClient(managerServer, network_connector);
+			client.Connect();
 			DataAddress dataAddress = client.CreateEmptyDatabase();
 			client.Disconnect();
 

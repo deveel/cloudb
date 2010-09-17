@@ -83,7 +83,6 @@
     <Compile Include="Deveel.Data.Net\CompressedBlockStore.cs" />
     <Compile Include="Deveel.Data.Net\CompressedNodeSet.cs" />
     <Compile Include="Deveel.Data.Net\DataAddress.cs" />
-    <Compile Include="Deveel.Data.Net\ErrorMessage.cs" />
     <Compile Include="Deveel.Data.Net\FileAdminServiceDelegator.cs" />
     <Compile Include="Deveel.Data.Net\FileBlockStore.cs" />
     <Compile Include="Deveel.Data.Net\FileSystemBlockService.cs">
@@ -106,6 +105,7 @@
     <Compile Include="Deveel.Data.Net\IMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net\ITextMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net\MemoryAdminServiceDelegator.cs" />
+    <Compile Include="Deveel.Data.Net\ServiceStatus.cs" />
     <Compile Include="Deveel.Data.Net\XmlMessageStreamSerializer.cs" />
     <Compile Include="Deveel.Data\IIndexCursor.cs" />
     <Compile Include="Deveel.Data\IIndex.cs" />
