@@ -8,6 +8,7 @@ namespace Deveel.Data {
 		private readonly IIndexCursor cursor;
 		
 		internal DbRowCursor(DbTable table, long tableVersion, IIndexCursor cursor) {
+			this.cursor = cursor;
 			this.table = table;
 			this.tableVersion = tableVersion;
 		}

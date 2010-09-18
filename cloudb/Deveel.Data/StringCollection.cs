@@ -285,7 +285,7 @@ namespace Deveel.Data {
 			while (pos < end) {
 				char c = file.ReadChar();
 				pos = pos + 2;
-				if (c == (char) 0x0FFFF) {
+				if (c == StringDeliminator) {
 					// This is the end of the string, break the while loop
 					str_end = pos;
 					break;

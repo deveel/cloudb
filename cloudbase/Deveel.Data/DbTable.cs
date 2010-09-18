@@ -508,7 +508,7 @@ namespace Deveel.Data {
 			
 			public void SetValue(long columnid, string value) {
 				file.Position = 0;
-				BinaryReader din = new BinaryReader(new DataFileStream(file, FileAccess.Read), Encoding.Unicode);
+				BinaryReader din = new BinaryReader(new DataFileStream(file, FileAccess.Read));
 				
 				try {
 					int size = Math.Min((int) file.Length, Int32.MaxValue);
@@ -544,7 +544,7 @@ namespace Deveel.Data {
 					}
 					
 					// Write the string
-					BinaryWriter dout = new BinaryWriter(new DataFileStream(file, FileAccess.Write), Encoding.Unicode);
+					BinaryWriter dout = new BinaryWriter(new DataFileStream(file, FileAccess.Write));
 					dout.Write((byte)1);
 					dout.Write(value);
 					dout.Flush();
