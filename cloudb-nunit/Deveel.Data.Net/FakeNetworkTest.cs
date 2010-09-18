@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Net;
 
 using NUnit.Framework;
 
@@ -40,6 +39,7 @@ namespace Deveel.Data.Net {
 			Assert.IsNotNull(machine);
 			Assert.IsFalse(machine.IsRoot);
 			networkProfile.StartService(FakeServiceAddress.Local, ServiceType.Root);
+			networkProfile.RegisterRoot(FakeServiceAddress.Local);
 		}
 
 		[Test]
@@ -48,6 +48,7 @@ namespace Deveel.Data.Net {
 			Assert.IsNotNull(machine);
 			Assert.IsFalse(machine.IsBlock);
 			networkProfile.StartService(FakeServiceAddress.Local, ServiceType.Block);
+			networkProfile.RegisterBlock(FakeServiceAddress.Local);
 		}
 
 
@@ -65,6 +66,7 @@ namespace Deveel.Data.Net {
 			Assert.IsTrue(machine.IsManager);
 
 			networkProfile.StartService(FakeServiceAddress.Local, ServiceType.Root);
+			networkProfile.RegisterRoot(FakeServiceAddress.Local);
 
 			networkProfile.Refresh();
 			machine = networkProfile.GetMachineProfile(FakeServiceAddress.Local);
@@ -72,6 +74,7 @@ namespace Deveel.Data.Net {
 			Assert.IsTrue(machine.IsRoot);
 
 			networkProfile.StartService(FakeServiceAddress.Local, ServiceType.Block);
+			networkProfile.RegisterBlock(FakeServiceAddress.Local);
 
 			networkProfile.Refresh();
 			machine = networkProfile.GetMachineProfile(FakeServiceAddress.Local);
@@ -106,6 +109,7 @@ namespace Deveel.Data.Net {
 			Assert.IsTrue(machine.IsRoot);
 
 			networkProfile.StopService(FakeServiceAddress.Local, ServiceType.Root);
+			networkProfile.RegisterRoot(FakeServiceAddress.Local);
 
 			networkProfile.Refresh();
 

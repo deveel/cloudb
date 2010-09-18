@@ -201,7 +201,7 @@ namespace Deveel.Data.Util {
 		  arr[offset + 0] = (byte) (URShift(value, 8) & 0x0FF);
 		  arr[offset + 1] = (byte) (URShift(value, 0) & 0x0FF);
 			// byte[] buff = BitConverter.GetBytes(value);
-			Array.Copy(arr, 0, arr, offset, 2);
+			// Array.Copy(buff, 0, arr, offset, 2);
 		}
 
 		public static short ReadInt2(byte[] arr, int offset) {

@@ -21,7 +21,7 @@ namespace Deveel.Data {
 		private StringCollection(DataFile file, IComparer<string> comparer, string lowerBound, string upperBound) {
 			this.file = file;
 
-			if (comparer != null)
+			if (comparer == null)
 				comparer = DefaultComparer;
 
 			this.comparer = comparer;

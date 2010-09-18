@@ -56,6 +56,8 @@ namespace Deveel.Data.Net {
 				connector.Close();
 
 			OnDisconnected();
+
+			connected = false;
 		}
 
 		public DataAddress CreateEmptyDatabase() {
@@ -108,7 +110,7 @@ namespace Deveel.Data.Net {
 			CheckConnected();
 			
 			IServiceAddress rootAddress = storageSystem.GetRootServer(pathName);
-			return storageSystem.GetPathHistorical(rootAddress, pathName, timeStart, timeEnd);
+			return storageSystem.GetSnapshots(rootAddress, pathName, timeStart, timeEnd);
 		}
 
 		public DataAddress GetCurrentSnapshot(string pathName) {
@@ -119,7 +121,7 @@ namespace Deveel.Data.Net {
 			if (rootAddress == null)
 				throw new Exception("There are no root servers in the network for path '" + pathName + "'");
 
-			return storageSystem.GetPathNow(rootAddress, pathName);
+			return storageSystem.GetSnapshot(rootAddress, pathName);
 		}
 
 		public string[] GetNetworkPaths() {

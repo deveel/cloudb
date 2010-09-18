@@ -468,7 +468,7 @@ namespace Deveel.Data.Store {
 			return -((left_offset + node_total_size) + 1);
 		}
 
-		private long[] GetDataFileBounds(Key key) {
+		private void GetDataFileBounds(Key key, out long start, out long end) {
 
 			Key left_key = Key.Head;
 			int cur_height = 1;
@@ -484,32 +484,31 @@ namespace Deveel.Data.Store {
 					treeHeight = cur_height;
 					break;
 				}
-					// Must be a branch,
-				else {
-					TreeBranch branch = (TreeBranch) node;
-					// We ask the node for the child sub-tree that will contain this node
-					child_i = branch.SearchLast(key);
-					// Child will be in this subtree
-					long child_offset = branch.GetChildOffset(child_i);
-					node_total_size = branch.GetChildLeafElementCount(child_i);
-					// Get the left key of the branch if we can
-					if (child_i > 0) {
-						left_key = branch.GetKey(child_i);
-					}
-					// Update left_offset
-					left_offset += child_offset;
-					last_branch = branch;
 
-					// Ok, if we know child_node_ref is a leaf,
-					if (cur_height + 1 == treeHeight) {
-						break;
-					}
-
-					// Otherwise, descend to the child and repeat
-					long child_node_ref = branch.GetChild(child_i);
-					node = FetchNode(child_node_ref);
-					++cur_height;
+				// Must be a branch,
+				TreeBranch branch = (TreeBranch) node;
+				// We ask the node for the child sub-tree that will contain this node
+				child_i = branch.SearchLast(key);
+				// Child will be in this subtree
+				long child_offset = branch.GetChildOffset(child_i);
+				node_total_size = branch.GetChildLeafElementCount(child_i);
+				// Get the left key of the branch if we can
+				if (child_i > 0) {
+					left_key = branch.GetKey(child_i);
 				}
+				// Update left_offset
+				left_offset += child_offset;
+				last_branch = branch;
+
+				// Ok, if we know child_node_ref is a leaf,
+				if (cur_height + 1 == treeHeight) {
+					break;
+				}
+
+				// Otherwise, descend to the child and repeat
+				long child_node_ref = branch.GetChild(child_i);
+				node = FetchNode(child_node_ref);
+				++cur_height;
 			}
 
 			// Ok, we've reached the leaf node on the search,
@@ -539,7 +538,8 @@ namespace Deveel.Data.Store {
 			// entered.
 			if (end_pos < 0) {
 				long p = -(end_pos + 1);
-				return new long[] {p, p};
+				start = end = p;
+				return;
 			}
 
 			// Now we have the end position of a key that definitely exists, we can
@@ -560,7 +560,9 @@ namespace Deveel.Data.Store {
 					if (predicted_start_pos > end_pos) {
 						throw new ApplicationException("Assertion failed: (1) start_pos > end_pos");
 					}
-					return new long[] {predicted_start_pos, end_pos};
+					start = predicted_start_pos;
+					end = end_pos;
+					return;
 				}
 			}
 
@@ -576,8 +578,9 @@ namespace Deveel.Data.Store {
 			if (start_pos > end_pos) {
 				throw new ApplicationException("Assertion failed: (2) start_pos > end_pos");
 			}
-			return new long[] {start_pos, end_pos};
 
+			start = start_pos;
+			end = end_pos;
 		}
 
 		private DataFile UnsafeGetDataFile(Key key, FileAccess access) {
@@ -1706,7 +1709,7 @@ namespace Deveel.Data.Store {
 					if (to_write == 0)
 						throw new ApplicationException("Write out of bounds.");
 					// Copy the leaf into the array,
-					current_leaf.Read(leaf_offset, buf, off, to_write);
+					current_leaf.Write(leaf_offset, buf, off, to_write);
 					// Modify the pointers
 					current_p += to_write;
 					off += to_write;
@@ -1906,9 +1909,7 @@ namespace Deveel.Data.Store {
 					// when the file is created or it undergoes a large structural change
 					// such as a copy.
 					if (version == -1 || key.CompareTo(tnx.lowestSizeChangedKey) >= 0) {
-						long[] bounds = tnx.GetDataFileBounds(key);
-						start = bounds[0];
-						end = bounds[1];
+						tnx.GetDataFileBounds(key, out start, out end);
 					}
 					// Reset the stack and set the version to the most recent
 					stack.Reset();

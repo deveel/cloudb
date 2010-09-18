@@ -92,7 +92,6 @@ namespace Deveel.Data {
 			// If there are nodes to flush,
 			if (to_flush != null) {
 				// Read each group and call the node flush routine,
-				//      System.out.println("We have " + to_flush.size() + " nodes to flush!");
 
 				// The mapping of transaction to node list
 				Dictionary<ITransaction, List<long>> tran_map = new Dictionary<ITransaction, List<long>>();
@@ -102,10 +101,10 @@ namespace Deveel.Data {
 					// Get the transaction of this node,
 					ITransaction tran = node.Transaction;
 					// Find the list of this transaction,
-					List<long> node_list = tran_map[tran];
-					if (node_list == null) {
+					List<long> node_list;
+					if (!tran_map.TryGetValue(tran, out node_list)) {
 						node_list = new List<long>(to_flush.Count);
-						tran_map.Add(tran, node_list);
+						tran_map[tran] = node_list;
 					}
 					// Add to the list
 					node_list.Add(node.Id);

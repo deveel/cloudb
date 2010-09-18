@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 
 using Deveel.Data.Store;
 
@@ -468,7 +469,7 @@ namespace Deveel.Data {
 			
 			public String GetValue(long columnid) {
 				file.Position = 0;
-				BinaryReader din = new BinaryReader(new DataFileStream(file));
+				BinaryReader din = new BinaryReader(new DataFileStream(file), Encoding.Unicode);
 				
 				try {
 					// If no size, return null
@@ -486,7 +487,7 @@ namespace Deveel.Data {
 						if (sid == columnid) {
 							file.Position = (4 + (hsize * 12) + coffset);
 							
-							din = new BinaryReader(new DataFileStream(file, FileAccess.Read));
+							din = new BinaryReader(new DataFileStream(file, FileAccess.Read), Encoding.Unicode);
 							byte t = din.ReadByte();
 							// Types (currently only supports string types (UTF8 encoded)).
 							if (t != 1)
@@ -507,7 +508,7 @@ namespace Deveel.Data {
 			
 			public void SetValue(long columnid, string value) {
 				file.Position = 0;
-				BinaryReader din = new BinaryReader(new DataFileStream(file, FileAccess.Read));
+				BinaryReader din = new BinaryReader(new DataFileStream(file, FileAccess.Read), Encoding.Unicode);
 				
 				try {
 					int size = Math.Min((int) file.Length, Int32.MaxValue);
@@ -543,7 +544,7 @@ namespace Deveel.Data {
 					}
 					
 					// Write the string
-					BinaryWriter dout = new BinaryWriter(new DataFileStream(file, FileAccess.Write));
+					BinaryWriter dout = new BinaryWriter(new DataFileStream(file, FileAccess.Write), Encoding.Unicode);
 					dout.Write((byte)1);
 					dout.Write(value);
 					dout.Flush();

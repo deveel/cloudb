@@ -571,7 +571,7 @@ namespace Deveel.Data.Net {
 			// It isn't, so query the manager server on the network
 			IMessageProcessor manager = connector.Connect(managerAddress, ServiceType.Manager);
 			MessageStream message_out = new MessageStream(16);
-			message_out.AddMessage(new Message("getRootFor", new object[] { pathName }));
+			message_out.AddMessage(new Message("getRootForPath", new object[] { pathName }));
 			// Process the 'getRootFor' command,
 			MessageStream msg_in = manager.Process(message_out);
 			//DEBUG ++networkCommCount;
@@ -653,10 +653,10 @@ namespace Deveel.Data.Net {
 			return (string[])msg_in["getAllPaths"][0];
 		}
 
-		public DataAddress GetPathNow(IServiceAddress root_server, String name) {
+		public DataAddress GetSnapshot(IServiceAddress root_server, String name) {
 			IMessageProcessor processor = connector.Connect(root_server, ServiceType.Root);
 			MessageStream msg_out = new MessageStream(16);
-			msg_out.AddMessage(new Message("getPathNow", new object[] { name }));
+			msg_out.AddMessage(new Message("getSnapshot", new object[] { name }));
 			MessageStream msg_in = processor.Process(msg_out);
 			foreach (Message m in msg_in) {
 				if (m.IsError)
@@ -667,10 +667,10 @@ namespace Deveel.Data.Net {
 			throw new Exception("Bad formatted message stream");
 		}
 
-		public DataAddress[] GetPathHistorical(IServiceAddress rootServer, string name, DateTime timeStart, DateTime timeEnd) {
+		public DataAddress[] GetSnapshots(IServiceAddress rootServer, string name, DateTime timeStart, DateTime timeEnd) {
 			IMessageProcessor processor = connector.Connect(rootServer, ServiceType.Root);
 			MessageStream msg_out = new MessageStream(16);
-			msg_out.AddMessage(new Message("getPathHistorical", new object[] { name, timeStart.Ticks, timeEnd.Ticks }));
+			msg_out.AddMessage(new Message("getSnapshots", new object[] { name, timeStart.Ticks, timeEnd.Ticks }));
 			MessageStream msg_in = processor.Process(msg_out);
 			foreach (Message m in msg_in) {
 				if (m.IsError)
@@ -821,7 +821,7 @@ namespace Deveel.Data.Net {
 									DataAddress address = new DataAddress(node_ref);
 									// Wrap around a buffered DataInputStream for reading values
 									// from the store.
-									BinaryReader input = new BinaryReader(node_item.Input);
+									BinaryReader input = new BinaryReader(node_item.Input, Encoding.Unicode);
 									short node_type = input.ReadInt16();
 
 									ITreeNode read_node;

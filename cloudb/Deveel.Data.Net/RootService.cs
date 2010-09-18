@@ -497,7 +497,7 @@ namespace Deveel.Data.Net {
 								responseStream.AddMessage("R", addresses);
 								break;
 							}
-							case "getCurrentTyime": {
+							case "getCurrentTime": {
 								responseStream.AddMessage("R", DateTime.Now.ToUniversalTime().ToBinary());
 								break;	
 							}

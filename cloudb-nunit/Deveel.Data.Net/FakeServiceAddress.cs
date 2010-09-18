@@ -15,5 +15,9 @@ namespace Deveel.Data.Net {
 		public int CompareTo(IServiceAddress other) {
 			return 0;
 		}
+
+		public override string ToString() {
+			return "@FAKE@";
+		}
 	}
 }
