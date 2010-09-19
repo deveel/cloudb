@@ -19,7 +19,7 @@ namespace Deveel.Data.Net {
 			set { network_config = value; }
 		}
 
-		public IServiceAddress[] SortedServerList {
+		public IServiceAddress[] ServiceAddresses {
 			get {
 				if (network_config == null)
 					return new IServiceAddress[0];

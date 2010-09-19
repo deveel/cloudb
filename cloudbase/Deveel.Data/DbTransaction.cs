@@ -6,7 +6,7 @@ using Deveel.Data.Net;
 using Deveel.Data.Store;
 
 namespace Deveel.Data {
-	public sealed class DbTransaction : IDisposable {
+	public sealed class DbTransaction : IPathTransaction {
 		private readonly DbSession session;
 		private readonly DataAddress baseRoot;
 		private readonly ITransaction transaction;
@@ -48,6 +48,10 @@ namespace Deveel.Data {
 
 		internal ITransaction Parent {
 			get { return transaction; }
+		}
+
+		IPathContext IPathTransaction.Context {
+			get { return session; }
 		}
 
 		public DbRootAddress BaseRoot {
@@ -319,12 +323,17 @@ namespace Deveel.Data {
 					throw new ApplicationException("Id pool exhausted for table item.");
 				
 				// Turn the key into an SDBTable,
-				table = new DbTable(this, tables.GetFile(tableName),(int) kid);
+				table = new DbTable(this, tableName, tables.GetFile(tableName),(int) kid);
 				table_map[tableName] = table;
 				
 				// And return it,
 				return table;
 			}
+		}
+
+		DataAddress IPathTransaction.Commit() {
+			DbRootAddress address = Commit();
+			return address.Address;
 		}
 		
 		public DbRootAddress Commit() {
@@ -367,7 +376,7 @@ namespace Deveel.Data {
 					DataAddress proposal = client.FlushTransaction(transaction);
 					
 					// Perform the commit operation,
-					return new DbRootAddress(session, client.Commit(session.Path, proposal));
+					return new DbRootAddress(session, client.Commit(session.PathName, proposal));
 				} else {
 					// No changes, so return base root
 					return new DbRootAddress(session, baseRoot);
@@ -391,7 +400,7 @@ namespace Deveel.Data {
 			DataAddress to_publish = client.FlushTransaction(transaction);
 			
 			try {
-				DataAddress published = client.Commit(destSession.Path, to_publish);
+				DataAddress published = client.Commit(destSession.PathName, to_publish);
 				// Return the root in the destionation session,
 				return new DbRootAddress(destSession, published);
 			} catch (CommitFaultException e) {

@@ -7,7 +7,6 @@ using System.Threading;
 
 namespace Deveel.Data.Net {
 	public class TcpAdminService : AdminService {
-		private readonly string password;
 		private readonly NetworkConfigSource config;
 		private bool polling;
 
@@ -149,7 +148,8 @@ namespace Deveel.Data.Net {
 					string passwordCode = sb.ToString();
 
 					// If it doesn't match, terminate the thread immediately,
-					if (!passwordCode.Equals(service.password))
+					string password = ((TcpServiceConnector) service.Connector).Password;
+					if (!passwordCode.Equals(password))
 						return;
 
 					// The main command dispatch loop for this connection,

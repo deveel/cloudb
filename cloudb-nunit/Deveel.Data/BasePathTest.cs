@@ -5,6 +5,7 @@ using Deveel.Data.Net;
 using NUnit.Framework;
 
 namespace Deveel.Data {
+	[TestFixture]
 	public sealed class BasePathTest {
 		private NetworkProfile networkProfile;
 		private FakeAdminService adminService;
@@ -102,6 +103,23 @@ namespace Deveel.Data {
 					Assert.Fail(e.Message);
 				}
 			}
+
+			using(DbTransaction transaction = session.CreateTransaction()) {
+				try {
+					DbTable table = transaction.GetTable("comics");
+					Assert.IsNotNull(table);
+					Assert.AreEqual("comics", table.Name);
+					Assert.AreEqual(4, table.Schema.ColumnCount);
+					Assert.AreEqual(2, table.Schema.IndexedColumns.Length);
+				} catch(Exception e) {
+					Assert.Fail(e.Message);
+				}
+			}
+		}
+
+		[Test]
+		public void TestCreateTableAndInsertData() {
+			
 		}
 
 		private static bool PathProfileExists(PathProfile profile) {

@@ -9,6 +9,7 @@ using Deveel.Data.Store;
 namespace Deveel.Data {
 	public sealed class DbTable : IEnumerable<DbRow> {
 		private readonly int id;
+		private readonly string name;
 		private readonly DbTransaction transaction;
 		private readonly DbTableSchema schema;
 		private readonly DataFile propFile;
@@ -22,17 +23,22 @@ namespace Deveel.Data {
 		private readonly List<long> deleteRowList = new List<long>();
 		private bool schemaModified;
 		
-		internal DbTable(DbTransaction transaction, DataFile propFile, int id) {
+		internal DbTable(DbTransaction transaction, string name, DataFile propFile, int id) {
 			if (id < 1)
 				throw new ApplicationException("id out of range.");
 			
 			this.transaction = transaction;
+			this.name = name;
 			this.id = id;
 			this.propFile = propFile;
 			
 			schema = new DbTableSchema(this);
 		}
-		
+
+		public string Name {
+			get { return name; }
+		}
+
 		private Key RowIndexKey {
 			get { return new Key(1, id, 1); }
 		}

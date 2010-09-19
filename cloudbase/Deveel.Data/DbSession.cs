@@ -5,7 +5,7 @@ using Deveel.Data.Net;
 using Deveel.Data.Store;
 
 namespace Deveel.Data {
-	public sealed class DbSession : IDisposable {
+	public sealed class DbSession : IPathContext {
 		private readonly int id;
 		private readonly NetworkClient client;
 		private readonly string path;
@@ -19,7 +19,7 @@ namespace Deveel.Data {
 			id = SessionCounter++;
 		}
 
-		public string Path {
+		public string PathName {
 			get { return path; }
 		}
 
@@ -64,6 +64,10 @@ namespace Deveel.Data {
 
 		public DbTransaction CreateTransaction() {
 			return CreateTransaction(GetCurrentSnapshot());
+		}
+
+		IPathTransaction IPathContext.CreateTransaction() {
+			return CreateTransaction();
 		}
 
 		public DbRootAddress GetCurrentSnapshot() {

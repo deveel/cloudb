@@ -9,7 +9,7 @@ namespace Deveel.Data.Net {
 			// If cached,
 			if (machine_profiles == null) {
 				// The sorted list of all servers in the schema,
-				IServiceAddress[] slist = SortedServerList;
+				IServiceAddress[] slist = ServiceAddresses;
 
 				List<MachineProfile> machines = new List<MachineProfile>();
 

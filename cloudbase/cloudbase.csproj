@@ -36,6 +36,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Deveel.Data\BasePathMethodHandler.cs" />
     <Compile Include="Deveel.Data\DbDataFile.cs" />
     <Compile Include="Deveel.Data\BasePath.cs" />
     <Compile Include="Deveel.Data\DbFile.cs" />

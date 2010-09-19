@@ -73,6 +73,7 @@
     <Compile Include="Deveel.Data.Net\AdminService.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Deveel.Data.Net\BinaryMethodSerializer.cs" />
     <Compile Include="Deveel.Data.Net\BlockReadException.cs" />
     <Compile Include="Deveel.Data.Net\BlockService.cs">
       <SubType>Component</SubType>
@@ -83,6 +84,15 @@
     <Compile Include="Deveel.Data.Net\CompressedBlockStore.cs" />
     <Compile Include="Deveel.Data.Net\CompressedNodeSet.cs" />
     <Compile Include="Deveel.Data.Net\DataAddress.cs" />
+    <Compile Include="Deveel.Data.Net\HandleAttribute.cs" />
+    <Compile Include="Deveel.Data.Net\TcpPathService.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Deveel.Data\IPathContext.cs" />
+    <Compile Include="Deveel.Data\IPathTransaction.cs" />
+    <Compile Include="Deveel.Data.Net\PathService.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Deveel.Data.Net\FileAdminServiceDelegator.cs" />
     <Compile Include="Deveel.Data.Net\FileBlockStore.cs" />
     <Compile Include="Deveel.Data.Net\FileSystemBlockService.cs">
@@ -103,8 +113,16 @@
     <Compile Include="Deveel.Data.Net\IBlockStore.cs" />
     <Compile Include="Deveel.Data.Net\HttpServiceAddress.cs" />
     <Compile Include="Deveel.Data.Net\IMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net\IMethodHandler.cs" />
+    <Compile Include="Deveel.Data.Net\IMethodSerializer.cs" />
     <Compile Include="Deveel.Data.Net\ITextMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net\JsonMessageStreamSerializer.cs" />
     <Compile Include="Deveel.Data.Net\MemoryAdminServiceDelegator.cs" />
+    <Compile Include="Deveel.Data.Net\MethodArgument.cs" />
+    <Compile Include="Deveel.Data.Net\ArgumentList.cs" />
+    <Compile Include="Deveel.Data.Net\MethodRequest.cs" />
+    <Compile Include="Deveel.Data.Net\MethodResponse.cs" />
+    <Compile Include="Deveel.Data.Net\MethodType.cs" />
     <Compile Include="Deveel.Data.Net\ServiceStatus.cs" />
     <Compile Include="Deveel.Data.Net\XmlMessageStreamSerializer.cs" />
     <Compile Include="Deveel.Data\IIndexCursor.cs" />
@@ -230,6 +248,11 @@
     <Compile Include="Deveel.Data\TreeBranch.cs" />
     <Compile Include="Deveel.Data\TreeLeaf.cs" />
     <Compile Include="Deveel.Data\TreeNodeHeap.cs" />
+    <Compile Include="Deveel.Json\JSONArray.cs" />
+    <Compile Include="Deveel.Json\JSONException.cs" />
+    <Compile Include="Deveel.Json\JSONObject.cs" />
+    <Compile Include="Deveel.Json\JSONReader.cs" />
+    <Compile Include="Deveel.Json\JSONSyntaxException.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

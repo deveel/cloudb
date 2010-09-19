@@ -25,6 +25,10 @@ namespace Deveel.Data.Net {
 		private readonly Thread backgroundThread;
 		private bool purgeThreadStopped;
 
+		public string Password {
+			get { return password; }
+		}
+
 		private void PurgeConnections() {
 			try {
 				List<TcpConnection> timeoutList = new List<TcpConnection>();
