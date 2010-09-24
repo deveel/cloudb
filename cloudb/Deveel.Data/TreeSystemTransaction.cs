@@ -1213,9 +1213,7 @@ namespace Deveel.Data.Store {
 					long child_ref = stack[i];
 					// Fetch it
 					TreeBranch branch = (TreeBranch)tnx.UnfreezeNode(tnx.FetchNode(child_ref));
-					//        long branch_ref = branch.getReference();
 					int child_i = (int)stack[i + 1];
-					//        int child_i = branch.childWithReference(child_ref);
 
 					// Do we have two nodes to insert into the branch?
 					if (insert_two_nodes) {
@@ -1676,8 +1674,9 @@ namespace Deveel.Data.Store {
 				get { return tnx.storeSystem.MaxLeafByteSize - current_leaf.Length; }
 			}
 
-			public void ReadInto(Key key, long current_p,
+			public int ReadInto(Key key, long current_p,
 								 byte[] buf, int off, int len) {
+				int readCount = 0;
 				// While there is information to read into the array,
 				while (len > 0) {
 					// Set up the stack and internal variables for the given position,
@@ -1693,7 +1692,10 @@ namespace Deveel.Data.Store {
 					current_p += to_read;
 					off += to_read;
 					len -= to_read;
+					readCount += to_read;
 				}
+				
+				return readCount;
 			}
 
 			public void WriteFrom(Key key, long current_p, byte[] buf, int off, int len) {
@@ -2179,9 +2181,9 @@ namespace Deveel.Data.Store {
 				try {
 					EnsureCorrectBounds();
 					CheckAccessSize(count);
-					stack.ReadInto(key, start + pos, buffer, offset, count);
-					pos += count;
-					return count;
+					int readCount = stack.ReadInto(key, start + pos, buffer, offset, count);
+					pos += readCount;
+					return readCount;
 				} catch (Exception e) {
 					throw tnx.SetErrorState(e);
 				}
