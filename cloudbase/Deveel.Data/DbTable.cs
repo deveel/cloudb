@@ -14,7 +14,7 @@ namespace Deveel.Data {
 		private readonly DbTableSchema schema;
 		private readonly DataFile propFile;
 						
-		private long version;
+		internal long version;
 		private long idSeq = -1;
 		
 		private DbRow newRow;
@@ -158,8 +158,6 @@ namespace Deveel.Data {
 			} else {
 				throw new ApplicationException("Unknown transaction command: " + cmd);
 			}
-			
-			version++;
 		}
 		
 		internal void OnTransactionEvent(string cmd, string arg) {
@@ -432,7 +430,27 @@ namespace Deveel.Data {
 			++version;
 		}
 		
-		 public DbRowCursor GetCursor() {
+		public void Delete(DbRow row) {
+			long rowid = row.RowId;
+			
+			SortedIndex row_set = new SortedIndex(GetFile(RowIndexKey));
+			if (!row_set.ContainsSortKey(rowid))
+				throw new ArgumentException("Row being deleted is not in the table");
+			
+			// Remove the row from the main index,
+			RemoveRowFromRowSet(rowid);
+			// Remove the row from any indexes defined on the table,
+			RemoveRowFromIndexSet(rowid);
+			// Delete the row file
+			DataFile row_df = GetFile(GetRowIdKey(rowid));
+			row_df.Delete();
+			
+			// Add this event to the transaction log
+			OnTransactionEvent("deleteRow", rowid);
+			++version;
+		}
+		
+		public DbRowCursor GetCursor() {
 			SortedIndex list = new SortedIndex(GetFile(RowIndexKey));
 			return new DbRowCursor(this, version, list.GetCursor());
 		}

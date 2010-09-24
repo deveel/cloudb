@@ -82,7 +82,7 @@ namespace Deveel.Data {
 			Key item_key = GetKey(id);
 			DataFile df = GetFile(item_key);
 			try {
-				BinaryWriter dout = new BinaryWriter(new DataFileStream(df));
+				BinaryWriter dout = new BinaryWriter(new DataFileStream(df), Encoding.Unicode);
 				dout.Write(fileName);
 			} catch (IOException e) {
 				throw new ApplicationException(e.Message);
@@ -139,7 +139,7 @@ namespace Deveel.Data {
 			int headerSize = 0;
 			try {
 				MemoryStream stream = new MemoryStream(64);
-				BinaryWriter reader = new BinaryWriter(stream);
+				BinaryWriter reader = new BinaryWriter(stream, Encoding.Unicode);
 				reader.Write(name);
 				reader.Flush();
 				headerSize = (int) stream.Length;

@@ -175,6 +175,7 @@ namespace Deveel.Data {
 			cachedColumns = null;
 			// Add this event to the transaction log,
 			table.OnTransactionEvent("AddColumn", columnName);
+			table.version++;
 		}
 		
 		  public void RemoveColumn(string columnName) {
@@ -207,6 +208,7 @@ namespace Deveel.Data {
 			
 			// Add this event to the transaction log,
 			table.OnTransactionEvent("RemoveColumn", columnName);
+			table.version++;
 		}
 		
 		public void AddIndex(string columnName, string locale) {
@@ -245,6 +247,7 @@ namespace Deveel.Data {
 			
 			// Add this event to the transaction log,
 			table.OnTransactionEvent("AddIndex", columnName);
+			table.version++;
 		}
 		
 		internal IIndexedObjectComparer<string> GetIndexComparerForColumn(string columnName, long columnid) {
@@ -296,6 +299,7 @@ namespace Deveel.Data {
 			
 			// Add this event to the transaction log,
 			table.OnTransactionEvent("RemoveIndex", columnName);
+			table.version++;
 		}
 		
 		  public bool IsColumnIndexed(string columnName) {
