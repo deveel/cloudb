@@ -26,7 +26,7 @@ namespace Deveel.Data {
 			ConfigSource config = new ConfigSource();
 			config.SetValue("key", "value");
 
-			Assert.AreEqual("value", config.GetInt32("key"));
+			Assert.AreEqual("value", config.GetString("key"));
 		}
 	}
 }

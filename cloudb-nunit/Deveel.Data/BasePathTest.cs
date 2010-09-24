@@ -215,6 +215,179 @@ namespace Deveel.Data {
 				}
 			}
 		}
+		
+		[Test]
+		public void TestCreateTableAndInsertDataInSameTransaction() {
+			networkProfile.AddPath(FakeServiceAddress.Local, PathName, PathTypeName);
+			networkProfile.Refresh();
+
+			PathProfile[] pathProfiles = networkProfile.GetPathsFromRoot(FakeServiceAddress.Local);
+			Assert.IsTrue(Array.Exists(pathProfiles, PathProfileExists));
+
+			NetworkClient client = new NetworkClient(FakeServiceAddress.Local, new FakeServiceConnector(adminService));
+			client.Connect();
+
+			DbSession session = new DbSession(client, PathName);
+
+			using (DbTransaction transaction = session.CreateTransaction()) {
+				try {
+					Assert.IsTrue(transaction.CreateTable("comics"));
+						
+					DbTable table = transaction.GetTable("comics");
+					table.Schema.AddColumn("name");
+					table.Schema.AddColumn("editor");
+					table.Schema.AddColumn("issue");
+					table.Schema.AddColumn("year");
+					table.Schema.AddIndex("year");
+					table.Schema.AddIndex("editor");
+					
+					DbRow row = table.NewRow();
+					row.SetValue("name", "Fantastic Four");
+					row.SetValue("issue", "1");
+					row.SetValue("year", "1961");
+					row.SetValue("editor", "Marvel");
+					table.Insert(row);
+
+					row = table.NewRow();
+					row.SetValue("name", "Detective Comics");
+					row.SetValue("issue", "27");
+					row.SetValue("year", "1939");
+					row.SetValue("editor", "DC Comics");
+					table.Insert(row);
+
+					row = table.NewRow();
+					row.SetValue("name", "Amazing Fantasy");
+					row.SetValue("issue", "15");
+					row.SetValue("year", "1962");
+					row.SetValue("editor", "Marvel");
+					table.Insert(row);
+
+					row = table.NewRow();
+					row.SetValue("name", "The Amazing Spiderman");
+					row.SetValue("issue", "1");
+					row.SetValue("year", "1963");
+					row.SetValue("editor", "Marvel");
+					table.Insert(row);
+
+					row = table.NewRow();
+					row.SetValue("name", "All-American Comics");
+					row.SetValue("issue", "16");
+					row.SetValue("year", "1940");
+					row.SetValue("editor", "DC Comice");
+					table.Insert(row);
+
+					Assert.IsTrue(table.IsModified);
+
+					transaction.Commit();
+				} catch (Exception e) {
+					Assert.Fail(e.Message);
+				}
+			}
+
+			using(DbTransaction transaction = session.CreateTransaction()) {
+				try {
+					DbTable table = transaction.GetTable("comics");
+					Assert.AreEqual(5, table.RowCount);
+				} catch(Exception e) {
+					Assert.Fail(e.Message);
+				}
+			}
+		}
+		
+		[Test]
+		public void TestInsertAndQueryData() {
+			networkProfile.AddPath(FakeServiceAddress.Local, PathName, PathTypeName);
+			networkProfile.Refresh();
+
+			PathProfile[] pathProfiles = networkProfile.GetPathsFromRoot(FakeServiceAddress.Local);
+			Assert.IsTrue(Array.Exists(pathProfiles, PathProfileExists));
+
+			NetworkClient client = new NetworkClient(FakeServiceAddress.Local, new FakeServiceConnector(adminService));
+			client.Connect();
+
+			DbSession session = new DbSession(client, PathName);
+
+			using (DbTransaction transaction = session.CreateTransaction()) {
+				try {
+					Assert.IsTrue(transaction.CreateTable("comics"));
+						
+					DbTable table = transaction.GetTable("comics");
+					table.Schema.AddColumn("name");
+					table.Schema.AddColumn("editor");
+					table.Schema.AddColumn("issue");
+					table.Schema.AddColumn("year");
+					table.Schema.AddIndex("year");
+					table.Schema.AddIndex("editor");
+					
+					DbRow row = table.NewRow();
+					row.SetValue("name", "Fantastic Four");
+					row.SetValue("issue", "1");
+					row.SetValue("year", "1961");
+					row.SetValue("editor", "Marvel");
+					table.Insert(row);
+
+					row = table.NewRow();
+					row.SetValue("name", "Detective Comics");
+					row.SetValue("issue", "27");
+					row.SetValue("year", "1939");
+					row.SetValue("editor", "DC Comics");
+					table.Insert(row);
+
+					row = table.NewRow();
+					row.SetValue("name", "Amazing Fantasy");
+					row.SetValue("issue", "15");
+					row.SetValue("year", "1962");
+					row.SetValue("editor", "Marvel");
+					table.Insert(row);
+
+					row = table.NewRow();
+					row.SetValue("name", "The Amazing Spiderman");
+					row.SetValue("issue", "1");
+					row.SetValue("year", "1963");
+					row.SetValue("editor", "Marvel");
+					table.Insert(row);
+
+					row = table.NewRow();
+					row.SetValue("name", "All-American Comics");
+					row.SetValue("issue", "16");
+					row.SetValue("year", "1940");
+					row.SetValue("editor", "DC Comics");
+					table.Insert(row);
+
+					Assert.IsTrue(table.IsModified);
+
+					transaction.Commit();
+				} catch (Exception e) {
+					Assert.Fail(e.Message);
+				}
+			}
+
+			using(DbTransaction transaction = session.CreateTransaction()) {
+				try {
+					DbTable table = transaction.GetTable("comics");
+					DbIndex index = table.GetIndex("editor");
+					Assert.AreEqual(5, index.Count);
+					
+					DbIndex marvelIndex = index.Sub("Marvel", true, "Marvel", true);
+					Assert.AreEqual(3, marvelIndex.Count);
+					
+					Console.Out.WriteLine("Marvel Comics");
+					foreach(DbRow row in marvelIndex) {
+						Console.Out.WriteLine("{0} #{1} ({2})", row["name"], row["issue"], row["year"]);
+					}
+					
+					DbIndex dcIndex = index.Sub("DC Comics", true, "DC Comics", true);
+					Assert.AreEqual(2, dcIndex.Count);
+					
+					Console.Out.WriteLine("DC Comics");
+					foreach(DbRow row in dcIndex) {
+						Console.Out.WriteLine("{0} #{1} ({2})", row["name"], row["issue"], row["year"]);
+					}
+				} catch(Exception e) {
+					Assert.Fail(e.Message);
+				}
+			}
+		}
 
 		private static bool PathProfileExists(PathProfile profile) {
 			if (profile.Path != PathName)

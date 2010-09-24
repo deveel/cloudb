@@ -493,7 +493,7 @@ namespace Deveel.Data {
 			
 			public String GetValue(long columnid) {
 				file.Position = 0;
-				BinaryReader din = new BinaryReader(new DataFileStream(file), Encoding.Unicode);
+				BinaryReader din = new BinaryReader(new DataFileStream(file));
 				
 				try {
 					// If no size, return null
@@ -511,7 +511,7 @@ namespace Deveel.Data {
 						if (sid == columnid) {
 							file.Position = (4 + (hsize * 12) + coffset);
 							
-							din = new BinaryReader(new DataFileStream(file, FileAccess.Read), Encoding.Unicode);
+							din = new BinaryReader(new DataFileStream(file, FileAccess.Read));
 							byte t = din.ReadByte();
 							// Types (currently only supports string types (UTF8 encoded)).
 							if (t != 1)

@@ -358,7 +358,7 @@ namespace Deveel.Data {
 			}
 
 			public bool MoveNext() {
-				if (++p + start < end) {
+				if (++p + start <= end) {
 					lastDir = 1;
 					return true;
 				}
