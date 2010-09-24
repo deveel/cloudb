@@ -3,18 +3,42 @@
 using NUnit.Framework;
 
 namespace Deveel.Data.Net {
-	[TestFixture]
-	public class FakeNetworkTest {
+	public abstract class FakeNetworkTest {
 		private NetworkProfile networkProfile;
 		private FakeAdminService adminService;
 		
+		protected abstract FakeNetworkStoreType StoreType { get; }
+		
+		protected virtual void Config(ConfigSource config) {
+		}
+		
+		protected virtual void OnSetUp() {
+		}
+		
+		protected virtual void OnTearDown() {
+		}
+		
 		[SetUp]
 		public void SetUp() {
-			adminService = new FakeAdminService();
+			adminService = new FakeAdminService(StoreType);
+			ConfigSource config = new ConfigSource();
+			Config(config);
+			adminService.Config = config;
+			adminService.Init();
 			networkProfile = new NetworkProfile(new FakeServiceConnector(adminService));
+			
 			NetworkConfigSource netConfig = new NetworkConfigSource();
 			netConfig.AddNetworkNode(FakeServiceAddress.Local);
 			networkProfile.Configuration = netConfig;
+			
+			OnSetUp();
+		}
+		
+		[TearDown]
+		public void TearDown() {
+			adminService.Dispose();
+			
+			OnTearDown();
 		}
 		
 		[Test]
@@ -35,6 +59,8 @@ namespace Deveel.Data.Net {
 		
 		[Test]
 		public void Test1_StartRoot() {
+			Test1_StartManager();
+			
 			MachineProfile machine = networkProfile.GetMachineProfile(FakeServiceAddress.Local);
 			Assert.IsNotNull(machine);
 			Assert.IsFalse(machine.IsRoot);
@@ -44,6 +70,8 @@ namespace Deveel.Data.Net {
 
 		[Test]
 		public void Test1_StartBlock() {
+			Test1_StartManager();
+			
 			MachineProfile machine = networkProfile.GetMachineProfile(FakeServiceAddress.Local);
 			Assert.IsNotNull(machine);
 			Assert.IsFalse(machine.IsBlock);
