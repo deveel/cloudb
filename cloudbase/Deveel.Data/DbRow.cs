@@ -6,7 +6,8 @@ namespace Deveel.Data {
 		private readonly DbTable table;
 		private long rowId;
 		
-		private Dictionary<string, string> buffer = new Dictionary<string, string>();
+		private readonly Dictionary<string, string> buffer = new Dictionary<string, string>();
+		private readonly List<string> columnsToRemove = new List<string>();
 		private bool dirty;
 		
 		internal DbRow(DbTable table, long rowId) {
@@ -35,9 +36,9 @@ namespace Deveel.Data {
 		
 		public string GetValue(string columnName) {
 			string value = null;
-			if (dirty) {
-				buffer.TryGetValue(columnName, out value);
-			} else {
+			if (dirty && buffer.ContainsKey(columnName)) {
+				value = buffer[columnName];
+			} else if (!columnsToRemove.Contains(columnName)) {
 				value = GetValue(table.Schema.GetColumnId(columnName));
 			}
 			
@@ -48,7 +49,8 @@ namespace Deveel.Data {
 			if (value != null) {
 				buffer[columnName] = value;
 			} else {
-				buffer.Remove(columnName);
+				if (buffer.Remove(columnName))
+					columnsToRemove.Add(columnName);
 			}
 			
 			dirty = true;
