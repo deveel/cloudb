@@ -187,6 +187,9 @@
     <Compile Include="Deveel.Data\ConfigSource.cs" />
     <Compile Include="Deveel.Data\MemoryDatabase.cs" />
     <Compile Include="Deveel.Data\SortedIndex.cs" />
+    <Compile Include="Deveel.Data\TreeBranch.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Deveel.Data\TreeGraph.cs" />
     <Compile Include="Deveel.Data.Store\AbstractStore.cs" />
     <Compile Include="Deveel.Data.Store\AreaInputStream.cs" />
@@ -244,10 +247,15 @@
     <Compile Include="Deveel.Data\StringData.cs" />
     <Compile Include="Deveel.Data\StringDataReader.cs" />
     <Compile Include="Deveel.Data\StringDataWriter.cs" />
-    <Compile Include="Deveel.Data\TreeBranch.cs" />
-    <Compile Include="Deveel.Data\TreeLeaf.cs" />
-    <Compile Include="Deveel.Data\TreeNodeHeap.cs" />
-    <Compile Include="Deveel.Data\TreeSystemTransaction.cs" />
+    <Compile Include="Deveel.Data\TreeLeaf.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Deveel.Data\TreeNodeHeap.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Deveel.Data\TreeSystemTransaction.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Deveel.Json\JSONArray.cs" />
     <Compile Include="Deveel.Json\JSONException.cs" />
     <Compile Include="Deveel.Json\JSONObject.cs" />

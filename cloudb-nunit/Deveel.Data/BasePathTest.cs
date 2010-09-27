@@ -1,21 +1,42 @@
 ﻿using System;
+using System.IO;
 
 using Deveel.Data.Net;
 
 using NUnit.Framework;
 
 namespace Deveel.Data {
-	[TestFixture]
-	public sealed class BasePathTest {
+	[TestFixture(FakeNetworkStoreType.Memory)]
+	[TestFixture(FakeNetworkStoreType.FileSystem)]
+	public class BasePathTest {
 		private NetworkProfile networkProfile;
 		private FakeAdminService adminService;
+		private readonly FakeNetworkStoreType storeType;
+
+		public BasePathTest(FakeNetworkStoreType storeType) {
+			this.storeType = storeType;
+		}
 
 		private const string PathName = "testdb";
 		private const string PathTypeName = "Deveel.Data.BasePath, cloudbase";
 
 		[SetUp]
 		public void SetUp() {
-			adminService = new FakeAdminService();
+			adminService = new FakeAdminService(storeType);
+			ConfigSource config = new ConfigSource();
+
+			if (storeType == FakeNetworkStoreType.FileSystem) {
+				string path = Path.Combine(Environment.CurrentDirectory, "base");
+				if (Directory.Exists(path))
+					Directory.Delete(path, true);
+				Directory.CreateDirectory(path);
+
+				config.SetValue("node_directory", path);
+			}
+
+			adminService.Config = config;
+			adminService.Init();
+
 			networkProfile = new NetworkProfile(new FakeServiceConnector(adminService));
 			NetworkConfigSource netConfig = new NetworkConfigSource();
 			netConfig.AddNetworkNode(FakeServiceAddress.Local);
@@ -29,6 +50,11 @@ namespace Deveel.Data {
 			networkProfile.StartService(FakeServiceAddress.Local, ServiceType.Block);
 			networkProfile.RegisterBlock(FakeServiceAddress.Local);
 			networkProfile.Refresh();
+		}
+
+		[TearDown]
+		public void TearDown() {
+			adminService.Dispose();
 		}
 
 		[Test]

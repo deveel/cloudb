@@ -102,7 +102,7 @@ namespace Deveel.Data.Net {
 								Monitor.PulseAll(this);
 								return;
 							}
-							Monitor.Wait(this, 200);
+							Monitor.Wait(compressLock, 200);
 
 						}
 
