@@ -5,21 +5,21 @@ namespace Deveel.Data.Net {
 	public sealed class FakeAdminService : AdminService {
 		private ConfigSource config;
 		
-		public FakeAdminService(FakeServiceConnector connector, FakeNetworkStoreType storeType)
+		public FakeAdminService(FakeServiceConnector connector, NetworkStoreType storeType)
 			: base(FakeServiceAddress.Local, connector, new FakeAdminServiceDelegator(storeType)) {
 		}
 		
 		public FakeAdminService(FakeServiceConnector connector)
-			: this(connector, FakeNetworkStoreType.Memory) {
+			: this(connector, NetworkStoreType.Memory) {
 		}
 		
-		public FakeAdminService(FakeNetworkStoreType storeType)
+		public FakeAdminService(NetworkStoreType storeType)
 			: this(null, storeType) {
 			Connector = new FakeServiceConnector(ProcessCallback);
 		}
 
 		public FakeAdminService()
-			: this(FakeNetworkStoreType.Memory) {
+			: this(NetworkStoreType.Memory) {
 		}
 		
 		public ConfigSource Config {
@@ -43,13 +43,13 @@ namespace Deveel.Data.Net {
 		#region FakeAdminServiceDelegator
 
 		private class FakeAdminServiceDelegator : IAdminServiceDelegator {
-			private readonly FakeNetworkStoreType storeType;
+			private readonly NetworkStoreType storeType;
 			private string basePath;
 			private IService manager;
 			private IService root;
 			private IService block;
 			
-			public FakeAdminServiceDelegator(FakeNetworkStoreType storeType) {
+			public FakeAdminServiceDelegator(NetworkStoreType storeType) {
 				this.storeType = storeType;
 			}
 
@@ -63,7 +63,7 @@ namespace Deveel.Data.Net {
 			}
 
 			public void Init(AdminService adminService) {
-				if (storeType == FakeNetworkStoreType.FileSystem) {
+				if (storeType == NetworkStoreType.FileSystem) {
 					ConfigSource config = ((FakeAdminService)adminService).Config;
 					basePath = config.GetString("node_directory", "./base");
 				}
@@ -81,7 +81,7 @@ namespace Deveel.Data.Net {
 			}
 
 			public IService CreateService(IServiceAddress address, ServiceType serviceType, IServiceConnector connector) {
-				if (storeType == FakeNetworkStoreType.Memory) {
+				if (storeType == NetworkStoreType.Memory) {
 					if (serviceType == ServiceType.Manager) {
 						manager = new MemoryManagerService(connector, address);
 						return manager;
@@ -94,7 +94,7 @@ namespace Deveel.Data.Net {
 						block = new MemoryBlockService(connector);
 						return block;
 					}
-				} else if (storeType == FakeNetworkStoreType.FileSystem) {
+				} else if (storeType == NetworkStoreType.FileSystem) {
 					if (serviceType == ServiceType.Manager) {
 						string dbPath = Path.Combine(basePath, "manager");
 						if (!Directory.Exists(dbPath))

@@ -1,7 +1,7 @@
 ﻿using System;
 
 namespace Deveel.Data.Net {
-	public enum FakeNetworkStoreType {
+	public enum NetworkStoreType {
 		Memory,
 		FileSystem
 	}

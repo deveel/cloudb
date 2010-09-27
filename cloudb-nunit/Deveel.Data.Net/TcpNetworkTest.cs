@@ -1,22 +1,28 @@
 ﻿using System;
 using System.IO;
+using System.Net;
 
 using NUnit.Framework;
 
 namespace Deveel.Data.Net {
-	[TestFixture(NetworkStoreType.Memory)]
 	[TestFixture(NetworkStoreType.FileSystem)]
-	public class FakeNetworkTest {
+	[TestFixture(NetworkStoreType.Memory)]
+	public sealed class TcpNetworkTest {
+		private readonly NetworkStoreType storeType;
 		private NetworkProfile networkProfile;
-		private FakeAdminService adminService;
-		private NetworkStoreType storeType;
+		private TcpAdminService adminService;
 		private string path;
 		
-		public FakeNetworkTest(NetworkStoreType storeType) {
+		private const string NetworkPassword = "123456";
+		
+		private static readonly TcpServiceAddress Local = new TcpServiceAddress(IPAddress.Loopback);
+
+		
+		public TcpNetworkTest(NetworkStoreType storeType) {
 			this.storeType = storeType;
 		}
 		
-		protected void Config(ConfigSource config) {
+		private void Config(ConfigSource config) {
 			if (storeType == NetworkStoreType.FileSystem) {
 				path = Path.Combine(Environment.CurrentDirectory, "base");
 				if (Directory.Exists(path))
@@ -27,50 +33,50 @@ namespace Deveel.Data.Net {
 				config.SetValue("node_directory", path);
 			}
 		}
-		
-		protected void OnSetUp() {
-		}
-		
-		protected void OnTearDown() {
-			if (storeType == NetworkStoreType.FileSystem &&
-			    Directory.Exists(path))
-				Directory.Delete(path, true);
-		}
+
 		
 		[SetUp]
 		public void SetUp() {
-			adminService = new FakeAdminService(storeType);
-			ConfigSource config = new ConfigSource();
-			Config(config);
-			adminService.Config = config;
-			adminService.Init();
-			networkProfile = new NetworkProfile(new FakeServiceConnector(adminService));
-			
 			NetworkConfigSource netConfig = new NetworkConfigSource();
-			netConfig.AddNetworkNode(FakeServiceAddress.Local);
-			networkProfile.Configuration = netConfig;
+			netConfig.AddNetworkNode(Local);
+			Config(netConfig);
 			
-			OnSetUp();
+			IAdminServiceDelegator delegator = null;
+			if (storeType == NetworkStoreType.Memory) {
+				delegator = new MemoryAdminServiceDelegator();
+			} else if (storeType == NetworkStoreType.FileSystem) {
+				delegator = new FileAdminServiceDelegator(path);
+			}
+			
+			adminService = new TcpAdminService(delegator, Local, NetworkPassword);
+			adminService.Config = netConfig;
+			adminService.Init();
+			
+			networkProfile = new NetworkProfile(new TcpServiceConnector(NetworkPassword));
+			networkProfile.Configuration = netConfig;
+
 		}
 		
 		[TearDown]
 		public void TearDown() {
-			adminService.Dispose();
+			if (storeType == NetworkStoreType.FileSystem &&
+			    Directory.Exists(path))
+				Directory.Delete(path, true);
 			
-			OnTearDown();
+			adminService.Dispose();
 		}
 		
 		[Test]
 		public void Test1_StartManager() {
-			MachineProfile machine = networkProfile.GetMachineProfile(FakeServiceAddress.Local);
+			MachineProfile machine = networkProfile.GetMachineProfile(Local);
 			Assert.IsNotNull(machine);	
 			Assert.IsNull(networkProfile.ManagerServer);
 			Assert.IsFalse(machine.IsManager);
-			networkProfile.StartService(FakeServiceAddress.Local, ServiceType.Manager);
+			networkProfile.StartService(Local, ServiceType.Manager);
 
 			networkProfile.Refresh();
 
-			machine = networkProfile.GetMachineProfile(FakeServiceAddress.Local);
+			machine = networkProfile.GetMachineProfile(Local);
 			Assert.IsNotNull(machine);
 			Assert.IsNotNull(networkProfile.ManagerServer);
 			Assert.IsTrue(machine.IsManager);

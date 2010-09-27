@@ -7,20 +7,30 @@ using System.Threading;
 
 namespace Deveel.Data.Net {
 	public class TcpAdminService : AdminService {
-		private readonly NetworkConfigSource config;
+		private NetworkConfigSource config;
 		private bool polling;
+		private TcpListener listener;
 
-		public TcpAdminService(NetworkConfigSource config, IAdminServiceDelegator delegator, IPAddress address, int port, string  password)
-			: base(new TcpServiceAddress(address, port), new TcpServiceConnector(password), delegator) {
-			this.config = config;
+		public TcpAdminService(IAdminServiceDelegator delegator, IPAddress address, int port, string password)
+			: this(delegator, address, password) {
 		}
-
-		private void ConfigLog() {
-			//TODO:
+		
+		public TcpAdminService(IAdminServiceDelegator delegator, IPAddress address, string password)
+			: this(delegator, address, TcpServiceAddress.DefaultPort, password) {
+		}
+		
+		public TcpAdminService(IAdminServiceDelegator delegator, TcpServiceAddress address, string password)
+			: base(address, new TcpServiceConnector(password), delegator) {
+		}
+		
+		public NetworkConfigSource Config {
+			get { return config; }
+			set { config = value; }
 		}
 
 		private void ConfigUpdate(object state) {
-			//TODO:
+			NetworkConfigSource source = (NetworkConfigSource)state;
+			source.Reload();
 		}
 
 		private void Poll() {
@@ -33,30 +43,14 @@ namespace Deveel.Data.Net {
 				Random r = new Random();
 				long second_mix = r.Next(1000);
 				timer.Change(50 * 1000, ((2 * 59) * 1000) + second_mix);
-
-				TcpListener listener;
-				try {
-					TcpServiceAddress tcpAddress = (TcpServiceAddress) Address;
-					IPEndPoint endPoint = tcpAddress.ToEndPoint();
-					listener = new TcpListener(endPoint);
-					listener.Server.ReceiveTimeout = 0;
-					listener.Start(150);
-					int curReceiveBufSize = listener.Server.ReceiveBufferSize;
-					if (curReceiveBufSize < 256 * 1024) {
-						listener.Server.ReceiveBufferSize = 256 * 1024;
-					}
-				} catch (IOException e) {
-					//TODO: ERROR log ...
-					return;
-				}
-
+				
 				//TODO: INFO log ...
 
 				while (polling) {
-					Socket s;
+					TcpClient s;
 					try {
 						// The socket to run the service,
-						s = listener.AcceptSocket();
+						s = listener.AcceptTcpClient();
 						s.NoDelay = true;
 						int cur_send_buf_size = s.SendBufferSize;
 						if (cur_send_buf_size < 256 * 1024) {
@@ -64,7 +58,7 @@ namespace Deveel.Data.Net {
 						}
 
 						// Make sure this ip address is allowed,
-						IPAddress ipAddress = ((IPEndPoint)s.LocalEndPoint).Address;
+						IPAddress ipAddress = ((IPEndPoint)s.Client.RemoteEndPoint).Address;
 
 						//TODO: INFO log ...
 
@@ -89,7 +83,22 @@ namespace Deveel.Data.Net {
 		}
 
 		protected override void OnInit() {
-			ConfigLog();
+			TcpServiceAddress tcpAddress = (TcpServiceAddress) Address;
+			IPEndPoint endPoint = tcpAddress.ToEndPoint();
+			listener = new TcpListener(endPoint);
+			listener.Server.ReceiveTimeout = 0;
+			
+			try {
+				listener.Start(150);
+				int curReceiveBufSize = listener.Server.ReceiveBufferSize;
+				if (curReceiveBufSize < 256 * 1024) {
+					listener.Server.ReceiveBufferSize = 256 * 1024;
+				}
+			} catch (IOException e) {
+				//TODO: ERROR log ...
+				throw;
+			}
+
 
 			Thread thread = new Thread(Poll);
 			thread.IsBackground = true;
@@ -97,8 +106,13 @@ namespace Deveel.Data.Net {
 		}
 
 		protected override void OnDispose(bool disposing) {
-			if (disposing)
+			if (disposing) {
 				polling = false;
+				if (listener != null) {
+					listener.Stop();
+					listener = null;
+				}
+			}
 		}
 
 		#region TcpConnection
@@ -119,10 +133,10 @@ namespace Deveel.Data.Net {
 			}
 
 			public void Work(object state) {
-				Socket s = (Socket)state;
+				TcpClient s = (TcpClient)state;
 				try {
 					// Get as input and output stream on the sockets,
-					NetworkStream socketStream = new NetworkStream(s, FileAccess.ReadWrite);
+					NetworkStream socketStream = s.GetStream();
 
 					BinaryReader reader = new BinaryReader(new BufferedStream(socketStream, 4000), Encoding.UTF8);
 					BinaryWriter writer = new BinaryWriter(new BufferedStream(socketStream, 4000), Encoding.UTF8);

@@ -31,9 +31,23 @@ namespace Deveel.Data.Net {
 			this.address = (byte[])b.Clone();
 		}
 		
+		public TcpServiceAddress(byte[] address)
+			: this(address, DefaultPort) {
+		}
+		
+		public TcpServiceAddress(IPAddress address)
+			: this(address, DefaultPort) {
+		}
+		
+		public TcpServiceAddress(string address)
+			: this(address, DefaultPort) {
+		}
+		
 		private AddressFamily family;
 		private byte[] address;
 		private int port;
+		
+		public const int DefaultPort = 1058;
 
 		public byte[] Address {
 			get { return (byte[]) address.Clone(); }

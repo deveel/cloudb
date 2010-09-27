@@ -6,14 +6,14 @@ using Deveel.Data.Net;
 using NUnit.Framework;
 
 namespace Deveel.Data {
-	[TestFixture(FakeNetworkStoreType.Memory)]
-	[TestFixture(FakeNetworkStoreType.FileSystem)]
+	[TestFixture(NetworkStoreType.Memory)]
+	[TestFixture(NetworkStoreType.FileSystem)]
 	public class BasePathTest {
 		private NetworkProfile networkProfile;
 		private FakeAdminService adminService;
-		private readonly FakeNetworkStoreType storeType;
+		private readonly NetworkStoreType storeType;
 
-		public BasePathTest(FakeNetworkStoreType storeType) {
+		public BasePathTest(NetworkStoreType storeType) {
 			this.storeType = storeType;
 		}
 
@@ -25,7 +25,7 @@ namespace Deveel.Data {
 			adminService = new FakeAdminService(storeType);
 			ConfigSource config = new ConfigSource();
 
-			if (storeType == FakeNetworkStoreType.FileSystem) {
+			if (storeType == NetworkStoreType.FileSystem) {
 				string path = Path.Combine(Environment.CurrentDirectory, "base");
 				if (Directory.Exists(path))
 					Directory.Delete(path, true);
