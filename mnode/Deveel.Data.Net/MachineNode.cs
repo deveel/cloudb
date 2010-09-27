@@ -132,7 +132,8 @@ namespace Deveel.Data.Net {
 				string nodeDir = netConfigSource.GetString("node_directory", Environment.CurrentDirectory);
 
 				Console.Out.WriteLine("Machine Node, " + (hostArg != null ? hostArg : "") + "port: " + port_arg);
-				TcpAdminService inst = new TcpAdminService(netConfigSource, new FileAdminServiceDelegator(nodeDir), host, port, password);
+				TcpAdminService inst = new TcpAdminService(new FileAdminServiceDelegator(nodeDir), host, port, password);
+				inst.Config = netConfigSource;
 				inst.Init();
 			} catch(Exception e) {
 				Console.Out.WriteLine(e.Message);

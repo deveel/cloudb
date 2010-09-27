@@ -31,7 +31,8 @@ namespace Deveel.Data.Net {
 		}
 
 		private void ConfigUpdate(object state) {
-			config.Reload();
+			if (config != null)
+				config.Reload();
 		}
 
 		private void Poll() {
@@ -63,9 +64,7 @@ namespace Deveel.Data.Net {
 
 						//TODO: INFO log ...
 
-						// Check it's allowed,
-						if (ipAddress.IsIPv6LinkLocal ||
-							IPAddress.IsLoopback(ipAddress) ||
+						if (config == null || IPAddress.IsLoopback(ipAddress) || 
 							config.IsIpAllowed(ipAddress.ToString())) {
 							// Dispatch the connection to the thread pool,
 							TcpConnection c = new TcpConnection(this, s);
