@@ -8,8 +8,8 @@ namespace Deveel.Data.Net {
 	public sealed class TcpServiceAddress : IServiceAddress {
 		public TcpServiceAddress(byte[] address, int port)
 			: this(new IPAddress(address), port) {
-			if (address.Length != 16)
-				throw new ArgumentException("Address must be a 16 byte IPv6 format.", "address");			
+			if (address.Length != 16 && address.Length != 4)
+				throw new ArgumentException("Address must be a 4/16 byte IIPv4/Pv6 format.", "address");
 		}
 		
 		public TcpServiceAddress(string address, int port)
@@ -22,11 +22,7 @@ namespace Deveel.Data.Net {
 				throw new ArgumentException("Only IPv4 and IPv6 addresses are permitted", "address");
 			
 			this.port = port;
-			family = address.AddressFamily;
-			
-			if (IPAddress.IsLoopback(address))
-				address = Dns.GetHostEntry(address).AddressList[0];
-			
+			family = address.AddressFamily;			
 			byte[] b = address.GetAddressBytes();
 			this.address = (byte[])b.Clone();
 		}
@@ -43,9 +39,9 @@ namespace Deveel.Data.Net {
 			: this(address, DefaultPort) {
 		}
 		
-		private AddressFamily family;
-		private byte[] address;
-		private int port;
+		private readonly AddressFamily family;
+		private readonly byte[] address;
+		private readonly int port;
 		
 		public const int DefaultPort = 1058;
 

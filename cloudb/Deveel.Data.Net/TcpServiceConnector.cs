@@ -88,7 +88,7 @@ namespace Deveel.Data.Net {
 				// If there isn't, establish a connection,
 				if (!connections.TryGetValue(address, out c)) {
 					IPEndPoint endPoint = address.ToEndPoint();
-					TcpClient socket = new TcpClient();
+					Socket socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.IP);
 #if DEBUG
 					socket.ReceiveTimeout = Int32.MaxValue;
 #else
@@ -238,14 +238,14 @@ namespace Deveel.Data.Net {
 		#region TcpConnection
 
 		private sealed class TcpConnection {
-			internal readonly TcpClient s;
+			internal readonly Socket s;
 
 			private Stream stream;
 			internal long lock_count;
 
 			internal DateTime last_lock_timestamp;
 
-			public TcpConnection(TcpClient s) {
+			public TcpConnection(Socket s) {
 				this.s = s;
 				lock_count = 1;
 				last_lock_timestamp = DateTime.Now;
@@ -256,13 +256,13 @@ namespace Deveel.Data.Net {
 			}
 
 			public void Connect(String password) {
-				stream = new BufferedStream(s.GetStream(), 4000);
+				stream = new BufferedStream(new NetworkStream(s, FileAccess.ReadWrite), 4000);
 
 				BinaryReader din = new BinaryReader(stream, Encoding.Unicode);
+				BinaryWriter dout = new BinaryWriter(stream, Encoding.Unicode);
 				long rv = din.ReadInt64();
 
 				// Send the password,
-				BinaryWriter dout = new BinaryWriter(stream, Encoding.Unicode);
 				dout.Write(rv);
 				short sz = (short)password.Length;
 				dout.Write(sz);

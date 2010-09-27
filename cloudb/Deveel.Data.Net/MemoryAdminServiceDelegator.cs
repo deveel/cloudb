@@ -21,20 +21,41 @@ namespace Deveel.Data.Net {
 		}
 		
 		public IService CreateService(IServiceAddress address, ServiceType serviceType, IServiceConnector connector) {
-			if (serviceType == ServiceType.Manager)
-				return new MemoryManagerService(connector, address);
-			if (serviceType == ServiceType.Root)
-				return new MemoryRootService(connector);
-			if (serviceType == ServiceType.Block)
-				return new MemoryBlockService(connector);
+			if (serviceType == ServiceType.Manager) {
+				manager = new MemoryManagerService(connector, address);
+				return manager;
+			}
+			if (serviceType == ServiceType.Root) {
+				root = new MemoryRootService(connector);
+				return root;
+			}
+			if (serviceType == ServiceType.Block) {
+				block =  new MemoryBlockService(connector);
+				return block;
+			}
 
 			throw new InvalidOperationException();
 		}
 		
 		public void DisposeService(ServiceType serviceType) {
+			if (serviceType == ServiceType.Manager && manager != null) {
+				manager.Dispose();
+				manager = null;
+			}
+			if (serviceType == ServiceType.Root && root != null) {
+				root.Dispose();
+				root = null;
+			}
+			if (serviceType == ServiceType.Block && block != null) {
+				block.Dispose();
+				block = null;
+			}
 		}
 		
 		public void Dispose() {
+			DisposeService(ServiceType.Manager);
+			DisposeService(ServiceType.Root);
+			DisposeService(ServiceType.Block);
 		}
 	}
 }

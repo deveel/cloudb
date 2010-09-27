@@ -17,15 +17,15 @@ namespace Deveel.Data.Net {
 		private readonly string stackTrace;
 
 		public override string Message {
-			get { return message; }
+			get { return message == null ? String.Empty : message; }
 		}
 
 		public override string StackTrace {
-			get { return stackTrace; }
+			get { return stackTrace == null ? String.Empty : stackTrace; }
 		}
 
 		public override string Source {
-			get { return source; }
+			get { return source == null ? String.Empty : source; }
 			set { source = value; }
 		}
 	}

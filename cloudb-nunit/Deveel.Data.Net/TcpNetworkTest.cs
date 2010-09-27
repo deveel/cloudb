@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Net;
+using System.Threading;
 
 using NUnit.Framework;
 
@@ -12,6 +13,8 @@ namespace Deveel.Data.Net {
 		private NetworkProfile networkProfile;
 		private TcpAdminService adminService;
 		private string path;
+
+		private static readonly AutoResetEvent SetupEvent = new AutoResetEvent(true);
 		
 		private const string NetworkPassword = "123456";
 		
@@ -34,38 +37,43 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		
+
 		[SetUp]
 		public void SetUp() {
+			SetupEvent.WaitOne();
+
 			NetworkConfigSource netConfig = new NetworkConfigSource();
 			netConfig.AddNetworkNode(Local);
 			Config(netConfig);
-			
+
 			IAdminServiceDelegator delegator = null;
 			if (storeType == NetworkStoreType.Memory) {
 				delegator = new MemoryAdminServiceDelegator();
 			} else if (storeType == NetworkStoreType.FileSystem) {
 				delegator = new FileAdminServiceDelegator(path);
 			}
-			
+
 			adminService = new TcpAdminService(delegator, Local, NetworkPassword);
 			adminService.Config = netConfig;
 			adminService.Init();
-			
+
 			networkProfile = new NetworkProfile(new TcpServiceConnector(NetworkPassword));
 			networkProfile.Configuration = netConfig;
 
+			SetupEvent.Set();
 		}
-		
+
 		[TearDown]
 		public void TearDown() {
+			adminService.Dispose();
+
 			if (storeType == NetworkStoreType.FileSystem &&
 			    Directory.Exists(path))
 				Directory.Delete(path, true);
-			
-			adminService.Dispose();
+
+			SetupEvent.Set();
 		}
-		
+
 		[Test]
 		public void Test1_StartManager() {
 			MachineProfile machine = networkProfile.GetMachineProfile(Local);
@@ -86,51 +94,51 @@ namespace Deveel.Data.Net {
 		public void Test1_StartRoot() {
 			Test1_StartManager();
 			
-			MachineProfile machine = networkProfile.GetMachineProfile(FakeServiceAddress.Local);
+			MachineProfile machine = networkProfile.GetMachineProfile(Local);
 			Assert.IsNotNull(machine);
 			Assert.IsFalse(machine.IsRoot);
-			networkProfile.StartService(FakeServiceAddress.Local, ServiceType.Root);
-			networkProfile.RegisterRoot(FakeServiceAddress.Local);
+			networkProfile.StartService(Local, ServiceType.Root);
+			networkProfile.RegisterRoot(Local);
 		}
 
 		[Test]
 		public void Test1_StartBlock() {
 			Test1_StartManager();
 			
-			MachineProfile machine = networkProfile.GetMachineProfile(FakeServiceAddress.Local);
+			MachineProfile machine = networkProfile.GetMachineProfile(Local);
 			Assert.IsNotNull(machine);
 			Assert.IsFalse(machine.IsBlock);
-			networkProfile.StartService(FakeServiceAddress.Local, ServiceType.Block);
-			networkProfile.RegisterBlock(FakeServiceAddress.Local);
+			networkProfile.StartService(Local, ServiceType.Block);
+			networkProfile.RegisterBlock(Local);
 		}
 
 
 		[Test]
 		public void Test1_StartAllServices() {
-			MachineProfile machine = networkProfile.GetMachineProfile(FakeServiceAddress.Local);
+			MachineProfile machine = networkProfile.GetMachineProfile(Local);
 			Assert.IsNotNull(machine);
 			Assert.IsNull(networkProfile.ManagerServer);
 			Assert.IsFalse(machine.IsManager);
-			networkProfile.StartService(FakeServiceAddress.Local, ServiceType.Manager);
+			networkProfile.StartService(Local, ServiceType.Manager);
 
 			networkProfile.Refresh();
-			machine = networkProfile.GetMachineProfile(FakeServiceAddress.Local);
+			machine = networkProfile.GetMachineProfile(Local);
 			Assert.IsNotNull(machine);
 			Assert.IsTrue(machine.IsManager);
 
-			networkProfile.StartService(FakeServiceAddress.Local, ServiceType.Root);
-			networkProfile.RegisterRoot(FakeServiceAddress.Local);
+			networkProfile.StartService(Local, ServiceType.Root);
+			networkProfile.RegisterRoot(Local);
 
 			networkProfile.Refresh();
-			machine = networkProfile.GetMachineProfile(FakeServiceAddress.Local);
+			machine = networkProfile.GetMachineProfile(Local);
 			Assert.IsNotNull(machine);
 			Assert.IsTrue(machine.IsRoot);
 
-			networkProfile.StartService(FakeServiceAddress.Local, ServiceType.Block);
-			networkProfile.RegisterBlock(FakeServiceAddress.Local);
+			networkProfile.StartService(Local, ServiceType.Block);
+			networkProfile.RegisterBlock(Local);
 
 			networkProfile.Refresh();
-			machine = networkProfile.GetMachineProfile(FakeServiceAddress.Local);
+			machine = networkProfile.GetMachineProfile(Local);
 			Assert.IsNotNull(machine);
 			Assert.IsTrue(machine.IsBlock);
 		}
@@ -139,15 +147,15 @@ namespace Deveel.Data.Net {
 		public void StartAndStopManager() {
 			Test1_StartManager();
 
-			MachineProfile machine = networkProfile.GetMachineProfile(FakeServiceAddress.Local);
+			MachineProfile machine = networkProfile.GetMachineProfile(Local);
 			Assert.IsNotNull(machine);
 			Assert.IsTrue(machine.IsManager);
 
-			networkProfile.StopService(FakeServiceAddress.Local, ServiceType.Manager);
+			networkProfile.StopService(Local, ServiceType.Manager);
 
 			networkProfile.Refresh();
 
-			machine = networkProfile.GetMachineProfile(FakeServiceAddress.Local);
+			machine = networkProfile.GetMachineProfile(Local);
 			Assert.IsNotNull(machine);
 			Assert.IsFalse(machine.IsManager);
 
@@ -157,16 +165,14 @@ namespace Deveel.Data.Net {
 		public void StartAndStopRoot() {
 			Test1_StartRoot();
 
-			MachineProfile machine = networkProfile.GetMachineProfile(FakeServiceAddress.Local);
+			MachineProfile machine = networkProfile.GetMachineProfile(Local);
 			Assert.IsNotNull(machine);
 			Assert.IsTrue(machine.IsRoot);
 
-			networkProfile.StopService(FakeServiceAddress.Local, ServiceType.Root);
-			networkProfile.RegisterRoot(FakeServiceAddress.Local);
-
+			networkProfile.StopService(Local, ServiceType.Root);
 			networkProfile.Refresh();
 
-			machine = networkProfile.GetMachineProfile(FakeServiceAddress.Local);
+			machine = networkProfile.GetMachineProfile(Local);
 			Assert.IsNotNull(machine);
 			Assert.IsFalse(machine.IsRoot);
 		}
@@ -175,21 +181,23 @@ namespace Deveel.Data.Net {
 		public void StartAndStopBlock() {
 			Test1_StartBlock();
 
-			MachineProfile machine = networkProfile.GetMachineProfile(FakeServiceAddress.Local);
+			MachineProfile machine = networkProfile.GetMachineProfile(Local);
 			Assert.IsNotNull(machine);
 			Assert.IsTrue(machine.IsBlock);
 
-			networkProfile.StopService(FakeServiceAddress.Local, ServiceType.Block);
+			networkProfile.StopService(Local, ServiceType.Block);
 
 			networkProfile.Refresh();
 
-			machine = networkProfile.GetMachineProfile(FakeServiceAddress.Local);
+			machine = networkProfile.GetMachineProfile(Local);
 			Assert.IsNotNull(machine);
 			Assert.IsFalse(machine.IsBlock);
 		}
 
 		[Test]
 		public void StartAndStopAllServices() {
+			Test1_StartAllServices();
+
 			//TODO:
 		}
 	}

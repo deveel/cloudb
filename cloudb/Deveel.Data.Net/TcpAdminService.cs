@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -10,9 +11,10 @@ namespace Deveel.Data.Net {
 		private NetworkConfigSource config;
 		private bool polling;
 		private TcpListener listener;
+		private List<TcpConnection> connections;
 
 		public TcpAdminService(IAdminServiceDelegator delegator, IPAddress address, int port, string password)
-			: this(delegator, address, password) {
+			: this(delegator, new TcpServiceAddress(address, port),  password) {
 		}
 		
 		public TcpAdminService(IAdminServiceDelegator delegator, IPAddress address, string password)
@@ -29,8 +31,7 @@ namespace Deveel.Data.Net {
 		}
 
 		private void ConfigUpdate(object state) {
-			NetworkConfigSource source = (NetworkConfigSource)state;
-			source.Reload();
+			config.Reload();
 		}
 
 		private void Poll() {
@@ -47,10 +48,10 @@ namespace Deveel.Data.Net {
 				//TODO: INFO log ...
 
 				while (polling) {
-					TcpClient s;
+					Socket s;
 					try {
 						// The socket to run the service,
-						s = listener.AcceptTcpClient();
+						s = listener.AcceptSocket();
 						s.NoDelay = true;
 						int cur_send_buf_size = s.SendBufferSize;
 						if (cur_send_buf_size < 256 * 1024) {
@@ -58,7 +59,7 @@ namespace Deveel.Data.Net {
 						}
 
 						// Make sure this ip address is allowed,
-						IPAddress ipAddress = ((IPEndPoint)s.Client.RemoteEndPoint).Address;
+						IPAddress ipAddress = ((IPEndPoint)s.RemoteEndPoint).Address;
 
 						//TODO: INFO log ...
 
@@ -67,13 +68,16 @@ namespace Deveel.Data.Net {
 							IPAddress.IsLoopback(ipAddress) ||
 							config.IsIpAllowed(ipAddress.ToString())) {
 							// Dispatch the connection to the thread pool,
-							TcpConnection c = new TcpConnection(this);
-							ThreadPool.QueueUserWorkItem(c.Work, s);
+							TcpConnection c = new TcpConnection(this, s);
+							if (connections == null)
+								connections = new List<TcpConnection>();
+							connections.Add(c);
+							ThreadPool.QueueUserWorkItem(c.Work, null);
 						} else {
 							//TODO: ERROR log ...
 						}
 
-					} catch (IOException e) {
+					} catch (SocketException e) {
 						//TODO: WARN log ...
 					}
 				}
@@ -89,16 +93,18 @@ namespace Deveel.Data.Net {
 			listener.Server.ReceiveTimeout = 0;
 			
 			try {
-				listener.Start(150);
+				// listener.Bind(endPoint);
 				int curReceiveBufSize = listener.Server.ReceiveBufferSize;
 				if (curReceiveBufSize < 256 * 1024) {
 					listener.Server.ReceiveBufferSize = 256 * 1024;
 				}
+				listener.Start(150);
 			} catch (IOException e) {
 				//TODO: ERROR log ...
 				throw;
 			}
 
+			polling = true;
 
 			Thread thread = new Thread(Poll);
 			thread.IsBackground = true;
@@ -108,6 +114,15 @@ namespace Deveel.Data.Net {
 		protected override void OnDispose(bool disposing) {
 			if (disposing) {
 				polling = false;
+
+				if (connections != null) {
+					for (int i = connections.Count - 1; i >= 0; i--) {
+						TcpConnection c = connections[i];
+						c.Close();
+						connections.RemoveAt(i);
+					}
+				}
+
 				if (listener != null) {
 					listener.Stop();
 					listener = null;
@@ -119,10 +134,14 @@ namespace Deveel.Data.Net {
 
 		private class TcpConnection {
 			private readonly TcpAdminService service;
+			private readonly Socket socket;
 			private readonly Random random;
+			private bool open;
 
-			public TcpConnection(TcpAdminService service) {
+			public TcpConnection(TcpAdminService service, Socket socket) {
 				this.service = service;
+				this.socket = socket;
+				open = true;
 				random = new Random();
 			}
 
@@ -132,14 +151,20 @@ namespace Deveel.Data.Net {
 				return msg_out;
 			}
 
+			public void Close() {
+				open = false;
+
+				if (socket != null)
+					socket.Close();
+			}
+
 			public void Work(object state) {
-				TcpClient s = (TcpClient)state;
 				try {
 					// Get as input and output stream on the sockets,
-					NetworkStream socketStream = s.GetStream();
+					NetworkStream socketStream = new NetworkStream(socket, FileAccess.ReadWrite);
 
-					BinaryReader reader = new BinaryReader(new BufferedStream(socketStream, 4000), Encoding.UTF8);
-					BinaryWriter writer = new BinaryWriter(new BufferedStream(socketStream, 4000), Encoding.UTF8);
+					BinaryReader reader = new BinaryReader(new BufferedStream(socketStream, 4000), Encoding.Unicode);
+					BinaryWriter writer = new BinaryWriter(new BufferedStream(socketStream, 4000), Encoding.Unicode);
 
 					// Write a random long and see if it gets pinged back from the client,
 					long rv = (long)random.NextDouble();
@@ -167,7 +192,7 @@ namespace Deveel.Data.Net {
 						return;
 
 					// The main command dispatch loop for this connection,
-					while (true) {
+					while (open) {
 						// Read the command destination,
 						char destination = reader.ReadChar();
 						// Exit thread command,
@@ -243,7 +268,7 @@ namespace Deveel.Data.Net {
 				} finally {
 					// Make sure the socket is closed before we return from the thread,
 					try {
-						s.Close();
+						socket.Close();
 					} catch (IOException e) {
 						//TODO: ERROR log ...
 					}

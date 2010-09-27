@@ -23,7 +23,7 @@ namespace Deveel.Data.Net {
 
 			Message m = Command(current_manager.Address, ServiceType.Manager, msg_out);
 			if (m.IsError)
-				throw new NetworkAdminException(m.ErrorMessage);
+				throw new NetworkAdminException(m.ErrorMessage, m.ErrorStackTrace);
 		}
 
 		private void DeregisterService(IServiceAddress address, ServiceType serviceType) {

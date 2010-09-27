@@ -9,7 +9,7 @@ namespace Deveel.Data.Net {
 	public class FakeNetworkTest {
 		private NetworkProfile networkProfile;
 		private FakeAdminService adminService;
-		private NetworkStoreType storeType;
+		private readonly NetworkStoreType storeType;
 		private string path;
 		
 		public FakeNetworkTest(NetworkStoreType storeType) {
@@ -27,16 +27,7 @@ namespace Deveel.Data.Net {
 				config.SetValue("node_directory", path);
 			}
 		}
-		
-		protected void OnSetUp() {
-		}
-		
-		protected void OnTearDown() {
-			if (storeType == NetworkStoreType.FileSystem &&
-			    Directory.Exists(path))
-				Directory.Delete(path, true);
-		}
-		
+						
 		[SetUp]
 		public void SetUp() {
 			adminService = new FakeAdminService(storeType);
@@ -48,16 +39,16 @@ namespace Deveel.Data.Net {
 			
 			NetworkConfigSource netConfig = new NetworkConfigSource();
 			netConfig.AddNetworkNode(FakeServiceAddress.Local);
-			networkProfile.Configuration = netConfig;
-			
-			OnSetUp();
+			networkProfile.Configuration = netConfig;			
 		}
 		
 		[TearDown]
 		public void TearDown() {
 			adminService.Dispose();
-			
-			OnTearDown();
+
+			if (storeType == NetworkStoreType.FileSystem &&
+				Directory.Exists(path))
+				Directory.Delete(path, true);
 		}
 		
 		[Test]
@@ -156,8 +147,6 @@ namespace Deveel.Data.Net {
 			Assert.IsTrue(machine.IsRoot);
 
 			networkProfile.StopService(FakeServiceAddress.Local, ServiceType.Root);
-			networkProfile.RegisterRoot(FakeServiceAddress.Local);
-
 			networkProfile.Refresh();
 
 			machine = networkProfile.GetMachineProfile(FakeServiceAddress.Local);

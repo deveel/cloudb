@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Net.Sockets;
 
 namespace Deveel.Data.Net {
 	public sealed class TcpServiceAddressHandler : IServiceAddressHandler {
