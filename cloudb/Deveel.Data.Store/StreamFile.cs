@@ -57,7 +57,7 @@ namespace Deveel.Data.Store {
 		/// <param name="mode"></param>
 		public StreamFile(string file, FileAccess mode) {
 			this.file = file;
-			data = new FileStream(file, FileMode.OpenOrCreate, mode);
+			data = new FileStream(file, FileMode.OpenOrCreate, mode, FileShare.Inheritable, 2048, FileOptions.WriteThrough);
 			end_pointer = data.Length;
 			fsstream = new SFFileStream(this);
 		}
@@ -76,15 +76,7 @@ namespace Deveel.Data.Store {
 		/// </summary>
 		public void Synch() {
 			lock (data) {
-				try {
-					data.Flush();
-					FSync.Sync(data);
-				} catch (SyncFailedException) {
-					// We ignore the exception which reduces the robustness
-					// of the journal file for the OS where this problem occurs.
-					// Unfortunately there's no sane way to handle this excption when it
-					// does occur.
-				}
+				data.Flush();
 			}
 		}
 
@@ -92,6 +84,9 @@ namespace Deveel.Data.Store {
 		/// Deletes the file.
 		/// </summary>
 		public void Delete() {
+			if (data != null)
+				data.Close();
+			
 			File.Delete(file);
 		}
 

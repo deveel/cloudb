@@ -391,8 +391,15 @@ namespace Deveel.Data.Net {
 		}
 		
 		protected override void OnDispose(bool disposing) {
-			if (disposing)
+			if (disposing) {
 				managerAddress = null;
+				
+				if (pathCache != null) {
+					foreach(KeyValuePair<string, PathAccess> path in pathCache) {
+						path.Value.AccessStream.Close();
+					}					
+				}
+			}
 		}
 
 		protected override IMessageProcessor CreateProcessor() {

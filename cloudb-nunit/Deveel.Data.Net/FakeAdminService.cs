@@ -54,6 +54,12 @@ namespace Deveel.Data.Net {
 			}
 
 			public void Dispose() {
+				if (manager != null)
+					manager.Dispose();
+				if (root != null)
+					root.Dispose();
+				if (block != null)
+					block.Dispose();
 			}
 
 			public void Init(AdminService adminService) {

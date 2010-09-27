@@ -154,10 +154,19 @@ namespace Deveel.Data.Net {
 			}
 
 		}
+		
+		private void CloseContainers() {
+			lock(pathLock) {
+				foreach(KeyValuePair<long, BlockContainer> pair in blockContainerCache) {
+					pair.Value.BlockStore.Close();
+				}
+			}
+		}
 
 		protected override void OnDispose(bool disposing) {
 			if (disposing) {
 				lock (pathLock) {
+					CloseContainers();
 					blockContainerCache.Clear();
 					blocksPendingFlush.Clear();
 					blockContainerAccessList.Clear();
@@ -185,6 +194,18 @@ namespace Deveel.Data.Net {
 		}
 		
 		protected abstract BlockContainer LoadBlock(long blockId);
+		
+		protected BlockContainer GetBlock(long blockId) {
+			CheckErrorState();
+			
+			BlockContainer container;
+			lock(pathLock) {
+				if (!blockContainerCache.TryGetValue(blockId, out container))
+					return null;
+			}
+			
+			return container;
+		}
 		
 		protected abstract long[] ListBlocks();
 

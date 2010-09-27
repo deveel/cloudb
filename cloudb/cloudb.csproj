@@ -193,11 +193,9 @@
     <Compile Include="Deveel.Data\TreeGraph.cs" />
     <Compile Include="Deveel.Data.Store\AbstractStore.cs" />
     <Compile Include="Deveel.Data.Store\AreaInputStream.cs" />
-    <Compile Include="Deveel.Data.Store\FSync.cs" />
     <Compile Include="Deveel.Data.Store\HeapStore.cs" />
     <Compile Include="Deveel.Data.Store\IArea.cs" />
     <Compile Include="Deveel.Data.Store\IAreaWriter.cs" />
-    <Compile Include="Deveel.Data.Store\IFSync.cs" />
     <Compile Include="Deveel.Data.Store\IJournalledResource.cs" />
     <Compile Include="Deveel.Data.Store\IMutableArea.cs" />
     <Compile Include="Deveel.Data.Store\IOStoreDataAccessor.cs" />
@@ -221,7 +219,6 @@
     <Compile Include="Deveel.Data.Store\LoggingBufferManager.cs" />
     <Compile Include="Deveel.Data.Store\ScatteringStoreDataAccessor.cs" />
     <Compile Include="Deveel.Data.Store\StreamFile.cs" />
-    <Compile Include="Deveel.Data.Store\SyncFailedException.cs" />
     <Compile Include="Deveel.Data\FileSystemDatabase.cs" />
     <Compile Include="Deveel.Data.Store\TreeWrite.cs" />
     <Compile Include="Deveel.Data.Util\ByteBuffer.cs" />

@@ -99,7 +99,7 @@ namespace Deveel.Data.Net {
 
 							if (compressFinished) {
 								hasCompressFinished = true;
-								Monitor.PulseAll(this);
+								Monitor.PulseAll(compressLock);
 								return;
 							}
 							Monitor.Wait(compressLock, 200);
@@ -255,6 +255,9 @@ namespace Deveel.Data.Net {
 
 				// Does exist and is a file,
 				// What we will rename the file to,
+				BlockContainer container = GetBlock(blockId);
+				container.BlockStore.Close();
+				
 				if (storeType == 1) {
 					File.Move(f, f_normal);
 				} else if (storeType == 2) {
@@ -307,6 +310,8 @@ namespace Deveel.Data.Net {
 				if (fileDeleteTimer != null)
 					fileDeleteTimer.Dispose();
 			}
+			
+			base.OnDispose(disposing);
 		}
 	}
 }
