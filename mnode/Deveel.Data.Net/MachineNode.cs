@@ -5,12 +5,11 @@ using System.Net.Sockets;
 
 using Deveel.Configuration;
 using Deveel.Data.Diagnostics;
-using Deveel.Shell;
 
 namespace Deveel.Data.Net {
 	public static class MachineNode {
-		private static CommandLineOptions GetOptions() {
-			CommandLineOptions options = new CommandLineOptions();
+		private static Options GetOptions() {
+			Options options = new Options();
 			options.AddOption("nodeconfig", true, "The node configuration file (default: node.conf).");
 			options.AddOption("netconfig", true, "The network configuration file (default: network.conf).");
 			options.AddOption("host", true, "The interface address to bind the socket on the local machine " +
@@ -33,21 +32,21 @@ namespace Deveel.Data.Net {
 			string hostArg = null, port_arg = null;
 
 			StringWriter wout = new StringWriter();
-			CommandLineOptions options = GetOptions();
+			Options options = GetOptions();
 
 			CommandLine commandLine;
 
 			bool failed = false;
 
 			try {
-				ICommandLineParser parser = CommandLineParser.CreateParse(ParseStyle.Gnu);
-				commandLine = parser.Parse(options, args);
+				ICommandLineParser parser = new GnuParser(options);
+				commandLine = parser.Parse(args);
 
 				nodeConfig = commandLine.GetOptionValue("nodeconfig", "node.conf");
 				netConfig = commandLine.GetOptionValue("netconfig", "network.conf");
 				hostArg = commandLine.GetOptionValue("host");
 				port_arg = commandLine.GetOptionValue("port");
-			} catch(CommandLineParseException) {
+			} catch(ParseException) {
 				wout.WriteLine("Error parsing arguments.");
 				failed = true;
 			}
@@ -70,7 +69,10 @@ namespace Deveel.Data.Net {
 			// If failed,
 			if (failed) {
 				HelpFormatter formatter = new HelpFormatter();
-				formatter.WriteHelp(Console.WindowWidth, "mnode", "", options, "");
+				formatter.Width = Console.WindowWidth;
+				formatter.CommandLineSyntax = "mnode";
+				formatter.Options = options;
+				formatter.PrintHelp();
 				Console.Out.WriteLine();
 				Console.Out.WriteLine(wout.ToString());
 				return 1;
