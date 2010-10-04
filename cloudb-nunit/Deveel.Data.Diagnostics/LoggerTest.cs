@@ -15,5 +15,29 @@ namespace Deveel.Data.Diagnostics {
 			Assert.IsInstanceOf(typeof(Logger), logger);
 			Assert.IsInstanceOf(typeof(DefaultLogger), ((Logger)logger).BaseLogger);
 		}
+		
+		[Test]
+		public void ConfigureSimpleConsoleLogger() {
+			ConfigSource config = new ConfigSource();
+			config.SetValue("logger", "simple-console");
+			
+			LogManager.Init(config);
+			ILogger logger = LogManager.GetLogger("simple-console");
+			Assert.IsInstanceOf(typeof(Logger), logger);
+			Assert.IsInstanceOf(typeof(SimpleConsoleLogger), ((Logger)logger).BaseLogger);
+			
+			((Logger)logger).Info("Printing a log message");
+		}
+		
+		[Test]
+		public void ConfigureNetworkLogger() {
+			ConfigSource config = new ConfigSource();
+			config.SetValue("network_log_type", "simple-console");
+			
+			LogManager.Init(config);
+			ILogger logger = LogManager.NetworkLogger;
+			Assert.IsInstanceOf(typeof(Logger), logger);
+			Assert.IsInstanceOf(typeof(SimpleConsoleLogger), ((Logger)logger).BaseLogger);
+		}
 	}
 }

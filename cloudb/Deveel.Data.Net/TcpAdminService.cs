@@ -8,7 +8,6 @@ using System.Threading;
 
 namespace Deveel.Data.Net {
 	public class TcpAdminService : AdminService {
-		private NetworkConfigSource config;
 		private bool polling;
 		private TcpListener listener;
 		private List<TcpConnection> connections;
@@ -25,27 +24,8 @@ namespace Deveel.Data.Net {
 			: base(address, new TcpServiceConnector(password), delegator) {
 		}
 		
-		public NetworkConfigSource Config {
-			get { return config; }
-			set { config = value; }
-		}
-
-		private void ConfigUpdate(object state) {
-			if (config != null)
-				config.Reload();
-		}
-
 		private void Poll() {
-			Timer timer = new Timer(ConfigUpdate);
-
-			try {
-				// Schedule a refresh of the config file,
-				// (We add a little entropy to ensure the network doesn't get hit by
-				//  synchronized requests).
-				Random r = new Random();
-				long second_mix = r.Next(1000);
-				timer.Change(50 * 1000, ((2 * 59) * 1000) + second_mix);
-				
+			try {				
 				//TODO: INFO log ...
 
 				while (polling) {
@@ -64,8 +44,8 @@ namespace Deveel.Data.Net {
 
 						//TODO: INFO log ...
 
-						if (config == null || IPAddress.IsLoopback(ipAddress) || 
-							config.IsIpAllowed(ipAddress.ToString())) {
+						if (IPAddress.IsLoopback(ipAddress) || 
+							IsAddressAllowed(ipAddress.ToString())) {
 							// Dispatch the connection to the thread pool,
 							TcpConnection c = new TcpConnection(this, s);
 							if (connections == null)
@@ -80,8 +60,8 @@ namespace Deveel.Data.Net {
 						//TODO: WARN log ...
 					}
 				}
-			} finally {
-				timer.Dispose();
+			} catch(Exception e) {
+				//TODO: ERROR log ...
 			}
 		}
 

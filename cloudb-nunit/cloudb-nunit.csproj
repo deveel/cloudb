@@ -31,6 +31,8 @@
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
+    <SourceAnalysisOverrideSettingsFile>C:\Documents and Settings\aprovenzano\Application Data\ICSharpCode/SharpDevelop3.0\Settings.SourceAnalysis</SourceAnalysisOverrideSettingsFile>
+    <StartWorkingDirectory>bin\Debug\</StartWorkingDirectory>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -51,23 +53,25 @@
     <WarningLevel>4</WarningLevel>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <StartAction>Program</StartAction>
+    <StartProgram>..\libs\nunit\nunit.exe</StartProgram>
+  </PropertyGroup>
   <ItemGroup>
-    <Reference Include="nunit.core, Version=2.5.4.10098, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\libs\nunit.core.dll</HintPath>
-    </Reference>
-    <Reference Include="nunit.framework, Version=2.5.5.10112, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\libs\nunit.framework.dll</HintPath>
+    <Reference Include="nunit.framework">
+      <HintPath>..\libs\nunit\framework\nunit.framework.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Deveel.Data.Diagnostics\SimpleConsoleLogger.cs" />
     <Compile Include="Deveel.Data.Net\FakeAdminService.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Deveel.Data.Net\HttpMessageFormat.cs" />
+    <Compile Include="Deveel.Data.Net\HttpNetworkTest.cs" />
     <Compile Include="Deveel.Data.Net\NetworkStoreType.cs" />
     <Compile Include="Deveel.Data.Net\FakeServiceAddress.cs" />
     <Compile Include="Deveel.Data.Net\FakeServiceAddressHandler.cs" />
@@ -78,6 +82,7 @@
     <Compile Include="Deveel.Data\BasePathTest.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LoggerTest.cs" />
     <Compile Include="Deveel.Data\ConfigSourceTest.cs" />
+    <Compile Include="Deveel.Data\PathServiceTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

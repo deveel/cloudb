@@ -85,6 +85,7 @@
     <Compile Include="Deveel.Data.Net\CompressedNodeSet.cs" />
     <Compile Include="Deveel.Data.Net\DataAddress.cs" />
     <Compile Include="Deveel.Data.Net\HandleAttribute.cs" />
+    <Compile Include="Deveel.Data.Net\HttpPathService.cs" />
     <Compile Include="Deveel.Data.Net\TcpPathService.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -259,6 +260,7 @@
     <Compile Include="Deveel.Json\JSONReader.cs" />
     <Compile Include="Deveel.Json\JSONSyntaxException.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <None Include="Deveel.Data.Net\ChangeLog" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">

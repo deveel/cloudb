@@ -104,9 +104,11 @@ namespace Deveel.Data.Net {
 			sb.Append(host);
 			sb.Append(":");
 			sb.Append(port);
+			sb.Append("/");
 			if (!String.IsNullOrEmpty(path)) {
-				sb.Append("/");
 				sb.Append(path);
+				if (String.IsNullOrEmpty(query))
+					sb.Append("/");
 			}
 			if (!String.IsNullOrEmpty(query)) {
 				sb.Append("?");
@@ -119,6 +121,8 @@ namespace Deveel.Data.Net {
 		public static HttpServiceAddress Parse(string s) {
 			if (String.IsNullOrEmpty(s))
 				throw new ArgumentNullException("s");
+			
+			/*
 
 			int index = s.IndexOf(':');
 			if (index == -1)
@@ -128,10 +132,10 @@ namespace Deveel.Data.Net {
 			if (scheme != "http")
 				throw new FormatException("Scheme not supported.");
 
-			if (s.Length <= index + 2)
+			if (s.Length <= index + 3)
 				throw new FormatException("The string is too short.");
 
-			s = s.Substring(index + 2);
+			s = s.Substring(index + 3);
 
 			string host, path = null, query = null;
 			int port = -1;
@@ -160,6 +164,13 @@ namespace Deveel.Data.Net {
 			
 
 			return new HttpServiceAddress(host, port, path, query);
+			*/
+			
+			Uri uri = new Uri(s);
+			if (uri.Scheme != Uri.UriSchemeHttp)
+				throw new FormatException("Invalid scheme: " + uri.Scheme);
+			
+			return new HttpServiceAddress(uri);
 		}
 	}
 }

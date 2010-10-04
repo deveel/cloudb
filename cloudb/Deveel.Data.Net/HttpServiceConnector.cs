@@ -5,10 +5,16 @@ using System.Net;
 
 namespace Deveel.Data.Net {
 	public sealed class HttpServiceConnector : IServiceConnector {		
-		public HttpServiceConnector(string password) {
+		public HttpServiceConnector(string userName, string password) {
+			this.userName = userName;
 			this.password = password;
 		}
 		
+		public HttpServiceConnector()
+			: this(null, null) {
+		}
+		
+		private string userName;
 		private string password;
 		private IMessageSerializer serializer;
 		
@@ -54,11 +60,14 @@ namespace Deveel.Data.Net {
 					lock (request) {
 						// Write the message.
 						request.Headers["Service-Type"] = serviceType.ToString();
-						request.Headers["Password"] = connector.password;
+						if (!String.IsNullOrEmpty(connector.userName) &&
+						    !String.IsNullOrEmpty(connector.password))
+							request.Credentials = new NetworkCredential(connector.userName, connector.password);
 						request.Method = "POST";
 						Stream output = request.GetRequestStream();
 						connector.Serializer.Serialize(messageStream, output);
 						output.Flush();
+						output.Close();
 						
 						HttpWebResponse response = (HttpWebResponse) request.GetResponse();
 						if (response.StatusCode != HttpStatusCode.OK)

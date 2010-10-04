@@ -1,0 +1,7 @@
+﻿2010-10-04  Antonello Provenzano  <antonello@deveel.com>
+
+	* AdminService.cs: promoted the network configuration
+	from TcpAdminService to make it generalized.
+	* HttpAdminService.cs: verifies user/pass credentials 
+	(currently just a hook for a latter feature)
+	* HttpServiceConnector.cs: accepts user/pass credentials

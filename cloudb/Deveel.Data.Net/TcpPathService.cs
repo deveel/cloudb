@@ -13,25 +13,12 @@ namespace Deveel.Data.Net {
 
 		private Thread pollingThread;
 		private bool polling;
+		private TcpListener listener;
 
 		private void Poll() {
+			polling = true;
+			
 			try {
-				TcpListener listener;
-				try {
-					TcpServiceAddress tcpAddress = (TcpServiceAddress)Address;
-					IPEndPoint endPoint = tcpAddress.ToEndPoint();
-					listener = new TcpListener(endPoint);
-					listener.Server.ReceiveTimeout = 0;
-					listener.Start(150);
-					int curReceiveBufSize = listener.Server.ReceiveBufferSize;
-					if (curReceiveBufSize < 256 * 1024) {
-						listener.Server.ReceiveBufferSize = 256 * 1024;
-					}
-				} catch (IOException e) {
-					//TODO: ERROR log ...
-					return;
-				}
-
 				//TODO: INFO log ...
 
 				while (polling) {
@@ -59,6 +46,21 @@ namespace Deveel.Data.Net {
 		}
 
 		protected override void OnInit() {
+			try {
+				TcpServiceAddress tcpAddress = (TcpServiceAddress)Address;
+				IPEndPoint endPoint = tcpAddress.ToEndPoint();
+				listener = new TcpListener(endPoint);
+				listener.Server.ReceiveTimeout = 0;
+				listener.Start(150);
+				int curReceiveBufSize = listener.Server.ReceiveBufferSize;
+				if (curReceiveBufSize < 256 * 1024) {
+					listener.Server.ReceiveBufferSize = 256 * 1024;
+				}
+			} catch (IOException e) {
+				//TODO: ERROR log ...
+				return;
+			}
+
 			pollingThread = new Thread(Poll);
 			pollingThread.Name = "TCP Path Service Polling";
 			pollingThread.IsBackground = true;

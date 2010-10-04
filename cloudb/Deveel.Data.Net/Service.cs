@@ -13,7 +13,7 @@ namespace Deveel.Data.Net {
 		private bool initialized;
 
 		protected Service() {
-			log = LogManager.GetLogger("network");
+			log = LogManager.NetworkLogger;
 		}
 
 		~Service() {
@@ -46,15 +46,14 @@ namespace Deveel.Data.Net {
 		protected abstract IMessageProcessor CreateProcessor();
 
 		protected virtual void OnDispose(bool disposing) {
+			if (disposing) {
+//				log.Dispose();
+//				log = null;
+			}
 		}
 
 		protected override void Dispose(bool disposing) {
 			if (!disposed) {
-				if (disposing) {
-					log.Dispose();
-					log = null;
-				}
-
 				OnDispose(disposing);
 
 				disposed = true;

@@ -11,11 +11,15 @@ namespace Deveel.Data.Diagnostics {
 		private static readonly object logSyncLock = new object();
 
 		public const string LoggerNameKey = "log_name";
-		public const string NetworkLoggerName = "network";
-		public const string StorageLoggerName = "store";
+		public const string NetworkLoggerName = "network_log";
+		public const string StorageLoggerName = "store_log";
 		
-		public static readonly Logger NetworkLogger = GetLogger(NetworkLoggerName);
-		public static readonly Logger StorageLogger = GetLogger(StorageLoggerName);
+		public static Logger NetworkLogger {
+			get { return GetLogger(NetworkLoggerName); }
+		}
+		public static Logger StorageLogger {
+			get { return GetLogger(StorageLoggerName); }
+		}
 
 		private static void InspectLoggers() {
 			Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
@@ -40,7 +44,7 @@ namespace Deveel.Data.Diagnostics {
 
 		private static Type GetLoggerType(string typeName) {
 			Type type;
-			if (loggerTypeMap.TryGetValue(typeName, out type)) {
+			if (!loggerTypeMap.TryGetValue(typeName, out type)) {
 				type = Type.GetType(typeName, false, true);
 				if (type != null)
 					loggerTypeMap[typeName] = type;
@@ -81,7 +85,7 @@ namespace Deveel.Data.Diagnostics {
 
 					Type loggerType;
 					if (!loggerTypeMap.TryGetValue(loggerName, out loggerType)) {
-						string loggerTypeName = loggerConfig.GetString(loggerName + "_logger_type", null);
+						string loggerTypeName = loggerConfig.GetString("type", null);
 						if (loggerTypeName == null)
 							loggerTypeName = typeof(DefaultLogger).AssemblyQualifiedName;
 

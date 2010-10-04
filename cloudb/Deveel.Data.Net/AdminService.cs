@@ -1,9 +1,12 @@
 ﻿using System;
+using System.Threading;
 
 using Deveel.Data.Diagnostics;
 
 namespace Deveel.Data.Net {
 	public class AdminService : Service {
+		private NetworkConfigSource config;
+		private Timer configTimer;
 		private readonly IServiceAddress address;
 		private readonly Analytics analytics;
 		private readonly IAdminServiceDelegator delegator;
@@ -48,6 +51,16 @@ namespace Deveel.Data.Net {
 		protected Analytics Analytics {
 			get { return analytics; }
 		}
+		
+		public NetworkConfigSource Config {
+			get { return config; }
+			set { config = value; }
+		}
+
+		private void ConfigUpdate(object state) {
+			if (config != null)
+				config.Reload();
+		}
 
 		private void InitService(string  serviceTypeName) {
 			InitService((ServiceType)Enum.Parse(typeof(ServiceType), serviceTypeName, true));
@@ -55,6 +68,10 @@ namespace Deveel.Data.Net {
 
 		private void DisposeService(string  serviceTypeName) {
 			DisposeService((ServiceType)Enum.Parse(typeof(ServiceType), serviceTypeName, true));
+		}
+		
+		protected bool IsAddressAllowed(string address) {
+			return config != null && config.IsIpAllowed(address);
 		}
 
 		protected void InitService(ServiceType service_type) {
@@ -79,8 +96,15 @@ namespace Deveel.Data.Net {
 
 		protected override void OnDispose(bool disposing) {
 			if (disposing) {
+				if (configTimer != null) {
+					configTimer.Dispose();
+					configTimer = null;
+				}
+				
 				delegator.Dispose();
 			}
+			
+			base.OnDispose(disposing);
 		}
 
 		public override ServiceType ServiceType {
@@ -93,6 +117,15 @@ namespace Deveel.Data.Net {
 
 		protected override void OnInit() {
 			lock(serverManagerLock) {
+				configTimer = new Timer(ConfigUpdate);
+				
+				// Schedule a refresh of the config file,
+				// (We add a little entropy to ensure the network doesn't get hit by
+				//  synchronized requests).
+				Random r = new Random();
+				long second_mix = r.Next(1000);
+				configTimer.Change(50 * 1000, ((2 * 59) * 1000) + second_mix);
+				
 				delegator.Init(this);
 			}
 		}

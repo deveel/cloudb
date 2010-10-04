@@ -95,6 +95,10 @@ namespace Deveel.Data.Diagnostics {
 		public void Error(string typeString, string message) {
 			Log(LogLevel.Error, typeString, message);
 		}
+		
+		public void Error(Type type, Exception error) {
+			Log(LogLevel.Error, type, null, error);
+		}
 
 		public void Error(string  message) {
 			Log(LogLevel.Error, message);
@@ -113,11 +117,13 @@ namespace Deveel.Data.Diagnostics {
 		}
 
 		public void Error(string message, Exception error) {
-			Log(LogLevel.Error, message, error);
+			Type loggingType = GetLoggingType();
+			Log(LogLevel.Error, loggingType, message, error);
 		}
 
 		public void Error(Exception e) {
-			Log(LogLevel.Error, e);
+			Type loggingType = GetLoggingType();
+			Error(loggingType, e);
 		}
 
 		public void Warning(object ob, string message) {

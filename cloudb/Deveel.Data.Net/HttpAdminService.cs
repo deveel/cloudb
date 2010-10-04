@@ -4,19 +4,21 @@ using System.Net;
 using System.Text;
 using System.Threading;
 
+using Deveel.Data.Diagnostics;
+
 namespace Deveel.Data.Net {
 	public sealed class HttpAdminService : AdminService {
-		private readonly string password;
-		private readonly HttpServiceAddress address;
-		private readonly NetworkConfigSource config;
-		private HttpServiceConnector connector;
 		private IMessageSerializer serializer;
 		private bool polling;
+		private HttpListener listener;
+		private Thread pollingThread;
 				
-		public HttpAdminService(IAdminServiceDelegator delegator, NetworkConfigSource config, Uri uri, string password)
-			: base(new HttpServiceAddress(uri), new HttpServiceConnector(password), delegator) {
-			this.config = config;
-			this.password = password;
+		public HttpAdminService(IAdminServiceDelegator delegator, Uri uri)
+			: this(delegator, new HttpServiceAddress(uri)) {
+		}
+		
+		public HttpAdminService(IAdminServiceDelegator delegator, HttpServiceAddress address)
+			: base(address, new HttpServiceConnector(), delegator) {
 		}
 		
 		public IMessageSerializer Serializer {
@@ -27,52 +29,28 @@ namespace Deveel.Data.Net {
 			}
 			set { serializer = value; }
 		}
-
-		private void ConfigUpdate(object state) {
-			//TODO:
-		}
 		
 		private void Poll() {
-			Timer timer = new Timer(ConfigUpdate);
-
 			try {
-				// Schedule a refresh of the config file,
-				// (We add a little entropy to ensure the network doesn't get hit by
-				//  synchronized requests).
-				Random r = new Random();
-				long second_mix = r.Next(1000);
-				timer.Change(50 * 1000, ((2 * 59) * 1000) + second_mix);
-
-				HttpListener listener;
-				try {
-					listener = new HttpListener();
-					listener.Prefixes.Add(address.ToString());
-					listener.Start();
-				} catch (IOException e) {
-					Logger.Error("Error Starting the HTTP Listener", e);
-					return;
-				}
-				
-				Logger.Info(String.Format("Node started listening HTTP connections on {0}", address));
-				
 				while (polling) {
 					HttpListenerContext context;
 					try {
 						// The socket to run the service,
-						context = listener.GetContext();
+						context = listener.GetContext();						
 						// Make sure this ip address is allowed,
 						IPAddress ipAddress = ((IPEndPoint)context.Request.RemoteEndPoint).Address;
 
 						Logger.Info("Connection opened with HTTP client " + ipAddress);
 
 						// Check it's allowed,
-						if (ipAddress.IsIPv6LinkLocal ||
-							IPAddress.IsLoopback(ipAddress) ||
-							config.IsIpAllowed(ipAddress.ToString())) {
+						if (context.Request.IsLocal ||
+							IsAddressAllowed(ipAddress.ToString())) {
 							// Dispatch the connection to the thread pool,
 							HttpConnection c = new HttpConnection(this);
 							ThreadPool.QueueUserWorkItem(c.Work, context);
 						} else {
+							context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+							context.Response.Close();
 							Logger.Error(String.Format("The client IP address {0} is not authorized", ipAddress));
 						}
 
@@ -80,17 +58,47 @@ namespace Deveel.Data.Net {
 						Logger.Warning(e);
 					}
 				}
-			} finally {
-				timer.Dispose();
+			} catch(Exception e) {
+				Logger.Error(e.Message);
 			}
 		}
 
 		protected override void OnInit() {
 			base.OnInit();
+			
+			Logger.Info("Starting node");
+			
+			try {
+				listener = new HttpListener();
+				listener.Prefixes.Add(Address.ToString());
+				//TODO: for the moment we don't use it ...
+				// listener.AuthenticationSchemes = AuthenticationSchemes.Basic;
+				listener.Start();
+			} catch (Exception e) {
+				Logger.Error("Error Starting the HTTP Listener", e);
+				throw new ApplicationException("Cannot start HTTP listener: " + e.Message, e);
+			}
+				
+			Logger.Info(String.Format("Node started listening HTTP connections on {0}", Address));
 
-			Thread thread = new Thread(Poll);
-			thread.IsBackground = true;
-			thread.Start();
+			polling = true;
+			
+			pollingThread = new Thread(Poll);
+			pollingThread.IsBackground = true;
+			pollingThread.Start();
+		}
+		
+		protected override void OnDispose(bool disposing) {
+			if (disposing) {
+				polling = false;
+				
+				if (listener != null) {
+					listener.Stop();
+					listener = null;
+				}
+			}
+			
+			base.OnDispose(disposing);
 		}
 		
 		#region HttpConnection
@@ -111,13 +119,16 @@ namespace Deveel.Data.Net {
 			public void Work(object state) {
 				HttpListenerContext context = (HttpListenerContext)state;
 				try {
-					// Read the password string from the stream,
-					string passwordCode = context.Request.Headers["Password"];
-
-					// If it doesn't match, terminate the thread immediately,
-					if (String.IsNullOrEmpty(passwordCode) ||
-					    !passwordCode.Equals(service.password))
-						return;
+					// Get the credentials if specified,
+					if (context.User != null) {
+						HttpListenerBasicIdentity identity = (HttpListenerBasicIdentity) context.User.Identity;
+						if (identity != null) {
+							string userName = identity.Name;
+							string password = identity.Password;
+								
+							//TODO: verify if they're allowed ...
+						}
+					}
 
 					// The main command dispatch loop for this connection,
 					while (true) {
@@ -184,6 +195,7 @@ namespace Deveel.Data.Net {
 						}
 						serializer.Serialize(message_out, context.Response.OutputStream);
 						context.Response.OutputStream.Flush();
+						context.Response.Close();
 					} // while (true)
 
 				} catch (IOException e) {
