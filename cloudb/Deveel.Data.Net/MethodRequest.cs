@@ -7,6 +7,8 @@ namespace Deveel.Data.Net {
 		private ArgumentList arguments;
 		private MethodResponse response;
 
+		public const string ResourceIdName = "resource-id";
+
 		internal MethodRequest(MethodType type, IPathTransaction transaction) {
 			this.type = type;
 			this.transaction = transaction;
@@ -23,6 +25,17 @@ namespace Deveel.Data.Net {
 
 		public ArgumentList Arguments {
 			get { return arguments; }
+		}
+
+		public bool HasResourceId {
+			get { return arguments.Contains(ResourceIdName); }
+		}
+
+		public object ResourceId {
+			get { 
+				MethodArgument argument = arguments[ResourceIdName];
+				return argument != null ? argument.Value : null;
+			}
 		}
 
 		public object Clone() {

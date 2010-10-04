@@ -4,6 +4,8 @@ using System.ComponentModel;
 using System.IO;
 using System.Reflection;
 
+using Deveel.Data.Diagnostics;
+
 namespace Deveel.Data.Net {
 	public abstract class PathService : Component {
 		protected PathService(IServiceAddress address, IServiceAddress managerAddress, IServiceConnector connector) {
@@ -12,6 +14,8 @@ namespace Deveel.Data.Net {
 			this.connector = connector;
 
 			network = new NetworkProfile(connector);
+
+			log = LogManager.NetworkLogger;
 		}
 
 		~PathService() {
@@ -22,6 +26,7 @@ namespace Deveel.Data.Net {
 		private readonly IServiceAddress managerAddress;
 		private readonly IServiceConnector connector;
 		private IMethodSerializer methodSerializer;
+		private Logger log;
 
 		private NetworkClient client;
 		private readonly NetworkProfile network;
@@ -43,6 +48,10 @@ namespace Deveel.Data.Net {
 
 		protected NetworkClient Client {
 			get { return client; }
+		}
+
+		protected Logger Logger {
+			get { return log; }
 		}
 
 		public IMethodSerializer MethodSerializer {
@@ -135,7 +144,7 @@ namespace Deveel.Data.Net {
 			return handler.Handler.HandleRequest(request);
 		}
 
-		protected MethodResponse HandleRequest(MethodType type, string pathName, int tid, Stream requestStream) {
+		protected MethodResponse HandleRequest(MethodType type, string pathName, string resourceId, int tid, Stream requestStream) {
 			HandlerContainer handler = GetMethodHandler(pathName);
 			if (handler == null)
 				throw new InvalidOperationException();

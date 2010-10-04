@@ -44,6 +44,12 @@ namespace Deveel.Data.Net {
 			SafeAdd(item);
 		}
 
+		public MethodArgument Add(string name, object value) {
+			MethodArgument item = new MethodArgument(name, value);
+			Add(item);
+			return item;
+		}
+
 		public void Clear() {
 			CheckReadOnly();
 			children.Clear();
@@ -53,6 +59,10 @@ namespace Deveel.Data.Net {
 			return IndexOf(item) != -1;
 		}
 
+		public bool Contains(string name) {
+			return IndexOf(name) != -1;
+		}
+
 		public void CopyTo(MethodArgument[] array, int arrayIndex) {
 			children.CopyTo(array, arrayIndex);
 		}
@@ -60,6 +70,18 @@ namespace Deveel.Data.Net {
 		public bool Remove(MethodArgument item) {
 			CheckReadOnly();
 			return children.Remove(item);
+		}
+
+		public MethodArgument Remove(string name) {
+			CheckReadOnly();
+
+			int index = IndexOf(name);
+			if (index == -1)
+				return null;
+
+			MethodArgument argument = children[index];
+			children.RemoveAt(index);
+			return argument;
 		}
 
 		public int Count {
@@ -74,6 +96,16 @@ namespace Deveel.Data.Net {
 			for (int i = 0; i < children.Count; i++) {
 				MethodArgument child = children[i];
 				if (child.Equals(item))
+					return i;
+			}
+
+			return -1;
+		}
+
+		public int IndexOf(string name) {
+			for (int i = 0; i < children.Count; i++) {
+				MethodArgument child = children[i];
+				if (child.Name.Equals(name))
 					return i;
 			}
 
@@ -96,6 +128,22 @@ namespace Deveel.Data.Net {
 			set {
 				CheckReadOnly();
 				children[index] = value;
+			}
+		}
+
+		public MethodArgument this[string name] {
+			get { 
+				int index = IndexOf(name);
+				return index == -1 ? null : children[index];
+			}
+			set {
+				CheckReadOnly();
+				int index = IndexOf(name);
+				if (index == -1) {
+					Add(value);
+				} else {
+					children[index] = value;
+				}
 			}
 		}
 

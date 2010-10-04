@@ -7,6 +7,7 @@ namespace Deveel.Data.Net {
 		private object value;
 		private readonly bool readOnly;
 		private ArgumentList children;
+		private string format;
 
 		internal MethodArgument(string name, object value, bool readOnly) {
 			this.name = name;
@@ -37,6 +38,11 @@ namespace Deveel.Data.Net {
 
 		public ArgumentList Children {
 			get { return children; }
+		}
+
+		public string Format {
+			get { return format; }
+			set { format = value; }
 		}
 
 		private void CheckReadOnly() {

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Net;
+using System.Threading;
 
 namespace Deveel.Data.Net {
 	public sealed class HttpPathService : PathService {
@@ -11,32 +12,27 @@ namespace Deveel.Data.Net {
 		public HttpPathService(HttpServiceAddress sddress, HttpServiceAddress managerAddress)
 			: base(sddress, managerAddress, new HttpServiceConnector()) {
 		}
-		
+
 		private void Poll() {
 			try {
+				polling = true;
+
 				while (polling) {
 					HttpListenerContext context;
 					try {
 						// The socket to run the service,
 						context = listener.GetContext();
 						// Make sure this ip address is allowed,
-						IPAddress ipAddress = ((IPEndPoint)context.Request.RemoteEndPoint).Address;
+						IPAddress ipAddress = null;
+						if (context.Request.RemoteEndPoint != null)
+							ipAddress = context.Request.RemoteEndPoint.Address;
 
 						Logger.Info("Connection opened with HTTP client " + ipAddress);
 
-						// Check it's allowed,
-						if (context.Request.IsLocal ||
-							IsAddressAllowed(ipAddress.ToString())) {
-							// Dispatch the connection to the thread pool,
-							HttpConnection c = new HttpConnection(this);
-							ThreadPool.QueueUserWorkItem(c.Work, context);
-						} else {
-							context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
-							context.Response.Close();
-							Logger.Error(String.Format("The client IP address {0} is not authorized", ipAddress));
-						}
-
-					} catch (IOException e) {
+						// Dispatch the connection to the thread pool,
+						HttpConnection c = new HttpConnection(this);
+						ThreadPool.QueueUserWorkItem(c.Work, context);
+					} catch(IOException e) {
 						Logger.Warning(e);
 					}
 				}
@@ -44,7 +40,7 @@ namespace Deveel.Data.Net {
 				Logger.Error(e.Message);
 			}
 		}
-		
+
 		protected override void OnInit() {
 			try {
 				listener = new HttpListener();
@@ -102,19 +98,30 @@ namespace Deveel.Data.Net {
 						MethodType methodType = (MethodType)Enum.Parse(typeof(MethodType), method, true);
 						
 						string pathName = context.Request.Url.PathAndQuery;
-						string query = null;
+						string resourceId = null;
+						int tid = -1;
+
 						int index = pathName.IndexOf('?');
 						if (index != -1) {
-							query = pathName.Substring(0, index);
+							//TODO: extract the transaction id from the query ...
 							pathName = pathName.Substring(index + 1);
 						}
+
+						index = pathName.IndexOf('/');
+						if (index != -1) {
+							resourceId = pathName.Substring(index + 1);
+							pathName = pathName.Substring(0, index);
+						}
 						
-						//TODO: Parse the query to see if we have the transaction-id ...
-						int tid = -1;
-						
-						Stream requestStream = context.Request.InputStream;
-						MethodResponse response = service.HandleRequest(type, pathName, tid, requestStream);
-						requestStream.Close();
+						Stream requestStream = null;
+						if (methodType == MethodType.Post ||
+							methodType == MethodType.Put)
+							requestStream = context.Request.InputStream;
+
+						MethodResponse response = service.HandleRequest(methodType, pathName, resourceId, tid, requestStream);
+
+						if (requestStream != null)
+							requestStream.Close();
 						
 						// Write and flush the output message,
 						Stream responseStream = context.Response.OutputStream;

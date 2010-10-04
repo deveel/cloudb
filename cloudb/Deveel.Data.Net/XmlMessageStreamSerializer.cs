@@ -25,10 +25,10 @@ namespace Deveel.Data.Net {
 		}
 		
 		string ITextMessageSerializer.ContentEncoding {
-			get { return this.Encoding.EncodingName; }
+			get { return ContentEncoding.BodyName; }
 		}
 		
-		public Encoding Encoding {
+		public Encoding ContentEncoding {
 			get { 
 				if (encoding == null)
 					encoding = Encoding.UTF8;
@@ -178,7 +178,7 @@ namespace Deveel.Data.Net {
 		
 		public MessageStream Deserialize(Stream input) {
 			//TODO: load a XML schema to validate the input?
-			StreamReader reader = new StreamReader(input, Encoding);
+			StreamReader reader = new StreamReader(input, ContentEncoding);
 			XmlReader xmlReader = new XmlTextReader(reader);
 			return Deserialize(xmlReader);
 		}
@@ -318,7 +318,7 @@ namespace Deveel.Data.Net {
 		}
 
 		public void Serialize(MessageStream messageStream, Stream output) {
-			StreamWriter streamWriter = new StreamWriter(output, Encoding);
+			StreamWriter streamWriter = new StreamWriter(output, ContentEncoding);
 			XmlTextWriter writer = new XmlTextWriter(streamWriter);
 			Serialize(messageStream, writer);
 			streamWriter.Flush();

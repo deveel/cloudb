@@ -85,10 +85,17 @@
     <Compile Include="Deveel.Data.Net\CompressedNodeSet.cs" />
     <Compile Include="Deveel.Data.Net\DataAddress.cs" />
     <Compile Include="Deveel.Data.Net\HandleAttribute.cs" />
-    <Compile Include="Deveel.Data.Net\HttpPathService.cs" />
+    <Compile Include="Deveel.Data.Net\HttpPathService.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Deveel.Data.Net\IJsonSerializable.cs" />
+    <Compile Include="Deveel.Data.Net\ITextMethodSerializer.cs" />
+    <Compile Include="Deveel.Data.Net\IXmlSerializable.cs" />
+    <Compile Include="Deveel.Data.Net\JsonMethodSerializer.cs" />
     <Compile Include="Deveel.Data.Net\TcpPathService.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Deveel.Data.Net\XmlMethodSerializer.cs" />
     <Compile Include="Deveel.Data\IPathContext.cs" />
     <Compile Include="Deveel.Data\IPathTransaction.cs" />
     <Compile Include="Deveel.Data.Net\PathService.cs">

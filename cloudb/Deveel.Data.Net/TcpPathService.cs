@@ -110,9 +110,21 @@ namespace Deveel.Data.Net {
 						}
 
 						string pathName = sb.ToString();
+						string resourceId = null;
+
+						if (reader.ReadByte() == 1) {
+							sz = reader.ReadInt32();
+							sb = new StringBuilder(sz);
+							for (int i = 0; i < sz; i++) {
+								sb.Append(reader.ReadChar());
+							}
+
+							resourceId = sb.ToString();
+						}
+
 						int tid = reader.ReadInt32();
 
-						MethodResponse response = service.HandleRequest(type, pathName, tid, socketStream);
+						MethodResponse response = service.HandleRequest(type, pathName, resourceId, tid, socketStream);
 
 						// Write and flush the output message,
 						service.MethodSerializer.SerializeResponse(response, socketStream);

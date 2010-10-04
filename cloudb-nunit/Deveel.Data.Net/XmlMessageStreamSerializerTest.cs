@@ -9,8 +9,8 @@ namespace Deveel.Data.Net {
 	public class XmlMessageStreamSerializerTest {
 		private string Serialize(MessageStream messageStream) {
 			MemoryStream outputStream = new MemoryStream();
-			XmlMessageStreamSerializer serializer = new XmlMessageStreamSerializer();
-			serializer.Serialize(messageStream, outputStream);
+			XmlMessageStreamSerializer messageSerializer = new XmlMessageStreamSerializer();
+			messageSerializer.Serialize(messageStream, outputStream);
 			outputStream.Position = 0;
 			StreamReader reader = new StreamReader(outputStream);
 			string line;
@@ -24,8 +24,8 @@ namespace Deveel.Data.Net {
 		private MessageStream Deserialize(string s) {
 			byte[] bytes = Encoding.UTF8.GetBytes(s);
 			MemoryStream inputStream = new MemoryStream(bytes);
-			XmlMessageStreamSerializer serializer = new XmlMessageStreamSerializer();
-			return serializer.Deserialize(inputStream);
+			XmlMessageStreamSerializer messageSerializer = new XmlMessageStreamSerializer();
+			return messageSerializer.Deserialize(inputStream);
 		}
 		
 		[Test]

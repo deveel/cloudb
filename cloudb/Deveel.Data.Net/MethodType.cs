@@ -1,9 +1,10 @@
 ﻿using System;
 
 namespace Deveel.Data.Net {
-	public enum MethodType {
+	public enum MethodType : byte {
 		Get = 1,
 		Put = 2,
-		Delete = 3
+		Post = 3,
+		Delete = 4
 	}
 }

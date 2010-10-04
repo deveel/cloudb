@@ -7,7 +7,7 @@ using NUnit.Framework;
 
 namespace Deveel.Data.Net {
 	[TestFixture(NetworkStoreType.FileSystem)]
-	[TestFixture(NetworkStoreType.Memory)]
+	// [TestFixture(NetworkStoreType.Memory)]
 	public sealed class TcpNetworkTest {
 		private readonly NetworkStoreType storeType;
 		private NetworkProfile networkProfile;
