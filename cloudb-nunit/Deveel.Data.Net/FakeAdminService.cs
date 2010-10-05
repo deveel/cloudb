@@ -2,9 +2,7 @@
 using System.IO;
 
 namespace Deveel.Data.Net {
-	public sealed class FakeAdminService : AdminService {
-		private ConfigSource config;
-		
+	public sealed class FakeAdminService : AdminService {		
 		public FakeAdminService(FakeServiceConnector connector, NetworkStoreType storeType)
 			: base(FakeServiceAddress.Local, connector, new FakeAdminServiceDelegator(storeType)) {
 		}
@@ -22,11 +20,6 @@ namespace Deveel.Data.Net {
 			: this(NetworkStoreType.Memory) {
 		}
 		
-		public ConfigSource Config {
-			get { return config; }
-			set { config = value; }
-		}
-
 		internal MessageStream ProcessCallback(ServiceType serviceType, MessageStream inputStream) {
 			if (serviceType == ServiceType.Admin)
 				return Processor.Process(inputStream);

@@ -5,6 +5,7 @@ namespace Deveel.Data.Net {
 		private readonly MethodRequest request;
 		private readonly IPathTransaction transaction;
 		private readonly ArgumentList arguments;
+		private MethodResponseCode code;
 
 		internal MethodResponse(MethodRequest request, IPathTransaction transaction) {
 			arguments = new ArgumentList(false);
@@ -22,6 +23,11 @@ namespace Deveel.Data.Net {
 
 		public MethodRequest Request {
 			get { return request; }
+		}
+		
+		public MethodResponseCode Code {
+			get { return code; }
+			set { code = value; }
 		}
 	}
 }

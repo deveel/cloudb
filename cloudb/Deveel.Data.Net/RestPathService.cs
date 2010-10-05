@@ -1,16 +1,17 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Threading;
 
 namespace Deveel.Data.Net {
-	public sealed class HttpPathService : PathService {
+	public sealed class RestPathService : PathService {
 		private HttpListener listener;
 		private Thread pollingThread;
 		private bool polling;
 		
-		public HttpPathService(HttpServiceAddress sddress, HttpServiceAddress managerAddress)
-			: base(sddress, managerAddress, new HttpServiceConnector()) {
+		public RestPathService(HttpServiceAddress address, IServiceAddress managerAddress, IServiceConnector connector)
+			: base(address, managerAddress, connector) {
 		}
 
 		private void Poll() {
@@ -66,9 +67,9 @@ namespace Deveel.Data.Net {
 		#region HttpConnection
 
 		private class HttpConnection {
-			private readonly HttpPathService service;
+			private readonly RestPathService service;
 
-			public HttpConnection(HttpPathService service) {
+			public HttpConnection(RestPathService service) {
 				this.service = service;
 			}
 
@@ -100,6 +101,14 @@ namespace Deveel.Data.Net {
 						string pathName = context.Request.Url.PathAndQuery;
 						string resourceId = null;
 						int tid = -1;
+						
+						if (String.IsNullOrEmpty(pathName))
+							throw new InvalidOperationException("None path specified.");
+						
+						if (pathName[0] == '/')
+							pathName = pathName.Substring(1);
+						if (pathName[pathName.Length - 1] == '/')
+							pathName = pathName.Substring(0, pathName.Length - 1);
 
 						int index = pathName.IndexOf('?');
 						if (index != -1) {
@@ -113,21 +122,49 @@ namespace Deveel.Data.Net {
 							pathName = pathName.Substring(0, index);
 						}
 						
+						Dictionary<string, object> args = null;
+						index = resourceId.IndexOf('/');
+						if (index != -1) {
+							string id = resourceId.Substring(index + 1);
+							resourceId = resourceId.Substring(0, index);
+							
+							args = new Dictionary<string, object>();
+							args["id"] = id;
+						}
+						
 						Stream requestStream = null;
 						if (methodType == MethodType.Post ||
 							methodType == MethodType.Put)
 							requestStream = context.Request.InputStream;
 
-						MethodResponse response = service.HandleRequest(methodType, pathName, resourceId, tid, requestStream);
+						MethodResponse response = service.HandleRequest(methodType, pathName, resourceId, tid, args, requestStream);
 
 						if (requestStream != null)
 							requestStream.Close();
 						
-						// Write and flush the output message,
-						Stream responseStream = context.Response.OutputStream;
-						service.MethodSerializer.SerializeResponse(response, responseStream);
-						responseStream.Flush();
-						responseStream.Close();
+						if (response.Code == MethodResponseCode.NotFound) {
+							context.Response.StatusCode = 404;
+						} else if (response.Code == MethodResponseCode.UnsupportedFormat) {
+							context.Response.StatusCode = 415;
+						} else if (response.Code == MethodResponseCode.Error) {
+							context.Response.StatusCode = 500;
+							//TODO: write down the error...
+						} else if (response.Code == MethodResponseCode.Success) {
+							if (methodType == MethodType.Post ||
+							    methodType == MethodType.Put)
+								context.Response.StatusCode = 201;
+							else if (methodType == MethodType.Delete)
+								context.Response.StatusCode = 204;
+							else
+								context.Response.StatusCode = 200;
+							
+							// Write and flush the output message,
+							Stream responseStream = context.Response.OutputStream;
+							service.MethodSerializer.SerializeResponse(response, responseStream);
+							responseStream.Flush();
+							responseStream.Close();
+						}
+						
 						context.Response.Close();
 					} // while (true)
 

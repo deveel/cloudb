@@ -1,36 +1,42 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Net;
+using System.Text;
 using System.Threading;
+using System.Xml;
 
 using Deveel.Data.Diagnostics;
-
 using NUnit.Framework;
 
 namespace Deveel.Data.Net {
 	[TestFixture(NetworkStoreType.Memory, HttpMessageFormat.Xml)]
 	[TestFixture(NetworkStoreType.Memory, HttpMessageFormat.Json)]
-	public sealed class PathServiceTest {
+	[TestFixture(NetworkStoreType.FileSystem, HttpMessageFormat.Xml)]
+	[TestFixture(NetworkStoreType.FileSystem, HttpMessageFormat.Json)]
+	public sealed class RestPathServiceTest {
 		private readonly HttpMessageFormat format;
 		private readonly NetworkStoreType storeType;
 		
 		private NetworkProfile networkProfile;
-		private HttpAdminService adminService;
-		private HttpPathService pathService;
+		private TcpAdminService adminService;
+		private RestPathService pathService;
 		private string path;
 
 		private const string PathName = "testdb";
 		private const string PathTypeName = "Deveel.Data.BasePath, cloudbase";
+		private const string NetworkPassword = "123456";
 
 		private static readonly AutoResetEvent SetupEvent = new AutoResetEvent(true);
 
-		private static readonly HttpServiceAddress Local = new HttpServiceAddress("localhost", 1587);
+		private static readonly TcpServiceAddress Local = new TcpServiceAddress("127.0.0.1", 1587);
 		private static readonly HttpServiceAddress LocalPath = new HttpServiceAddress("localhost", 1588);
 		
-		public PathServiceTest(NetworkStoreType storeType, HttpMessageFormat format) {
+		public RestPathServiceTest(NetworkStoreType storeType, HttpMessageFormat format) {
 			this.format = format;
 			this.storeType = storeType;
 		}
-
+		
 		private void Config(ConfigSource config) {
 			if (storeType == NetworkStoreType.FileSystem) {
 				path = Path.Combine(Environment.CurrentDirectory, "base");
@@ -48,7 +54,7 @@ namespace Deveel.Data.Net {
 		}
 
 		private static void SetUpPath() {
-			NetworkClient client = new NetworkClient(Local, new HttpServiceConnector());
+			NetworkClient client = new NetworkClient(Local, new TcpServiceConnector(NetworkPassword));
 			client.Connect();
 
 			DbSession session = new DbSession(client, PathName);
@@ -120,6 +126,32 @@ namespace Deveel.Data.Net {
 			throw new NotSupportedException();
 		}
 		
+		private static TableResponse ReadXmlResponse(StreamReader reader) {
+			XmlDocument xmlDoc = new XmlDocument();
+			xmlDoc.Load(reader);
+			
+			string resourceName = xmlDoc.DocumentElement.LocalName;
+			TableResponse response = new TableResponse(resourceName);
+			
+			foreach(XmlElement rowElem in xmlDoc.DocumentElement.ChildNodes) {
+				int rowid = Int32.Parse(rowElem.Attributes["id"].Value);
+				
+				TableRow row = new TableRow(rowid);
+				
+				foreach(XmlElement valueElem in rowElem.ChildNodes) {
+					row.Values[valueElem.LocalName] = valueElem.Value;
+				}
+				
+				response.Rows[rowid] = row;
+			}
+			
+			return response;
+		}
+		
+		private static TableResponse ReadJsonResponse(StreamReader reader) {
+			throw new NotImplementedException();
+		}
+		
 		[SetUp]
 		public void SetUp() {
 			SetupEvent.WaitOne();
@@ -137,19 +169,19 @@ namespace Deveel.Data.Net {
 				delegator = new FileAdminServiceDelegator(path);
 			}
 
-			adminService = new HttpAdminService(delegator, Local);
+			adminService = new TcpAdminService(delegator, Local, NetworkPassword);
 			adminService.Config = netConfig;
 			adminService.Init();
 
-			networkProfile = new NetworkProfile(new HttpServiceConnector("foo", "foo"));
+			networkProfile = new NetworkProfile(new TcpServiceConnector(NetworkPassword));
 			networkProfile.Configuration = netConfig;
 			
 			// start a network to test in-memory ...
-			networkProfile.StartService(FakeServiceAddress.Local, ServiceType.Manager);
-			networkProfile.StartService(FakeServiceAddress.Local, ServiceType.Root);
-			networkProfile.RegisterRoot(FakeServiceAddress.Local);
-			networkProfile.StartService(FakeServiceAddress.Local, ServiceType.Block);
-			networkProfile.RegisterBlock(FakeServiceAddress.Local);
+			networkProfile.StartService(Local, ServiceType.Manager);
+			networkProfile.StartService(Local, ServiceType.Root);
+			networkProfile.RegisterRoot(Local);
+			networkProfile.StartService(Local, ServiceType.Block);
+			networkProfile.RegisterBlock(Local);
 
 			// Add the path ...
 			networkProfile.AddPath(Local, PathName, PathTypeName);
@@ -157,7 +189,7 @@ namespace Deveel.Data.Net {
 
 			SetUpPath();
 
-			pathService = new HttpPathService(LocalPath, Local);
+			pathService = new RestPathService(LocalPath, Local, new TcpServiceConnector(NetworkPassword));
 			pathService.MethodSerializer = GetMethodSerializer();
 			pathService.Init();
 
@@ -177,7 +209,69 @@ namespace Deveel.Data.Net {
 		}
 
 		[Test]
-		public void TestGet() {
+		public void GetAll() {
+			StringBuilder sb = new StringBuilder(LocalPath.ToUri().ToString());
+			sb.Append(PathName);
+			sb.Append("/");
+			sb.Append("comics");
+			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(sb.ToString());
+			request.Method = "GET";
+			
+			HttpWebResponse response = (HttpWebResponse) request.GetResponse();
+			Assert.IsTrue(response.StatusCode == HttpStatusCode.OK);
+			
+			TableResponse table;
+			using (StreamReader reader = new StreamReader(response.GetResponseStream())) {
+				if (format == HttpMessageFormat.Xml) {
+					table = ReadXmlResponse(reader);
+				} else {
+					table = ReadJsonResponse(reader);
+				}
+			}
+			
+			Assert.AreEqual("comics", table.ResourceName);
+			Assert.AreEqual(5, table.Rows.Count);
+			
+			foreach(TableRow row in table.Rows.Values) {
+				Assert.AreEqual(4, row.Values.Count);
+				Assert.IsTrue(row.Values.ContainsKey("name"));
+				Assert.IsTrue(row.Values.ContainsKey("editor"));
+				Assert.IsTrue(row.Values.ContainsKey("issue"));
+				Assert.IsTrue(row.Values.ContainsKey("year"));
+			}
 		}
+		
+		[Test]
+		public void GetOne() {
+			
+		}
+		
+		#region TableRow
+		
+		public class TableRow {
+			private readonly int id;
+			public readonly Dictionary<string, string> Values;
+			
+			public TableRow(int id) {
+				this.id = id;
+				Values = new Dictionary<string, string>();
+			}
+		}
+		
+		#endregion
+		
+		#region Table Response
+		
+		public class TableResponse {
+			public readonly string ResourceName;
+			public readonly Dictionary<int, TableRow> Rows;
+			
+			public TableResponse(string resourceName) {
+				ResourceName = resourceName;
+				Rows = new Dictionary<int, RestPathServiceTest.TableRow>();
+			}
+		}
+		
+		#endregion
 	}
 }

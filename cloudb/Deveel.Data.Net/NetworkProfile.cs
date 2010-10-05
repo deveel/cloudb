@@ -12,7 +12,7 @@ namespace Deveel.Data.Net {
 
 		private NetworkConfigSource network_config;
 		private readonly IServiceConnector network_connector;
-		private List<MachineProfile> machine_profiles;
+		private List<MachineProfile> machine_profiles = null;
 
 		public NetworkConfigSource Configuration {
 			get { return network_config; }

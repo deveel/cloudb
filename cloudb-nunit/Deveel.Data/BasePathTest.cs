@@ -23,7 +23,7 @@ namespace Deveel.Data {
 		[SetUp]
 		public void SetUp() {
 			adminService = new FakeAdminService(storeType);
-			ConfigSource config = new ConfigSource();
+			NetworkConfigSource config = new NetworkConfigSource();
 
 			if (storeType == NetworkStoreType.FileSystem) {
 				string path = Path.Combine(Environment.CurrentDirectory, "base");
@@ -417,7 +417,7 @@ namespace Deveel.Data {
 		
 		[Test]
 		public void TestInsertAndUpdateData() {
-						networkProfile.AddPath(FakeServiceAddress.Local, PathName, PathTypeName);
+			networkProfile.AddPath(FakeServiceAddress.Local, PathName, PathTypeName);
 			networkProfile.Refresh();
 
 			PathProfile[] pathProfiles = networkProfile.GetPathsFromRoot(FakeServiceAddress.Local);

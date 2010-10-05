@@ -12,8 +12,12 @@ namespace Deveel.Data.Net {
 			this.address = address;
 			this.managerAddress = managerAddress;
 			this.connector = connector;
+			
+			NetworkConfigSource netConfig = new NetworkConfigSource();
+			netConfig.AddNetworkNode(managerAddress);
 
 			network = new NetworkProfile(connector);
+			network.Configuration = netConfig;
 
 			log = LogManager.NetworkLogger;
 		}
@@ -68,7 +72,7 @@ namespace Deveel.Data.Net {
 		}
 
 		private void ScanForHandlers() {
-			if (handlers.Count == 0)
+			if (handlers.Count != 0)
 				return;
 
 			Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
@@ -90,6 +94,8 @@ namespace Deveel.Data.Net {
 		}
 
 		private void GetPathProfiles() {
+			network.Refresh();
+			
 			PathProfile[] profiles = network.GetPaths();
 			for (int i = 0; i < profiles.Length; i++) {
 				PathProfile path = profiles[i];
@@ -124,30 +130,46 @@ namespace Deveel.Data.Net {
 		protected virtual void OnInit() {
 		}
 
-		private MethodRequest GetMethodRequest(MethodType type, IPathTransaction transaction, Stream requestStream) {
+		private MethodRequest GetMethodRequest(MethodType type, IPathTransaction transaction, object resourceId, IDictionary<string, object> args, Stream requestStream) {
 			MethodRequest request = new MethodRequest(type, transaction);
-			MethodSerializer.DeserializeRequest(request, requestStream);
+			if (requestStream != null)
+				MethodSerializer.DeserializeRequest(request, requestStream);
+			if (resourceId != null)
+				request.Arguments.Add(MethodRequest.ResourceIdName, resourceId);
+			if (args != null) {
+				foreach(KeyValuePair<string, object> pair in args) {
+					request.Arguments.Add(pair.Key, pair.Value);
+				}
+			}
 			request.Arguments.Seal();
 			return request;
 		}
 
-		protected MethodResponse HandleRequest(MethodType type, IPathTransaction transaction, Stream requestStream) {
+		protected MethodResponse HandleRequest(MethodType type, IPathTransaction transaction, object resourceId, IDictionary<string, object> args, Stream requestStream) {
 			if (transaction == null)
 				throw new ArgumentNullException("transaction");
 
 			string pathName = transaction.Context.PathName;
 			HandlerContainer handler = GetMethodHandler(pathName);
 			if (handler == null)
-				throw new InvalidOperationException();
+				throw new InvalidOperationException("No handler was found for the path '" + pathName + "' in this context.");
 
-			MethodRequest request = GetMethodRequest(type, transaction, requestStream);
+			MethodRequest request = GetMethodRequest(type, transaction, resourceId, args, requestStream);
 			return handler.Handler.HandleRequest(request);
 		}
+		
+		protected MethodResponse HandleRequest(MethodType type, IPathTransaction transaction, object resourceId, Stream requestStream) {
+			return HandleRequest(type, transaction, resourceId, null, requestStream);
+		}
+		
+		protected MethodResponse HandleRequest(MethodType type, string pathName, object resourceId, int tid, Stream requestStream) {
+			return HandleRequest(type, pathName, resourceId, tid, null, requestStream);
+		}
 
-		protected MethodResponse HandleRequest(MethodType type, string pathName, string resourceId, int tid, Stream requestStream) {
+		protected MethodResponse HandleRequest(MethodType type, string pathName, object resourceId, int tid, IDictionary<string, object> args, Stream requestStream) {
 			HandlerContainer handler = GetMethodHandler(pathName);
 			if (handler == null)
-				throw new InvalidOperationException();
+				throw new InvalidOperationException("None handler was found for the path '" + pathName + "' within this context.");
 
 			if (tid != -1) {
 				PathTransaction transaction = handler.GetTransaction(tid);
@@ -157,19 +179,23 @@ namespace Deveel.Data.Net {
 				if (transaction.Context.PathName != pathName)
 					throw new InvalidOperationException();
 
-				return HandleRequest(type, transaction, requestStream);
+				return HandleRequest(type, transaction, resourceId, args, requestStream);
 			}
 
-			return HandleRequest(type, pathName, requestStream);
+			return HandleRequest(type, pathName, resourceId, args, requestStream);
+		}
+		
+		protected MethodResponse HandleRequest(MethodType type, string pathName, object resourceId, Stream requestStream) {
+			return HandleRequest(type, pathName, resourceId, null, requestStream);
 		}
 
-		protected MethodResponse HandleRequest(MethodType type, string pathName, Stream requestStream) {
+		protected MethodResponse HandleRequest(MethodType type, string pathName, object resourceId, IDictionary<string, object> args, Stream requestStream) {
 			HandlerContainer handler = GetMethodHandler(pathName);
 			if (handler == null)
 				throw new InvalidOperationException();
 
 			PathTransaction transaction = handler.CreateTransaction(pathName);
-			return HandleRequest(type, transaction, requestStream);
+			return HandleRequest(type, transaction, resourceId, args, requestStream);
 		}
 
 		protected IPathTransaction CreateTransaction(string pathName) {

@@ -9,6 +9,7 @@ namespace Deveel.Data {
 		private readonly int id;
 		private readonly NetworkClient client;
 		private readonly string path;
+		private readonly object resourceId;
 		private volatile bool checkDone;
 
 		private static int SessionCounter = -1;
@@ -22,7 +23,7 @@ namespace Deveel.Data {
 		public string PathName {
 			get { return path; }
 		}
-
+		
 		public NetworkClient Client {
 			get { return client; }
 		}

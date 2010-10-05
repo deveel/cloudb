@@ -31,7 +31,7 @@ namespace Deveel.Data.Net {
 		[SetUp]
 		public void SetUp() {
 			adminService = new FakeAdminService(storeType);
-			ConfigSource config = new ConfigSource();
+			NetworkConfigSource config = new NetworkConfigSource();
 			Config(config);
 			adminService.Config = config;
 			adminService.Init();

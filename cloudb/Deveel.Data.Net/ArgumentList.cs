@@ -11,10 +11,30 @@ namespace Deveel.Data.Net {
 
 		private bool readOnly;
 		private List<MethodArgument> children;
+		private string[] keys;
+		
+		public string[] Names {
+			get {
+				if (keys == null) {
+					List<string> c = new List<string>(Count);
+					for (int i = 0; i < children.Count; i++) {
+						string name = children[i];
+						if (!c.Contains(name))
+							c.Add(name);
+					}
+					
+					keys = c.ToArray();
+				}
+				
+				return keys;
+			}
+		}
 
 		private void CheckReadOnly() {
 			if (readOnly)
 				throw new InvalidOperationException("The list is read-only.");
+			
+			keys = null;
 		}
 
 		private void CheckHasChild(MethodArgument arg) {
@@ -72,16 +92,31 @@ namespace Deveel.Data.Net {
 			return children.Remove(item);
 		}
 
-		public MethodArgument Remove(string name) {
+		public bool Remove(string name) {
 			CheckReadOnly();
 
+			int removeCount = 0;
+			for(int i = children.Count - 1; i > 0; i--) {
+				MethodArgument arg = children[i];
+				if (arg.Name.Equals(name)) {
+					children.RemoveAt(i);
+					removeCount++;
+				}
+			}
+						
+			return removeCount > 0;
+		}
+		
+		public MethodArgument RemoveFirst(string name) {
+			CheckReadOnly();
+			
 			int index = IndexOf(name);
 			if (index == -1)
 				return null;
-
-			MethodArgument argument = children[index];
+			
+			MethodArgument arg = children[index];
 			children.RemoveAt(index);
-			return argument;
+			return arg;
 		}
 
 		public int Count {
@@ -145,6 +180,17 @@ namespace Deveel.Data.Net {
 					children[index] = value;
 				}
 			}
+		}
+		
+		public MethodArgument[] GetArguments(string name) {
+			List<MethodArgument> args = new List<MethodArgument>(Count);
+			for(int i = 0; i < children.Count; i++) {
+				MethodArgument arg = children[i];
+				if (arg.Name.Equals(name))
+					args.Add(arg);
+			}
+			
+			return args.ToArray();
 		}
 
 		public object Clone() {
