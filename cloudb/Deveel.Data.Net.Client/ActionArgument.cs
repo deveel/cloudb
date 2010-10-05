@@ -1,26 +1,28 @@
 ﻿using System;
 using System.Globalization;
 
-namespace Deveel.Data.Net {
-	public sealed class MethodArgument : ICloneable, IConvertible {
+namespace Deveel.Data.Net.Client {
+	public sealed class ActionArgument : ICloneable, IConvertible, IAttributesHandler {
 		private readonly string name;
 		private object value;
-		private readonly bool readOnly;
-		private ArgumentList children;
+		private bool readOnly;
+		private ActionArguments children;
+		private ActionAttributes attributes;
 		private string format;
 
-		internal MethodArgument(string name, object value, bool readOnly) {
+		internal ActionArgument(string name, object value, bool readOnly) {
 			this.name = name;
 			this.value = value;
 			this.readOnly = readOnly;
-			children = new ArgumentList(readOnly);
+			children = new ActionArguments(readOnly);
+			attributes = new ActionAttributes(this);
 		}
 
-		public MethodArgument(string name, object value)
+		public ActionArgument(string name, object value)
 			: this(name, value, false) {
 		}
 
-		public MethodArgument(string name)
+		public ActionArgument(string name)
 			: this(name, null) {
 		}
 
@@ -36,8 +38,16 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		public ArgumentList Children {
+		public ActionArguments Children {
 			get { return children; }
+		}
+
+		public ActionAttributes Attributes {
+			get { return attributes; }
+		}
+
+		bool IAttributesHandler.IsReadOnly {
+			get { return readOnly; }
 		}
 
 		public string Format {
@@ -55,8 +65,9 @@ namespace Deveel.Data.Net {
 			if (newValue is ICloneable)
 				newValue = ((ICloneable) newValue).Clone();
 
-			MethodArgument arg = new MethodArgument(Name, newValue, readOnly);
-			arg.children = (ArgumentList) children.Clone();
+			ActionArgument arg = new ActionArgument(Name, newValue, readOnly);
+			arg.children = (ActionArguments) children.Clone();
+			arg.attributes = (ActionAttributes) attributes.Clone();
 			return arg;
 		}
 
@@ -194,6 +205,10 @@ namespace Deveel.Data.Net {
 
 		public object ToType(Type conversionType, IFormatProvider provider) {
 			throw new NotImplementedException();
+		}
+
+		internal void Seal() {
+			readOnly = true;
 		}
 	}
 }

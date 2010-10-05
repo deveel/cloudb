@@ -37,6 +37,13 @@ namespace Deveel.Data {
 				return new DbRow(table, cursor.Current);
 			}
 		}
+
+		public long CurrentRowId {
+			get {
+				CheckVersion();
+				return cursor.Current;
+			}
+		}
 		
 		object System.Collections.IEnumerator.Current {
 			get { return Current; }

@@ -1,13 +1,14 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
-namespace Deveel.Data.Net {
-	public class TcpPathService : PathService {
-		public TcpPathService(IServiceAddress address, TcpServiceAddress managerAddress, string password) 
+namespace Deveel.Data.Net.Client {
+	public class BinaryPathClientService : PathClientService {
+		public BinaryPathClientService(IServiceAddress address, TcpServiceAddress managerAddress, string password) 
 			: base(address, managerAddress, new TcpServiceConnector(password)) {
 		}
 
@@ -78,9 +79,9 @@ namespace Deveel.Data.Net {
 		#region TcpConnection
 
 		private class TcpConnection {
-			private readonly TcpPathService service;
+			private readonly BinaryPathClientService service;
 
-			public TcpConnection(TcpPathService service) {
+			public TcpConnection(BinaryPathClientService service) {
 				this.service = service;
 			}
 
@@ -102,15 +103,16 @@ namespace Deveel.Data.Net {
 					//TODO: challenge for authentication ...
 
 					while (true) {
-						MethodType type = (MethodType) reader.ReadByte();
+						RequestType type = (RequestType) reader.ReadByte();
 						int sz = reader.ReadInt32();
 						StringBuilder sb = new StringBuilder(sz);
 						for (int i = 0; i < sz; i++) {
 							sb.Append(reader.ReadChar());
 						}
 
+						Dictionary<string,object> args = new Dictionary<string, object>();
+
 						string pathName = sb.ToString();
-						string resourceId = null;
 
 						if (reader.ReadByte() == 1) {
 							sz = reader.ReadInt32();
@@ -119,23 +121,25 @@ namespace Deveel.Data.Net {
 								sb.Append(reader.ReadChar());
 							}
 
-							resourceId = sb.ToString();
+							args[ActionRequest.ResourceIdName] = sb.ToString();
 						}
 
 						int tid = reader.ReadInt32();
+						if (!String.IsNullOrEmpty(service.TransactionIdKey))
+							args[service.TransactionIdKey] = tid;
 
-						MethodResponse response = service.HandleRequest(type, pathName, resourceId, tid, socketStream);
+						ActionResponse response = service.HandleRequest(type, pathName, args, socketStream);
 
 						// Write and flush the output message,
-						service.MethodSerializer.SerializeResponse(response, socketStream);
+						service.ActionSerializer.SerializeResponse(response, socketStream);
 						socketStream.Flush();
 
 					} // while (true)
 
 				} catch (IOException e) {
 					if (e is EndOfStreamException ||
-						(e.InnerException is SocketException &&
-						((SocketException)e.InnerException).ErrorCode == (int)SocketError.ConnectionReset)) {
+					    (e.InnerException is SocketException &&
+					     ((SocketException)e.InnerException).ErrorCode == (int)SocketError.ConnectionReset)) {
 						// Ignore this one also,
 					} else {
 						//TODO: ERROR log ...

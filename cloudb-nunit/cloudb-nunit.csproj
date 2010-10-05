@@ -68,6 +68,7 @@
   <ItemGroup>
     <Compile Include="Deveel.Data.Diagnostics\SimpleConsoleLogger.cs" />
     <Compile Include="Deveel.Data.Net\FakeAdminService.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="Deveel.Data.Net\HttpMessageFormat.cs" />
     <Compile Include="Deveel.Data.Net\HttpNetworkTest.cs" />

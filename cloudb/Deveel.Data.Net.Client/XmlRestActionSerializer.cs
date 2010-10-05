@@ -4,9 +4,18 @@ using System.IO;
 using System.Text;
 using System.Xml;
 
-namespace Deveel.Data.Net {
-	public sealed class XmlMethodSerializer : ITextMethodSerializer {
-		private Encoding encoding;
+namespace Deveel.Data.Net.Client {
+	public sealed class XmlRestActionSerializer : XmlActionSerializer {
+		public XmlRestActionSerializer(string encoding)
+			: base(encoding) {
+		}
+
+		public XmlRestActionSerializer(Encoding encoding)
+			: base(encoding) {
+		}
+
+		public XmlRestActionSerializer() {
+		}
 
 		private static string ReadString(XmlReader reader) {
 			string value = null;
@@ -65,7 +74,7 @@ namespace Deveel.Data.Net {
 			string value = null;
 			if (reader.Read()) {
 				if (reader.NodeType == XmlNodeType.Attribute &&
-							reader.LocalName == "format") {
+				    reader.LocalName == "format") {
 					format = reader.Value;
 					if (!reader.Read())
 						throw new FormatException("The dateTime element is not properly formatted.");
@@ -93,7 +102,7 @@ namespace Deveel.Data.Net {
 			if (valueType == "bool")
 				return ReadBoolean(reader);
 			if (String.IsNullOrEmpty(valueType) || 
-				valueType == "string")
+			    valueType == "string")
 				return ReadString(reader);
 			if (valueType == "int")
 				return ReadInt(reader);
@@ -221,12 +230,7 @@ namespace Deveel.Data.Net {
 			return value;
 		}
 
-		public void DeserializeRequest(MethodRequest request, Stream input) {
-			XmlTextReader reader = new XmlTextReader(new StreamReader(input, ContentEncoding));
-			DeserializeRequest(request, reader);
-		}
-
-		public void DeserializeRequest(MethodRequest request, XmlReader reader) {
+		public override void DeserializeRequest(ActionRequest request, XmlReader reader) {
 			while (reader.Read()) {
 				XmlNodeType nodeType = reader.NodeType;
 				//TODO: should we take the 'encoding' attribute?
@@ -234,7 +238,7 @@ namespace Deveel.Data.Net {
 					continue;
 
 				if (nodeType == XmlNodeType.Comment ||
-					nodeType == XmlNodeType.Whitespace)
+				    nodeType == XmlNodeType.Whitespace)
 					continue;
 
 				if (nodeType == XmlNodeType.Element) {
@@ -244,25 +248,21 @@ namespace Deveel.Data.Net {
 
 					object value = ReadValue(reader);
 
-					request.Arguments.Add(new MethodArgument(elementName, value));
+					request.Arguments.Add(new ActionArgument(elementName, value));
 				} else if (nodeType == XmlNodeType.EndElement) {
 					break;
 				}
 			}
 		}
 
-		public void SerializeResponse(MethodResponse response, Stream output) {
-			SerializeResponse(response, new XmlTextWriter(output, ContentEncoding));
-		}
-
-		public void SerializeResponse(MethodResponse response, XmlWriter writer) {
+		public override void SerializeResponse(ActionResponse response, XmlWriter writer) {
 			writer.WriteStartDocument(true);
 			writer.WriteAttributeString("encoding", ContentEncoding.BodyName);
 			writer.WriteEndDocument();
 
 			writer.WriteStartElement("response");
 
-			foreach(MethodArgument argument in response.Arguments) {
+			foreach(ActionArgument argument in response.Arguments) {
 				WriteArgument(writer, argument, true);
 			}
 
@@ -300,7 +300,7 @@ namespace Deveel.Data.Net {
 			return GetValueType(type);
 		}
 
-		private static void WriteArgument(XmlWriter writer, MethodArgument argument, bool printType) {
+		private static void WriteArgument(XmlWriter writer, ActionArgument argument, bool printType) {
 			writer.WriteStartElement(argument.Name);			
 
 			object value = argument.Value;
@@ -317,7 +317,7 @@ namespace Deveel.Data.Net {
 				int length = array.GetLength(0);
 				for (int i = 0; i < length; i++) {
 					// this is an ugly hack, but speeds work ...
-					WriteArgument(writer, new MethodArgument(elemType, array.GetValue(i)), false);
+					WriteArgument(writer, new ActionArgument(elemType, array.GetValue(i)), false);
 				}
 			} else {
 				if (value is DateTime) {
@@ -334,28 +334,6 @@ namespace Deveel.Data.Net {
 			}
 
 			writer.WriteEndElement();
-		}
-
-		string ITextMethodSerializer.ContentEncoding {
-			get { return encoding.BodyName; }
-		}
-
-		public Encoding ContentEncoding {
-			get {
-				if (encoding == null)
-					encoding = Encoding.UTF8;
-				return encoding;
-			}
-			set {
-				if (value == null)
-					throw new ArgumentNullException("value");
-
-				encoding = value;
-			}
-		}
-
-		string ITextMethodSerializer.ContentType {
-			get { return "text/xml"; }
 		}
 	}
 }

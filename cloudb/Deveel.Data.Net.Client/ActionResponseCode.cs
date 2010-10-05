@@ -1,7 +1,7 @@
 ﻿using System;
 
-namespace Deveel.Data.Net {
-	public enum MethodResponseCode {
+namespace Deveel.Data.Net.Client {
+	public enum ActionResponseCode {
 		Success,
 		NotFound,
 		UnsupportedFormat,

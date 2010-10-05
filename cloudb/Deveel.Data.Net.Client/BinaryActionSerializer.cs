@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace Deveel.Data.Net {
-	public sealed class BinaryMethodSerializer : IMethodSerializer {
+namespace Deveel.Data.Net.Client {
+	public sealed class BinaryActionSerializer : IActionSerializer {
 		private static readonly Dictionary<byte, Type> typeCodes;
 
-		static BinaryMethodSerializer() {
+		static BinaryActionSerializer() {
 			typeCodes = new Dictionary<byte, Type>();
 			typeCodes[0] = typeof(DBNull);
 
@@ -95,12 +95,12 @@ namespace Deveel.Data.Net {
 			throw new FormatException();
 		}
 
-		private static MethodArgument ReadArgument(BinaryReader reader) {
+		private static ActionArgument ReadArgument(BinaryReader reader) {
 			string argName = reader.ReadString();
 			byte argType = reader.ReadByte();
 			object value = ReadValue(reader, argType);
 
-			MethodArgument argument = new MethodArgument(argName, value);
+			ActionArgument argument = new ActionArgument(argName, value);
 
 			int sz = reader.ReadInt32();
 
@@ -110,11 +110,11 @@ namespace Deveel.Data.Net {
 			return argument;
 		}
 
-		public void DeserializeRequest(MethodRequest request, Stream input) {
+		public void DeserializeRequest(ActionRequest request, Stream input) {
 			DeserializeRequest(request, new BinaryReader(input));
 		}
 
-		public void DeserializeRequest(MethodRequest request, BinaryReader reader) {
+		public void DeserializeRequest(ActionRequest request, BinaryReader reader) {
 			int sz = reader.ReadInt32();
 			for (int i = 0; i < sz; i++)
 				request.Arguments.Add(ReadArgument(reader));
@@ -124,14 +124,14 @@ namespace Deveel.Data.Net {
 				throw new FormatException();
 		}
 
-		public void SerializeResponse(MethodResponse response, Stream output) {
+		public void SerializeResponse(ActionResponse response, Stream output) {
 			SerializeResponse(response, new BinaryWriter(new BufferedStream(output)));
 		}
 
-		public void SerializeResponse(MethodResponse response, BinaryWriter writer) {
+		public void SerializeResponse(ActionResponse response, BinaryWriter writer) {
 			int sz = response.Arguments.Count;
 			for (int i = 0; i < sz; i++) {
-				MethodArgument argument = response.Arguments[i];
+				ActionArgument argument = response.Arguments[i];
 				WriteArgument(argument, writer);
 			}
 
@@ -189,7 +189,7 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		private static void WriteArgument(MethodArgument argument, BinaryWriter writer) {
+		private static void WriteArgument(ActionArgument argument, BinaryWriter writer) {
 			writer.Write(argument.Name);
 			WriteValue(argument.Value, writer);
 		}

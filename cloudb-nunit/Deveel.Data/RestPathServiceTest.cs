@@ -7,6 +7,8 @@ using System.Threading;
 using System.Xml;
 
 using Deveel.Data.Diagnostics;
+using Deveel.Data.Net.Client;
+
 using NUnit.Framework;
 
 namespace Deveel.Data.Net {
@@ -20,7 +22,7 @@ namespace Deveel.Data.Net {
 		
 		private NetworkProfile networkProfile;
 		private TcpAdminService adminService;
-		private RestPathService pathService;
+		private RestPathClientService pathService;
 		private string path;
 
 		private const string PathName = "testdb";
@@ -118,11 +120,11 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		private IMethodSerializer GetMethodSerializer() {
+		private IActionSerializer GetMethodSerializer() {
 			if (format == HttpMessageFormat.Json)
 				throw new NotSupportedException();
 			if (format == HttpMessageFormat.Xml)
-				return new XmlMethodSerializer();
+				return new XmlRestActionSerializer();
 			throw new NotSupportedException();
 		}
 		
@@ -189,8 +191,8 @@ namespace Deveel.Data.Net {
 
 			SetUpPath();
 
-			pathService = new RestPathService(LocalPath, Local, new TcpServiceConnector(NetworkPassword));
-			pathService.MethodSerializer = GetMethodSerializer();
+			pathService = new RestPathClientService(LocalPath, Local, new TcpServiceConnector(NetworkPassword));
+			pathService.ActionSerializer = GetMethodSerializer();
 			pathService.Init();
 
 			SetupEvent.Set();

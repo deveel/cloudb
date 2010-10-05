@@ -70,10 +70,18 @@
     <Compile Include="Deveel.Data.Diagnostics\LogEntry.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LogManager.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LogWriter.cs" />
+    <Compile Include="Deveel.Data.Net.Client\ActionAttributes.cs" />
+    <Compile Include="Deveel.Data.Net.Client\BinaryRpcActionSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Client\IAttributesHandler.cs" />
+    <Compile Include="Deveel.Data.Net.Client\IPathClientAuthorize.cs" />
+    <Compile Include="Deveel.Data.Net.Client\JsonRestActionSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Client\PathClientAuthorizeDelegate.cs" />
+    <Compile Include="Deveel.Data.Net.Client\RestFormat.cs" />
+    <Compile Include="Deveel.Data.Net.Client\XmlRpcActionSerializer.cs" />
     <Compile Include="Deveel.Data.Net\AdminService.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Deveel.Data.Net\BinaryMethodSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Client\BinaryActionSerializer.cs" />
     <Compile Include="Deveel.Data.Net\BlockReadException.cs" />
     <Compile Include="Deveel.Data.Net\BlockService.cs">
       <SubType>Component</SubType>
@@ -85,21 +93,22 @@
     <Compile Include="Deveel.Data.Net\CompressedNodeSet.cs" />
     <Compile Include="Deveel.Data.Net\DataAddress.cs" />
     <Compile Include="Deveel.Data.Net\HandleAttribute.cs" />
-    <Compile Include="Deveel.Data.Net\MethodResponseCode.cs" />
-    <Compile Include="Deveel.Data.Net\RestPathService.cs">
+    <Compile Include="Deveel.Data.Net.Client\ActionResponseCode.cs" />
+    <Compile Include="Deveel.Data.Net.Client\RestPathClientService.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Deveel.Data.Net\IJsonSerializable.cs" />
-    <Compile Include="Deveel.Data.Net\ITextMethodSerializer.cs" />
-    <Compile Include="Deveel.Data.Net\IXmlSerializable.cs" />
-    <Compile Include="Deveel.Data.Net\JsonMethodSerializer.cs" />
-    <Compile Include="Deveel.Data.Net\BinaryPathService.cs">
+    <Compile Include="Deveel.Data.Net.Client\ITextActionSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Client\IXmlSerializable.cs" />
+    <Compile Include="Deveel.Data.Net.Client\JsonActionSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Client\BinaryPathClientService.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Deveel.Data.Net\XmlMethodSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Client\XmlRestActionSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Client\XmlActionSerializer.cs" />
     <Compile Include="Deveel.Data\IPathContext.cs" />
     <Compile Include="Deveel.Data\IPathTransaction.cs" />
-    <Compile Include="Deveel.Data.Net\PathService.cs">
+    <Compile Include="Deveel.Data.Net.Client\PathClientService.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Deveel.Data.Net\FileAdminServiceDelegator.cs" />
@@ -122,16 +131,16 @@
     <Compile Include="Deveel.Data.Net\IBlockStore.cs" />
     <Compile Include="Deveel.Data.Net\HttpServiceAddress.cs" />
     <Compile Include="Deveel.Data.Net\IMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net\IMethodHandler.cs" />
-    <Compile Include="Deveel.Data.Net\IMethodSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Client\IRequestHandler.cs" />
+    <Compile Include="Deveel.Data.Net.Client\IActionSerializer.cs" />
     <Compile Include="Deveel.Data.Net\ITextMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net\JsonMessageStreamSerializer.cs" />
     <Compile Include="Deveel.Data.Net\MemoryAdminServiceDelegator.cs" />
-    <Compile Include="Deveel.Data.Net\MethodArgument.cs" />
-    <Compile Include="Deveel.Data.Net\ArgumentList.cs" />
-    <Compile Include="Deveel.Data.Net\MethodRequest.cs" />
-    <Compile Include="Deveel.Data.Net\MethodResponse.cs" />
-    <Compile Include="Deveel.Data.Net\MethodType.cs" />
+    <Compile Include="Deveel.Data.Net.Client\ActionArgument.cs" />
+    <Compile Include="Deveel.Data.Net.Client\ActionArguments.cs" />
+    <Compile Include="Deveel.Data.Net.Client\ActionRequest.cs" />
+    <Compile Include="Deveel.Data.Net.Client\ActionResponse.cs" />
+    <Compile Include="Deveel.Data.Net.Client\RequestType.cs" />
     <Compile Include="Deveel.Data.Net\ServiceStatus.cs" />
     <Compile Include="Deveel.Data.Net\XmlMessageStreamSerializer.cs" />
     <Compile Include="Deveel.Data\IIndexCursor.cs" />

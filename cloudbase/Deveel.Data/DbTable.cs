@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 
 using Deveel.Data.Store;
 
@@ -359,6 +358,20 @@ namespace Deveel.Data {
 			newRow = new DbRow(this, -1);
 			return newRow;
 		}
+
+		internal bool RowExists(long rowid) {
+			SortedIndex rowIndex = new SortedIndex(GetFile(RowIndexKey));
+			return rowIndex.ContainsSortKey(rowid);
+		}
+
+		public DbRow GetRow(long rowid) {
+			// Check row is currently indexed,
+			SortedIndex rowIndex = new SortedIndex(GetFile(RowIndexKey));
+			if (!rowIndex.ContainsSortKey(rowid))
+				throw new ApplicationException("Row to get is not in the table");
+
+			return new DbRow(this, rowid);
+		}
 		
 		public void Insert(DbRow row) {
 			if (row.RowId != -1)
@@ -432,11 +445,14 @@ namespace Deveel.Data {
 		
 		public void Delete(DbRow row) {
 			long rowid = row.RowId;
-			
+			Delete(rowid);
+		}
+
+		public void Delete(long rowid) {
 			SortedIndex row_set = new SortedIndex(GetFile(RowIndexKey));
 			if (!row_set.ContainsSortKey(rowid))
 				throw new ArgumentException("Row being deleted is not in the table");
-			
+
 			// Remove the row from the main index,
 			RemoveRowFromRowSet(rowid);
 			// Remove the row from any indexes defined on the table,
@@ -444,7 +460,7 @@ namespace Deveel.Data {
 			// Delete the row file
 			DataFile row_df = GetFile(GetRowIdKey(rowid));
 			row_df.Delete();
-			
+
 			// Add this event to the transaction log
 			OnTransactionEvent("deleteRow", rowid);
 			++version;

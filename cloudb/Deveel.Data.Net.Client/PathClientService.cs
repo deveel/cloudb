@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Reflection;
+using System.Security.Principal;
 
 using Deveel.Data.Diagnostics;
 
-namespace Deveel.Data.Net {
-	public abstract class PathService : Component {
-		protected PathService(IServiceAddress address, IServiceAddress managerAddress, IServiceConnector connector) {
+namespace Deveel.Data.Net.Client {
+	public abstract class PathClientService : Component {
+		protected PathClientService(IServiceAddress address, IServiceAddress managerAddress, IServiceConnector connector) {
 			this.address = address;
 			this.managerAddress = managerAddress;
 			this.connector = connector;
@@ -22,18 +23,21 @@ namespace Deveel.Data.Net {
 			log = LogManager.NetworkLogger;
 		}
 
-		~PathService() {
+		~PathClientService() {
 			Dispose(false);
 		}
 
 		private readonly IServiceAddress address;
 		private readonly IServiceAddress managerAddress;
 		private readonly IServiceConnector connector;
-		private IMethodSerializer methodSerializer;
-		private Logger log;
+		private IActionSerializer actionSerializer;
+		private readonly Logger log;
+
+		private IPathClientAuthorize authorize;
 
 		private NetworkClient client;
 		private readonly NetworkProfile network;
+		private string transactionIdKey;
 
 		private readonly Dictionary<string, string> pathTypes = new Dictionary<string, string>();
 		private readonly List<HandlerContainer> handlers = new List<HandlerContainer>();
@@ -58,17 +62,38 @@ namespace Deveel.Data.Net {
 			get { return log; }
 		}
 
-		public IMethodSerializer MethodSerializer {
+		public virtual IActionSerializer ActionSerializer {
 			get {
-				if (methodSerializer == null)
-					methodSerializer = new BinaryMethodSerializer();
-				return methodSerializer;
+				if (actionSerializer == null)
+					actionSerializer = new BinaryActionSerializer();
+				return actionSerializer;
 			}
-			set { methodSerializer = value; }
+			set { actionSerializer = value; }
 		}
 
-		protected bool IsConnected {
+		public virtual IPathClientAuthorize Authorize {
+			get { return authorize; }
+			set { authorize = value; }
+		}
+
+		public virtual PathClienAuthorizeDelegate AuthorizeDelegate {
+			get { return (authorize != null && authorize is DelegatedAuthorize) ? ((DelegatedAuthorize) authorize).Delegate : null; }
+			set {
+				if (value == null && (authorize != null && authorize is DelegatedAuthorize)) {
+					authorize = null;
+				} else {
+					authorize = new DelegatedAuthorize(value);
+				}
+			}
+		}
+
+		public bool IsConnected {
 			get { return client != null && client.IsConnected; }
+		}
+
+		public string TransactionIdKey {
+			get { return transactionIdKey; }
+			set { transactionIdKey = value; }
 		}
 
 		private void ScanForHandlers() {
@@ -80,9 +105,9 @@ namespace Deveel.Data.Net {
 				Type[] types = assemblies[i].GetTypes();
 				for (int j = 0; j < types.Length; j++) {
 					Type type = types[j];
-					if (type != typeof(IMethodHandler) &&
-						typeof(IMethodHandler).IsAssignableFrom(type) &&
-						!type.IsAbstract) {
+					if (type != typeof(IRequestHandler) &&
+					    typeof(IRequestHandler).IsAssignableFrom(type) &&
+					    !type.IsAbstract) {
 						HandleAttribute handle = Attribute.GetCustomAttribute(type, typeof(HandleAttribute)) as HandleAttribute;
 						if (handle == null)
 							continue;
@@ -130,72 +155,39 @@ namespace Deveel.Data.Net {
 		protected virtual void OnInit() {
 		}
 
-		private MethodRequest GetMethodRequest(MethodType type, IPathTransaction transaction, object resourceId, IDictionary<string, object> args, Stream requestStream) {
-			MethodRequest request = new MethodRequest(type, transaction);
+		private ActionRequest GetMethodRequest(RequestType type, IPathTransaction transaction, Stream requestStream) {
+			ActionRequest request = new ActionRequest(type, transaction);
 			if (requestStream != null)
-				MethodSerializer.DeserializeRequest(request, requestStream);
-			if (resourceId != null)
-				request.Arguments.Add(MethodRequest.ResourceIdName, resourceId);
-			if (args != null) {
-				foreach(KeyValuePair<string, object> pair in args) {
-					request.Arguments.Add(pair.Key, pair.Value);
-				}
-			}
-			request.Arguments.Seal();
+				ActionSerializer.DeserializeRequest(request, requestStream);
 			return request;
 		}
 
-		protected MethodResponse HandleRequest(MethodType type, IPathTransaction transaction, object resourceId, IDictionary<string, object> args, Stream requestStream) {
-			if (transaction == null)
-				throw new ArgumentNullException("transaction");
+		protected ActionResponse HandleRequest(RequestType type, string pathName, IDictionary<string, object> args, Stream requestStream) {
+			IPathTransaction transaction;
 
-			string pathName = transaction.Context.PathName;
+			if (TransactionIdKey != null && (args != null && args.ContainsKey(TransactionIdKey))) {
+				int tid = Convert.ToInt32(args[TransactionIdKey]);
+				transaction = GetTransaction(pathName, tid);
+			} else {
+				transaction = CreateTransaction(pathName);
+			}
+
 			HandlerContainer handler = GetMethodHandler(pathName);
 			if (handler == null)
 				throw new InvalidOperationException("No handler was found for the path '" + pathName + "' in this context.");
 
-			MethodRequest request = GetMethodRequest(type, transaction, resourceId, args, requestStream);
+			ActionRequest request = GetMethodRequest(type, transaction, requestStream);
+			if (args != null) {
+				foreach(KeyValuePair<string, object> pair in args) {
+					request.Attributes.Add(pair.Key, pair.Value);
+				}
+			}
+			request.Seal();
 			return handler.Handler.HandleRequest(request);
 		}
 		
-		protected MethodResponse HandleRequest(MethodType type, IPathTransaction transaction, object resourceId, Stream requestStream) {
-			return HandleRequest(type, transaction, resourceId, null, requestStream);
-		}
-		
-		protected MethodResponse HandleRequest(MethodType type, string pathName, object resourceId, int tid, Stream requestStream) {
-			return HandleRequest(type, pathName, resourceId, tid, null, requestStream);
-		}
-
-		protected MethodResponse HandleRequest(MethodType type, string pathName, object resourceId, int tid, IDictionary<string, object> args, Stream requestStream) {
-			HandlerContainer handler = GetMethodHandler(pathName);
-			if (handler == null)
-				throw new InvalidOperationException("None handler was found for the path '" + pathName + "' within this context.");
-
-			if (tid != -1) {
-				PathTransaction transaction = handler.GetTransaction(tid);
-				if (transaction == null)
-					throw new ArgumentException();
-
-				if (transaction.Context.PathName != pathName)
-					throw new InvalidOperationException();
-
-				return HandleRequest(type, transaction, resourceId, args, requestStream);
-			}
-
-			return HandleRequest(type, pathName, resourceId, args, requestStream);
-		}
-		
-		protected MethodResponse HandleRequest(MethodType type, string pathName, object resourceId, Stream requestStream) {
-			return HandleRequest(type, pathName, resourceId, null, requestStream);
-		}
-
-		protected MethodResponse HandleRequest(MethodType type, string pathName, object resourceId, IDictionary<string, object> args, Stream requestStream) {
-			HandlerContainer handler = GetMethodHandler(pathName);
-			if (handler == null)
-				throw new InvalidOperationException();
-
-			PathTransaction transaction = handler.CreateTransaction(pathName);
-			return HandleRequest(type, transaction, resourceId, args, requestStream);
+		protected ActionResponse HandleRequest(RequestType type, string pathName, Stream requestStream) {
+			return HandleRequest(type, pathName, null, requestStream);
 		}
 
 		protected IPathTransaction CreateTransaction(string pathName) {
@@ -231,16 +223,16 @@ namespace Deveel.Data.Net {
 		#region HandlerContainer
 
 		private class HandlerContainer {
-			private readonly PathService service;
+			private readonly PathClientService service;
 			private readonly string pathTypeName;
 			private readonly Type handlerType;
-			private IMethodHandler handler;
+			private IRequestHandler handler;
 			private readonly Dictionary<string, IPathContext> contexts;
 
 			private int connId = -1;
 			private readonly Dictionary<int, PathTransaction> transactions = new Dictionary<int, PathTransaction>();
 
-			public HandlerContainer(PathService service, string pathTypeName, Type handlerType) {
+			public HandlerContainer(PathClientService service, string pathTypeName, Type handlerType) {
 				this.service = service;
 				this.pathTypeName = pathTypeName;
 				this.handlerType = handlerType;
@@ -251,10 +243,10 @@ namespace Deveel.Data.Net {
 				get { return pathTypeName; }
 			}
 
-			public IMethodHandler Handler {
+			public IRequestHandler Handler {
 				get {
 					if (handler == null)
-						handler = Activator.CreateInstance(handlerType, true) as IMethodHandler;
+						handler = Activator.CreateInstance(handlerType, true) as IRequestHandler;
 					return handler;
 				}
 			}
@@ -296,12 +288,12 @@ namespace Deveel.Data.Net {
 		#region PathTransaction
 
 		private sealed class PathTransaction : IPathTransaction {
-			private readonly PathService service;
+			private readonly PathClientService service;
 			private readonly IPathContext context;
 			private readonly int id;
 			private readonly IPathTransaction transaction;
 
-			public PathTransaction(PathService service, int id, IPathContext context, IPathTransaction transaction) {
+			public PathTransaction(PathClientService service, int id, IPathContext context, IPathTransaction transaction) {
 				this.service = service;
 				this.id = id;
 				this.transaction = transaction;
@@ -332,6 +324,22 @@ namespace Deveel.Data.Net {
 
 				service.OnTransactionCommitted(context.PathName, transaction, address);
 				return address;
+			}
+		}
+
+		#endregion
+
+		#region DelegatedAuthorize
+
+		private class DelegatedAuthorize : IPathClientAuthorize {
+			public readonly PathClienAuthorizeDelegate Delegate;
+
+			public DelegatedAuthorize(PathClienAuthorizeDelegate wrapped) {
+				Delegate = wrapped;
+			}
+
+			public bool IsAuthorized(IIdentity identity) {
+				return Delegate(identity);
 			}
 		}
 
