@@ -1,5 +1,7 @@
 ﻿using System;
 
+using Deveel.Data.Net.Client;
+
 namespace Deveel.Data.Net {
 	public sealed partial class NetworkProfile {
 		public long GetBlockGuid(IServiceAddress block) {
@@ -11,15 +13,14 @@ namespace Deveel.Data.Net {
 			if (!machine_p.IsBlock)
 				throw new NetworkAdminException("Machine '" + block + "' is not a block role");
 
-			MessageStream msg_out = new MessageStream(7);
-			msg_out.AddMessage(new Message("serverGUID", new object[] { block }));
-
-			Message m = Command(block, ServiceType.Block, msg_out);
-			if (m.IsError)
-				throw new NetworkAdminException(m.ErrorMessage);
+			MessageRequest request = new MessageRequest("serverGUID");
+			request.Arguments.Add(block);
+			Message m = Command(block, ServiceType.Block, request);
+			if (MessageUtil.HasError(m))
+				throw new NetworkAdminException(MessageUtil.GetErrorMessage(m));
 
 			// Return the GUID
-			return (long)m[0];
+			return m.Arguments[0].ToInt64();
 		}
 
 		public long[] GetBlockList(IServiceAddress block) {
@@ -29,15 +30,13 @@ namespace Deveel.Data.Net {
 			if (!machine_p.IsBlock)
 				throw new NetworkAdminException("Machine '" + block + "' is not a block role");
 
-			MessageStream msg_out = new MessageStream(7);
-			msg_out.AddMessage(new Message("blockSetReport"));
-
+			MessageRequest msg_out = new MessageRequest();
 			Message m = Command(block, ServiceType.Block, msg_out);
-			if (m.IsError)
-				throw new NetworkAdminException(m.ErrorMessage);
+			if (MessageUtil.HasError(m))
+				throw new NetworkAdminException(MessageUtil.GetErrorMessage(m));
 
 			// Return the block list,
-			return (long[])m[1];
+			return (long[])m.Arguments[1].Value;
 		}
 
 		public void ProcessSendBlock(long block_id, IServiceAddress source_block_server, IServiceAddress dest_block_server, long dest_server_sguid) {
@@ -50,12 +49,15 @@ namespace Deveel.Data.Net {
 
 			IServiceAddress manager_server = man.Address;
 
-			MessageStream msg_out = new MessageStream(6);
-			msg_out.AddMessage("sendBlockTo", block_id, dest_block_server, dest_server_sguid, manager_server);
+			MessageRequest msg_out = new MessageRequest();
+			msg_out.Arguments.Add(block_id);
+			msg_out.Arguments.Add(dest_block_server);
+			msg_out.Arguments.Add(dest_server_sguid);
+			msg_out.Arguments.Add(manager_server);
 
 			Message m = Command(source_block_server, ServiceType.Block, msg_out);
-			if (m.IsError)
-				throw new NetworkAdminException(m.ErrorMessage);
+			if (MessageUtil.HasError(m))
+				throw new NetworkAdminException(MessageUtil.GetErrorMessage(m));
 		}
 	}
 }

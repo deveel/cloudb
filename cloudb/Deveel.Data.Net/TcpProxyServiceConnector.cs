@@ -4,6 +4,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
+using Deveel.Data.Net.Client;
+
 namespace Deveel.Data.Net {
 	public class TcpProxyServiceConnector : IServiceConnector {
 		public TcpProxyServiceConnector(IPAddress proxyAddress, int proxyPort, string password) {
@@ -18,11 +20,12 @@ namespace Deveel.Data.Net {
 		private readonly int proxyPort;
 		private readonly string password;
 		private string initString;
+		private bool connected;
 
 		private BinaryReader pin;
 		private BinaryWriter pout;
 		private readonly object proxy_lock = new object();
-		private IMessageSerializer serializer;
+		private IMessageSerializer messageSerializer;
 
 		public int ProxyPort {
 			get { return proxyPort; }
@@ -31,14 +34,18 @@ namespace Deveel.Data.Net {
 		public IPAddress ProxyAddress {
 			get { return proxyAddress; }
 		}
-		
-		public IMessageSerializer Serializer {
+
+		public bool IsConnected {
+			get { return connected; }
+		}
+
+		public IMessageSerializer MessageSerializer {
 			get {
-				if (serializer == null)
-					serializer = new BinaryMessageStreamSerializer();
-				return serializer;
+				if (messageSerializer == null)
+					messageSerializer = new BinaryRpcMessageSerializer();
+				return messageSerializer;
 			}
-			set { serializer = value; }
+			set { messageSerializer = value; }
 		}
 
 		private void Connect() {
@@ -57,6 +64,7 @@ namespace Deveel.Data.Net {
 				initString = pin.ReadString();
 				pout.Write(password);
 				pout.Flush();
+				connected = true;
 			} catch (IOException e) {
 				throw new Exception("IO Error", e);
 			}
@@ -86,6 +94,7 @@ namespace Deveel.Data.Net {
 				initString = null;
 				pin = null;
 				pout = null;
+				connected = false;
 			}
 		}
 
@@ -114,10 +123,10 @@ namespace Deveel.Data.Net {
 
 			#region Implementation of IMessageProcessor
 
-			public MessageStream Process(MessageStream messageStream) {
+			public Message ProcessMessage(Message request) {
 				try {
 					lock (connector.proxy_lock) {
-						IMessageSerializer serializer = connector.Serializer;
+						IMessageSerializer messageSerializer = connector.MessageSerializer;
 
 						char code = '\0';
 						if (serviceType == ServiceType.Admin)
@@ -134,10 +143,18 @@ namespace Deveel.Data.Net {
 						TcpServiceAddressHandler handler = new TcpServiceAddressHandler();
 						byte[] addressBytes = handler.ToBytes(address);
 						connector.pout.Write(addressBytes);
-						serializer.Serialize(messageStream, connector.pout.BaseStream);
+						messageSerializer.Serialize(request, connector.pout.BaseStream);
 						connector.pout.Flush();
 
-						return serializer.Deserialize(connector.pin.BaseStream);
+						Message response;
+						if (request is MessageStream) {
+							response = new MessageStream(MessageType.Response);
+						} else {
+							response = ((MessageRequest)request).CreateResponse();
+						}
+						
+						messageSerializer.Deserialize(response, connector.pin.BaseStream);
+						return response;
 					}
 				} catch (IOException e) {
 					// Probably caused because the proxy closed the connection when a

@@ -2,6 +2,7 @@
 using System.Threading;
 
 using Deveel.Data.Diagnostics;
+using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
 	public class AdminService : Service {
@@ -112,7 +113,7 @@ namespace Deveel.Data.Net {
 		}
 
 		protected override IMessageProcessor CreateProcessor() {
-			return new AdminServerMessageProcessor(this);
+			return new AdminServiceMessageProcessor(this);
 		}
 
 		protected override void OnInit() {
@@ -132,10 +133,10 @@ namespace Deveel.Data.Net {
 
 		#region AdminServerMessageProcessor
 
-		private sealed class AdminServerMessageProcessor : IMessageProcessor {
+		private sealed class AdminServiceMessageProcessor : IMessageProcessor {
 			private readonly AdminService service;
 
-			public AdminServerMessageProcessor(AdminService service) {
+			public AdminServiceMessageProcessor(AdminService service) {
 				this.service = service;
 			}
 
@@ -150,68 +151,79 @@ namespace Deveel.Data.Net {
 				return stats;
 			}
 
-			public MessageStream Process(MessageStream messageStream) {
-				MessageStream outputStream = new MessageStream(32);
+			public Message ProcessMessage(Message message) {
+				if (message is MessageStream) {
+					MessageStream messageStream = (MessageStream) message;
+					MessageStream responseStream = new MessageStream(MessageType.Response);
+					foreach(Message msg in messageStream) {
+						responseStream.AddMessage(ProcessMessage(msg));
+					}
+					return responseStream;
+				}
 
-				// For each message in the message input,
-				foreach (Message m in messageStream) {
-					try {
-						string command = m.Name;
-						// Report on the services running,
-						if (command.Equals("report")) {
-							lock (service.serverManagerLock) {
-								// TODO:
-								long tm = 0;		// Total Memory
-								long fm = 0;		// Free Memory
-								long td = 0;		// Total Space
-								long fd = 0;		// Free Space
-								outputStream.StartMessage("R");
-								if (service.Block == null) {
-									outputStream.AddMessageArgument("block=no");
-								} else {
-									outputStream.AddMessageArgument(service.Block.BlockCount.ToString());
-								}
-								outputStream.AddMessageArgument("manager=" + (service.Manager == null ? "no" : "yes"));
-								outputStream.AddMessageArgument("root=" + (service.Root == null ? "no" : "yes"));
-								outputStream.AddMessageArgument(tm - fm);
-								outputStream.AddMessageArgument(tm);
-								outputStream.AddMessageArgument(td - fd);
-								outputStream.AddMessageArgument(td);
-								outputStream.CloseMessage();
-							}
-						} else if (command.Equals("reportStats")) {
-							// Analytics stats; we convert the stats to a long[] array and
-							// send it as a reply.
-							long[] stats = GetStats();
-							outputStream.AddMessage("R", stats);
-						} else {
-							// Starts a service,
-							if (command.Equals("init")) {
-								string service_type = (string)m[0];
-								service.InitService(service_type);
-							}
-								// Stops a service,
-							else if (command.Equals("dispose")) {
-								string service_type = (String)m[0];
-								service.DisposeService(service_type);
+				MessageRequest request = (MessageRequest) message;
+				MessageResponse response;
+
+				string command = request.Name;
+
+				try {
+					// Report on the services running,
+					if (command.Equals("report")) {
+						lock (service.serverManagerLock) {
+							// TODO:
+							long tm = 0;		// Total Memory
+							long fm = 0;		// Free Memory
+							long td = 0;		// Total Space
+							long fd = 0;		// Free Space
+							response = request.CreateResponse("R");
+							if (service.Block == null) {
+								response.Arguments.Add("block=no");
 							} else {
-								throw new Exception("Unknown command: " + command);
+								response.Arguments.Add(service.Block.BlockCount.ToString());
 							}
-
-							// Add reply message,
-							outputStream.AddMessage("R", 1L);
+							response.Arguments.Add("manager=" + (service.Manager == null ? "no" : "yes"));
+							response.Arguments.Add("root=" + (service.Root == null ? "no" : "yes"));
+							response.Arguments.Add(tm - fm);
+							response.Arguments.Add(tm);
+							response.Arguments.Add(td - fd);
+							response.Arguments.Add(td);
+						}
+					} else if (command.Equals("reportStats")) {
+						// Analytics stats; we convert the stats to a long[] array and
+						// send it as a reply.
+						long[] stats = GetStats();
+						response = request.CreateResponse("R");
+						response.Arguments.Add(stats);
+					} else {
+						// Starts a service,
+						if (command.Equals("init")) {
+							string service_type = request.Arguments[0].ToString();
+							service.InitService(service_type);
+						}
+							// Stops a service,
+						else if (command.Equals("dispose")) {
+							string service_type = request.Arguments[0].ToString();
+							service.DisposeService(service_type);
+						} else {
+							throw new Exception("Unknown command: " + command);
 						}
 
-					} catch (OutOfMemoryException e) {
-						service.Logger.Error(service, "Out Of Memory Error.");
-						// This will end the connection);
-						throw;
-					} catch (Exception e) {
-						service.Logger.Error("Error while processing.");
-						outputStream.AddErrorMessage(new ServiceException(e));
+						// Add reply message,
+						response = request.CreateResponse("R");
+						response.Arguments.Add(1L);
 					}
+
+				} catch (OutOfMemoryException e) {
+					service.Logger.Error(service, "Out Of Memory Error.");
+					// This will end the connection);
+					throw;
+				} catch (Exception e) {
+					service.Logger.Error("Error while processing.");
+					response = request.CreateResponse("error");
+					response.Code = MessageResponseCode.Error;
+					response.Arguments.Add(new MessageError(e));
 				}
-				return outputStream;
+				return response;
 			}
 		}
 

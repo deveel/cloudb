@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 
+using Deveel.Data.Net.Client;
+
 namespace Deveel.Data.Net {
 	public sealed partial class NetworkProfile {
 		private void RegisterService(IServiceAddress address, ServiceType serviceType) {
@@ -17,13 +19,13 @@ namespace Deveel.Data.Net {
 				throw new NetworkAdminException("Machine '" + address + "' is not assigned as a " + serviceType.ToString().ToLower() +
 												" role");
 
-			MessageStream msg_out = new MessageStream(7);
 			string messageName = serviceType == ServiceType.Block ? "registerBlockServer" : "registerRootServer";
-			msg_out.AddMessage(new Message(messageName, new object[] { address }));
+			MessageRequest msg_out = new MessageRequest(messageName);
+			msg_out.Arguments.Add(address);
 
 			Message m = Command(current_manager.Address, ServiceType.Manager, msg_out);
-			if (m.IsError)
-				throw new NetworkAdminException(m.ErrorMessage, m.ErrorStackTrace);
+			if (MessageUtil.HasError(m))
+				throw new NetworkAdminException(MessageUtil.GetErrorMessage(m));
 		}
 
 		private void DeregisterService(IServiceAddress address, ServiceType serviceType) {
@@ -40,13 +42,13 @@ namespace Deveel.Data.Net {
 				throw new NetworkAdminException("Machine '" + address + "' is not assigned as a " + serviceType.ToString().ToLower() +
 												" role");
 
-			MessageStream msg_out = new MessageStream(7);
 			string messageName = serviceType == ServiceType.Block ? "deregisterBlockServer" : "deregisterRootServer";
-			msg_out.AddMessage(new Message(messageName, new object[] { address }));
+			MessageRequest msg_out = new MessageRequest(messageName);
+			msg_out.Arguments.Add(address);
 
 			Message m = Command(current_manager.Address, ServiceType.Manager, msg_out);
-			if (m.IsError)
-				throw new NetworkAdminException(m.ErrorMessage);
+			if (MessageUtil.HasError(m))
+				throw new NetworkAdminException(MessageUtil.GetErrorMessage(m));
 		}
 
 		public void RegisterRoot(IServiceAddress root) {
@@ -75,15 +77,15 @@ namespace Deveel.Data.Net {
 
 			IServiceAddress manager_server = man.Address;
 
-			MessageStream msg_out = new MessageStream(7);
-			msg_out.AddMessage("getRootFor", pathName);
+			MessageRequest msg_out = new MessageRequest("getRootFor");
+			msg_out.Arguments.Add(pathName);
 
 			Message m = Command(manager_server, ServiceType.Manager, msg_out);
-			if (m.IsError)
-				throw new NetworkAdminException(m.ErrorMessage);
+			if (MessageUtil.HasError(m))
+				throw new NetworkAdminException(MessageUtil.GetErrorMessage(m));
 
 			// Return the service address for the root server,
-			return (IServiceAddress)m[0];
+			return (IServiceAddress)m.Arguments[0].Value;
 		}
 
 		public long GetBlockMappingCount() {
@@ -96,15 +98,13 @@ namespace Deveel.Data.Net {
 
 			IServiceAddress manager_server = man.Address;
 
-			MessageStream msg_out = new MessageStream(7);
-			msg_out.AddMessage(new Message("getBlockMappingCount"));
-
+			MessageRequest msg_out = new MessageRequest("getBlockMappingCount");
 			Message m = Command(manager_server, ServiceType.Manager, msg_out);
-			if (m.IsError)
-				throw new NetworkAdminException(m.ErrorMessage);
+			if (MessageUtil.HasError(m))
+				throw new NetworkAdminException(MessageUtil.GetErrorMessage(m));
 
 			// Return the service address for the root server,
-			return (long)m[0];
+			return m.Arguments[0].ToInt64();
 		}
 
 		public long[] GetBlockMappingRange(long p1, long p2) {
@@ -117,15 +117,16 @@ namespace Deveel.Data.Net {
 
 			IServiceAddress manager_server = man.Address;
 
-			MessageStream msg_out = new MessageStream(7);
-			msg_out.AddMessage(new Message("getBlockMappingRange", new object[] { p1, p2 }));
+			MessageRequest msg_out = new MessageRequest("getBlockMappingRange");
+			msg_out.Arguments.Add(p1);
+			msg_out.Arguments.Add(p2);
 
 			Message m = Command(manager_server, ServiceType.Manager, msg_out);
-			if (m.IsError)
+			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 
 			// Return the service address for the root server,
-			return (long[])m[0];
+			return (long[])m.Arguments[0].Value;
 		}
 
 		public IDictionary<IServiceAddress, String> GetBlocksStatus() {
@@ -138,16 +139,14 @@ namespace Deveel.Data.Net {
 
 			IServiceAddress manager_server = man.Address;
 
-			MessageStream msg_out = new MessageStream(7);
-			msg_out.AddMessage(new Message("getRegisteredServerList"));
-
+			MessageRequest msg_out = new MessageRequest("getRegisteredServerList");
 			Message m = Command(manager_server, ServiceType.Manager, msg_out);
-			if (m.IsError)
+			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 
 			// The list of block servers registered with the manager,
-			IServiceAddress[] regservers = (IServiceAddress[])m[0];
-			String[] regservers_status = (String[])m[1];
+			IServiceAddress[] regservers = (IServiceAddress[])m.Arguments[0].Value;
+			String[] regservers_status = (String[])m.Arguments[1].Value;
 
 			Dictionary<IServiceAddress, string> map = new Dictionary<IServiceAddress, string>();
 			for (int i = 0; i < regservers.Length; ++i)
@@ -167,11 +166,12 @@ namespace Deveel.Data.Net {
 
 			IServiceAddress manager_server = man.Address;
 
-			MessageStream msg_out = new MessageStream(7);
-			msg_out.AddMessage(new Message("addBlockServerMapping", new object[] { block_id, server_guid }));
+			MessageRequest msg_out = new MessageRequest("addBlockServerMapping");
+			msg_out.Arguments.Add(block_id);
+			msg_out.Arguments.Add(server_guid);
 
 			Message m = Command(manager_server, ServiceType.Manager, msg_out);
-			if (m.IsError)
+			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 		}
 
@@ -185,11 +185,12 @@ namespace Deveel.Data.Net {
 
 			IServiceAddress manager_server = man.Address;
 
-			MessageStream msg_out = new MessageStream(7);
-			msg_out.AddMessage(new Message("removeBlockServerMapping", new object[] { block_id, server_guid }));
+			MessageRequest msg_out = new MessageRequest("removeBlockServerMapping");
+			msg_out.Arguments.Add(block_id);
+			msg_out.Arguments.Add(server_guid);
 
 			Message m = Command(manager_server, ServiceType.Manager, msg_out);
-			if (m.IsError)
+			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 		}
 	}

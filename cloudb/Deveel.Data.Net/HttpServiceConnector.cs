@@ -3,11 +3,15 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 
+using Deveel.Data.Net.Client;
+
 namespace Deveel.Data.Net {
 	public sealed class HttpServiceConnector : IServiceConnector {		
 		public HttpServiceConnector(string userName, string password) {
 			this.userName = userName;
 			this.password = password;
+
+			connected = true;
 		}
 		
 		public HttpServiceConnector()
@@ -16,21 +20,28 @@ namespace Deveel.Data.Net {
 		
 		private string userName;
 		private string password;
-		private IMessageSerializer serializer;
-		
-		public IMessageSerializer Serializer {
+		private IMessageSerializer messageSerializer;
+		private bool connected;
+
+		public bool IsConnected {
+			get { return connected; }
+		}
+
+		public IMessageSerializer MessageSerializer {
 			get { 
-				if (serializer == null)
-					serializer = new XmlMessageStreamSerializer();
-				return serializer;
+				if (messageSerializer == null)
+					messageSerializer = new XmlRpcMessageSerializer();
+				return messageSerializer;
 			}
-			set { serializer = value; }
+			set { messageSerializer = value; }
 		}
 	
 		void IDisposable.Dispose() {
+			connected = false;
 		}
 
 		void IServiceConnector.Close() {
+			connected = false;
 		}
 		
 		public IMessageProcessor Connect(HttpServiceAddress address, ServiceType serviceType) {
@@ -54,7 +65,7 @@ namespace Deveel.Data.Net {
 				this.serviceType = serviceType;
 			}
 			
-			private MessageStream DoProcess(MessageStream messageStream, int tryCount) {
+			private MessageResponse DoProcess(MessageRequest messageStream, int tryCount) {
 				try {
 					HttpWebRequest request = (HttpWebRequest) HttpWebRequest.Create(address.ToUri());
 					lock (request) {
@@ -65,7 +76,7 @@ namespace Deveel.Data.Net {
 							request.Credentials = new NetworkCredential(connector.userName, connector.password);
 						request.Method = "POST";
 						Stream output = request.GetRequestStream();
-						connector.Serializer.Serialize(messageStream, output);
+						connector.MessageSerializer.Serialize(messageStream, output);
 						output.Flush();
 						output.Close();
 						
@@ -74,30 +85,36 @@ namespace Deveel.Data.Net {
 							throw new InvalidOperationException();
 												
 						Stream input = response.GetResponseStream();
-						return connector.Serializer.Deserialize(input);
+						MessageResponse messageResponse = messageStream.CreateResponse();
+						connector.MessageSerializer.Deserialize(messageResponse, input);
+						return messageResponse;
 					}
 				} catch (Exception e) {
 					if (tryCount == 0 && e is WebException)
 						// retry ...
 						return DoProcess(messageStream, tryCount + 1);
 
-					ServiceException error;
+					MessageError error;
 					if (e is WebException) {
-						error = new ServiceException(new Exception("Web Error: maybe a timeout in the request.", e));
+						error = new MessageError(new Exception("Web Error: maybe a timeout in the request.", e));
 					} else {
 						// Report this error as a msg_stream fault,
-						error = new ServiceException(new Exception(e.Message, e));
+						error = new MessageError(new Exception(e.Message, e));
 					}
 
-					MessageStream outputStream = new MessageStream(16);
-					outputStream.AddMessage("E", error);
-					return outputStream;
+					MessageResponse response = messageStream.CreateResponse("E");
+					response.Code = MessageResponseCode.Error;
+					response.Arguments.Add(error);
+					return response;
 				}
 			}
 
 			
-			public MessageStream Process(MessageStream messageStream) {
-				return DoProcess(messageStream, 0);
+			public Message ProcessMessage(Message message) {
+				if (!(message is MessageRequest))
+					throw new ArgumentException();
+
+				return DoProcess(((MessageRequest) message), 0);
 			}
 		}
 		

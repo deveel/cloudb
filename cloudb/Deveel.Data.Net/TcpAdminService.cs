@@ -6,6 +6,8 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
+using Deveel.Data.Net.Client;
+
 namespace Deveel.Data.Net {
 	public class TcpAdminService : AdminService {
 		private bool polling;
@@ -124,9 +126,10 @@ namespace Deveel.Data.Net {
 				random = new Random();
 			}
 
-			private static MessageStream NoServiceError() {
-				MessageStream msg_out = new MessageStream(16);
-				msg_out.AddErrorMessage(new ServiceException(new Exception("The service requested is not being run on the instance")));
+			private static MessageResponse NoServiceError(MessageRequest request) {
+				MessageResponse msg_out = request.CreateResponse("E");
+				msg_out.Code = MessageResponseCode.Error;
+				msg_out.Arguments.Add(new MessageError(new Exception("The service requested is not being run on the instance")));
 				return msg_out;
 			}
 
@@ -179,41 +182,42 @@ namespace Deveel.Data.Net {
 							return;
 
 						// Read the message stream object
-						BinaryMessageStreamSerializer serializer = new BinaryMessageStreamSerializer();
-						MessageStream message_stream = serializer.Deserialize(reader);
+						BinaryRpcMessageSerializer messageSerializer = new BinaryRpcMessageSerializer();
+						MessageRequest message_stream = new MessageRequest();
+						messageSerializer.Deserialize(message_stream, reader.BaseStream);
 
-						MessageStream message_out;
+						Message response;
 
 						// For analytics
 						DateTime benchmark_start = DateTime.Now;
 
 						// Destined for the administration module,
 						if (destination == 'a') {
-							message_out = service.Processor.Process(message_stream);
+							response = service.Processor.ProcessMessage(message_stream);
 						}
 							// For a block service in this machine
 						else if (destination == 'b') {
 							if (service.Block == null) {
-								message_out = NoServiceError();
+								response = NoServiceError(message_stream);
 							} else {
-								message_out = service.Block.Processor.Process(message_stream);
+								response = service.Block.Processor.ProcessMessage(message_stream);
 							}
 
 						}
 							// For a manager service in this machine
 						else if (destination == 'm') {
 							if (service.Manager == null) {
-								message_out = NoServiceError();
+								response = NoServiceError(message_stream);
 							} else {
-								message_out = service.Manager.Processor.Process(message_stream);
+								response = service.Manager.Processor.ProcessMessage(message_stream);
 							}
 						}
 							// For a root service in this machine
 						else if (destination == 'r') {
 							if (service.Root == null) {
-								message_out = NoServiceError();
+								response = NoServiceError(message_stream);
 							} else {
-								message_out = service.Root.Processor.Process(message_stream);
+								response = service.Root.Processor.ProcessMessage(message_stream);
 							}
 						} else {
 							throw new IOException("Unknown destination: " + destination);
@@ -225,7 +229,7 @@ namespace Deveel.Data.Net {
 						service.Analytics.AddEvent(benchmark_end, time_took);
 
 						// Write and flush the output message,
-						serializer.Serialize(message_out, writer);
+						messageSerializer.Serialize(response, writer.BaseStream);
 						writer.Flush();
 
 					} // while (true)

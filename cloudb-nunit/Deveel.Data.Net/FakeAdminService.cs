@@ -1,6 +1,8 @@
 ﻿using System;
 using System.IO;
 
+using Deveel.Data.Net.Client;
+
 namespace Deveel.Data.Net {
 	public sealed class FakeAdminService : AdminService {		
 		public FakeAdminService(FakeServiceConnector connector, NetworkStoreType storeType)
@@ -20,15 +22,15 @@ namespace Deveel.Data.Net {
 			: this(NetworkStoreType.Memory) {
 		}
 		
-		internal MessageStream ProcessCallback(ServiceType serviceType, MessageStream inputStream) {
+		internal Message ProcessCallback(ServiceType serviceType, Message inputStream) {
 			if (serviceType == ServiceType.Admin)
-				return Processor.Process(inputStream);
+				return Processor.ProcessMessage(inputStream);
 			if (serviceType == ServiceType.Manager)
-				return Manager.Processor.Process(inputStream);
+				return Manager.Processor.ProcessMessage(inputStream);
 			if (serviceType == ServiceType.Root)
-				return Root.Processor.Process(inputStream);
+				return Root.Processor.ProcessMessage(inputStream);
 			if (serviceType == ServiceType.Block)
-				return Block.Processor.Process(inputStream);
+				return Block.Processor.ProcessMessage(inputStream);
 
 			throw new InvalidOperationException();
 		}
