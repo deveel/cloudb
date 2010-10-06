@@ -32,7 +32,7 @@ namespace Deveel.Data.Net {
 		private static readonly AutoResetEvent SetupEvent = new AutoResetEvent(true);
 
 		private static readonly TcpServiceAddress Local = new TcpServiceAddress("127.0.0.1", 1587);
-		private static readonly HttpServiceAddress LocalPath = new HttpServiceAddress("localhost", 1588);
+		private static readonly HttpServiceAddress LocalPath = new HttpServiceAddress("localhost", 1588, PathName);
 		
 		public RestPathServiceTest(NetworkStoreType storeType, HttpMessageFormat format) {
 			this.format = format;
@@ -132,19 +132,22 @@ namespace Deveel.Data.Net {
 			XmlDocument xmlDoc = new XmlDocument();
 			xmlDoc.Load(reader);
 			
-			string resourceName = xmlDoc.DocumentElement.LocalName;
-			TableResponse response = new TableResponse(resourceName);
-			
-			foreach(XmlElement rowElem in xmlDoc.DocumentElement.ChildNodes) {
-				int rowid = Int32.Parse(rowElem.Attributes["id"].Value);
-				
-				TableRow row = new TableRow(rowid);
-				
-				foreach(XmlElement valueElem in rowElem.ChildNodes) {
-					row.Values[valueElem.LocalName] = valueElem.Value;
+			string resourceName = xmlDoc.DocumentElement.Attributes["name"].Value;
+			long rowCount = Int64.Parse(xmlDoc.DocumentElement.Attributes["rows"].Value);
+			long columnCount = Int64.Parse(xmlDoc.DocumentElement.Attributes["columns"].Value);
+
+			TableResponse response = new TableResponse(resourceName, columnCount, rowCount);
+
+			foreach(XmlElement child in xmlDoc.DocumentElement.ChildNodes) {
+				if (child.LocalName == "column") {
+					string name = child.Attributes["name"].Value;
+					bool indexed = Boolean.Parse(child.Attributes["indexed"].Value);
+					response.Columns[name] = new TableColumn(name, indexed);
+				} else if (child.LocalName == "row") {
+					int rowid = Int32.Parse(child.Attributes["id"].Value);
+					string href = child.Attributes["href"].Value;
+					response.Rows.Add(new TableRow(rowid, href));
 				}
-				
-				response.Rows[rowid] = row;
 			}
 			
 			return response;
@@ -213,9 +216,8 @@ namespace Deveel.Data.Net {
 		[Test]
 		public void GetAll() {
 			StringBuilder sb = new StringBuilder(LocalPath.ToUri().ToString());
-			sb.Append(PathName);
-			sb.Append("/");
 			sb.Append("comics");
+			sb.Append("/");
 			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(sb.ToString());
 			request.Method = "GET";
 			
@@ -233,44 +235,223 @@ namespace Deveel.Data.Net {
 			
 			Assert.AreEqual("comics", table.ResourceName);
 			Assert.AreEqual(5, table.Rows.Count);
-			
-			foreach(TableRow row in table.Rows.Values) {
-				Assert.AreEqual(4, row.Values.Count);
-				Assert.IsTrue(row.Values.ContainsKey("name"));
-				Assert.IsTrue(row.Values.ContainsKey("editor"));
-				Assert.IsTrue(row.Values.ContainsKey("issue"));
-				Assert.IsTrue(row.Values.ContainsKey("year"));
-			}
+			Assert.AreEqual(4, table.Columns.Count);
 		}
 		
 		[Test]
 		public void GetOne() {
-			
+			StringBuilder sb = new StringBuilder(LocalPath.ToUri().ToString());
+			sb.Append("comics");
+			sb.Append("/");
+			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(sb.ToString());
+			request.Method = "GET";
+
+			HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+			Assert.IsTrue(response.StatusCode == HttpStatusCode.OK);
+
+			TableResponse table;
+			using (StreamReader reader = new StreamReader(response.GetResponseStream())) {
+				if (format == HttpMessageFormat.Xml) {
+					table = ReadXmlResponse(reader);
+				} else {
+					table = ReadJsonResponse(reader);
+				}
+			}
+
+			request = (HttpWebRequest)WebRequest.Create(table.Rows[0].Href);
+			request.Method = "GET";
+
+			response = (HttpWebResponse)request.GetResponse();
+			Assert.IsTrue(response.StatusCode == HttpStatusCode.OK);
+
+			TableRow row;
+
+			using(StreamReader reader = new StreamReader(response.GetResponseStream())) {
+				if (format == HttpMessageFormat.Json) {
+					row = ReadJsonRow(reader);
+				} else {
+					row = ReadXmlRow(reader);
+				}
+			}
+
+			Assert.AreNotEqual(-1, row.Id);
+			Assert.AreEqual(4, row.Values.Count);
+
+			foreach(KeyValuePair<string, string> pair in row.Values) {
+				//TODO:
+			}
 		}
-		
+
+		[Test]
+		public void DeleteOne() {
+			StringBuilder sb = new StringBuilder(LocalPath.ToUri().ToString());
+			sb.Append("comics");
+			sb.Append("/");
+			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(sb.ToString());
+			request.Method = "GET";
+
+			HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+			Assert.IsTrue(response.StatusCode == HttpStatusCode.OK);
+
+			TableResponse table;
+			using (StreamReader reader = new StreamReader(response.GetResponseStream())) {
+				if (format == HttpMessageFormat.Xml) {
+					table = ReadXmlResponse(reader);
+				} else {
+					table = ReadJsonResponse(reader);
+				}
+			}
+
+			request = (HttpWebRequest)WebRequest.Create(table.Rows[0].Href);
+			request.Method = "DELETE";
+
+			response = (HttpWebResponse)request.GetResponse();
+			Assert.AreEqual(204, (int) response.StatusCode);
+		}
+
+		[Test]
+		public void UpdateOne() {
+			StringBuilder sb = new StringBuilder(LocalPath.ToUri().ToString());
+			sb.Append("comics");
+			sb.Append("/");
+			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(sb.ToString());
+			request.Method = "GET";
+
+			HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+			Assert.IsTrue(response.StatusCode == HttpStatusCode.OK);
+
+			TableResponse table;
+			using (StreamReader reader = new StreamReader(response.GetResponseStream())) {
+				if (format == HttpMessageFormat.Xml) {
+					table = ReadXmlResponse(reader);
+				} else {
+					table = ReadJsonResponse(reader);
+				}
+			}
+
+			request = (HttpWebRequest)WebRequest.Create(table.Rows[0].Href);
+			request.Method = "GET";
+
+			response = (HttpWebResponse)request.GetResponse();
+			Assert.IsTrue(response.StatusCode == HttpStatusCode.OK);
+
+			TableRow row;
+
+			using (StreamReader reader = new StreamReader(response.GetResponseStream())) {
+				if (format == HttpMessageFormat.Json) {
+					row = ReadJsonRow(reader);
+				} else {
+					row = ReadXmlRow(reader);
+				}
+			}
+
+			row.Values["year"] = "2001";
+			request = (HttpWebRequest)WebRequest.Create(table.Rows[0].Href);
+			request.Method = "PUT";
+			request.ContentType = (format == HttpMessageFormat.Xml ? "text/xml" : "application/json");
+
+			Stream output = request.GetRequestStream();
+			WriteRowToStream(output, row);
+			output.Flush();
+			output.Close();
+
+			response = (HttpWebResponse)request.GetResponse();
+			Assert.AreEqual(201, (int)response.StatusCode);
+		}
+
+		private void WriteRowToStream(Stream output, TableRow row) {
+			StreamWriter writer = new StreamWriter(output);
+			if (format == HttpMessageFormat.Xml)
+				WriteRowToXml(writer, row);
+			else
+				WriteRowToJson(writer, row);
+
+			writer.Flush();
+		}
+
+		private static void WriteRowToXml(TextWriter writer, TableRow row) {
+			XmlTextWriter xmlWriter = new XmlTextWriter(writer);
+			xmlWriter.WriteStartDocument(true);
+			xmlWriter.WriteStartElement("row");
+			xmlWriter.WriteStartAttribute("id");
+			xmlWriter.WriteValue(row.Id);
+			xmlWriter.WriteEndAttribute();
+			foreach(KeyValuePair<string, string> pair in row.Values) {
+				xmlWriter.WriteStartElement(pair.Key);
+				xmlWriter.WriteValue(pair.Value);
+				xmlWriter.WriteEndElement();
+			}
+			xmlWriter.WriteEndElement();
+			xmlWriter.WriteEndDocument();
+		}
+
+		private static void WriteRowToJson(TextWriter writer, TableRow row) {
+			throw new NotImplementedException();
+		}
+
+		private static TableRow ReadJsonRow(TextReader reader) {
+			throw new NotImplementedException();
+		}
+
+		private static TableRow ReadXmlRow(TextReader reader) {
+			XmlDocument xmlDoc = new XmlDocument();
+			xmlDoc.Load(reader);
+
+			long rowid = Int64.Parse(xmlDoc.DocumentElement.Attributes["id"].Value);
+			TableRow row = new TableRow(rowid, null);
+
+			foreach(XmlNode child in xmlDoc.DocumentElement.ChildNodes) {
+				row.Values.Add(child.LocalName, child.InnerText);
+			}
+
+			return row;
+		}
+
+		#region TableColumn
+
+		public class TableColumn {
+			public readonly string Name;
+			public readonly bool Indexed;
+
+			public TableColumn(string name, bool indexed) {
+				Name = name;
+				Indexed = indexed;
+			}
+		}
+
+		#endregion
+
 		#region TableRow
-		
+
 		public class TableRow {
-			private readonly int id;
+			public readonly long Id;
+			public readonly string Href;
 			public readonly Dictionary<string, string> Values;
 			
-			public TableRow(int id) {
-				this.id = id;
+			public TableRow(long id, string href) {
+				Id = id;
+				Href = href;
 				Values = new Dictionary<string, string>();
 			}
 		}
 		
 		#endregion
 		
-		#region Table Response
+		#region TableResponse
 		
 		public class TableResponse {
+			public readonly long RowCount;
+			public readonly long ColumnCount;
 			public readonly string ResourceName;
-			public readonly Dictionary<int, TableRow> Rows;
+			public readonly List<TableRow> Rows;
+			public readonly Dictionary<string, TableColumn> Columns;
 			
-			public TableResponse(string resourceName) {
+			public TableResponse(string resourceName, long columns, long rows) {
 				ResourceName = resourceName;
-				Rows = new Dictionary<int, RestPathServiceTest.TableRow>();
+				Rows = new List<TableRow>();
+				Columns = new Dictionary<string, TableColumn>((int)columns);
+				ColumnCount = columns;
+				RowCount = rows;
 			}
 		}
 		

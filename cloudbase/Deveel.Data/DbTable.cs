@@ -462,7 +462,7 @@ namespace Deveel.Data {
 			row_df.Delete();
 
 			// Add this event to the transaction log
-			OnTransactionEvent("deleteRow", rowid);
+			OnTransactionEvent("DeleteRow", rowid);
 			++version;
 		}
 		

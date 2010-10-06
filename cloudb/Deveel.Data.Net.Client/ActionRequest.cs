@@ -2,6 +2,7 @@
 
 namespace Deveel.Data.Net.Client {
 	public sealed class ActionRequest : ICloneable, IAttributesHandler {
+		private readonly string clientType;
 		private readonly RequestType type;
 		private readonly IPathTransaction transaction;
 		private ActionArguments arguments;
@@ -12,11 +13,24 @@ namespace Deveel.Data.Net.Client {
 		public const string ResourceIdName = "resource-id";
 		public const string ItemIdName = "item-id";
 
-		internal ActionRequest(RequestType type, IPathTransaction transaction) {
+		internal ActionRequest(string clientType, RequestType type, IPathTransaction transaction) {
+			this.clientType = clientType;
 			this.type = type;
 			this.transaction = transaction;
 			arguments = new ActionArguments(false);
 			attributes = new ActionAttributes(this);
+		}
+
+		public string ClientType {
+			get { return clientType; }
+		}
+
+		public bool IsRestClient {
+			get { return String.Compare(clientType, "rest", true) == 0; }
+		}
+
+		public bool IsRpcClient {
+			get { return String.Compare(clientType, "rpc", true) == 0; }
 		}
 
 		public RequestType Type {
@@ -57,23 +71,32 @@ namespace Deveel.Data.Net.Client {
 			set { attributes[ItemIdName] = value; }
 		}
 
+		public bool HasResponse {
+			get { return response != null; }
+		}
+
+		public ActionResponse Response {
+			get { return response; }
+		}
+
 		internal void Seal() {
 			readOnly = true;
 			arguments.Seal();
 		}
 
 		public object Clone() {
-			ActionRequest request = new ActionRequest(type, transaction);
+			ActionRequest request = new ActionRequest(clientType, type, transaction);
 			request.arguments = (ActionArguments) arguments.Clone();
 			request.attributes = (ActionAttributes)attributes.Clone();
 			return request;
 		}
 
 		public ActionResponse CreateResponse() {
-			if (response != null)
-				throw new InvalidOperationException("A response was previously created.");
+			return CreateResponse(null);
+		}
 
-			response = new ActionResponse(this, transaction);
+		public ActionResponse CreateResponse(string name) {
+			response = new ActionResponse(name, this, transaction);
 			return response;
 		}
 	}

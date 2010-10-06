@@ -16,6 +16,10 @@ namespace Deveel.Data.Net.Client {
 		private bool polling;
 		private TcpListener listener;
 
+		protected override string Type {
+			get { return "rpc"; }
+		}
+
 		private void Poll() {
 			polling = true;
 			

@@ -8,6 +8,7 @@ namespace Deveel.Data.Net.Client {
 		private bool readOnly;
 		private ActionArguments children;
 		private ActionAttributes attributes;
+		private string idKey;
 		private string format;
 
 		internal ActionArgument(string name, object value, bool readOnly) {
@@ -28,6 +29,29 @@ namespace Deveel.Data.Net.Client {
 
 		public string Name {
 			get { return name; }
+		}
+
+		public bool HasId {
+			get { return idKey != null && attributes.Contains(idKey); }
+		}
+
+		public object Id {
+			get { return idKey == null ? null : attributes[idKey]; }
+		}
+
+		public bool IsId(string key) {
+			return idKey != null && idKey == key;
+		}
+
+		public void SetId(string key, object id) {
+			if (idKey != null)
+				throw new ArgumentException("A unique identifier for this argument was already set.");
+
+			if (attributes.Contains(key))
+				throw new ArgumentException("The key for the unique identifier is already in use.");
+
+			idKey = key;
+			attributes[key] = id;
 		}
 
 		public object Value {

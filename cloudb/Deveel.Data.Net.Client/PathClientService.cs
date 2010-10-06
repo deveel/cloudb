@@ -58,6 +58,8 @@ namespace Deveel.Data.Net.Client {
 			get { return client; }
 		}
 
+		protected abstract string Type { get; }
+
 		protected Logger Logger {
 			get { return log; }
 		}
@@ -155,14 +157,22 @@ namespace Deveel.Data.Net.Client {
 		protected virtual void OnInit() {
 		}
 
-		private ActionRequest GetMethodRequest(RequestType type, IPathTransaction transaction, Stream requestStream) {
-			ActionRequest request = new ActionRequest(type, transaction);
+		private ActionRequest GetMethodRequest(RequestType type, PathTransaction transaction, Stream requestStream) {
+			ActionRequest request = new ActionRequest(Type, type, transaction.Transaction);
 			if (requestStream != null)
 				ActionSerializer.DeserializeRequest(request, requestStream);
 			return request;
 		}
 
 		protected ActionResponse HandleRequest(RequestType type, string pathName, IDictionary<string, object> args, Stream requestStream) {
+			//TODO: allow having multiple handlers for the service ...
+			HandlerContainer handler = GetMethodHandler(pathName);
+			if (handler == null)
+				throw new InvalidOperationException("No handler was found for the path '" + pathName + "' in this context.");
+
+			if (!handler.Handler.CanHandleClientType(Type))
+				throw new InvalidOperationException("The handler for the path '" + pathName + "' cannot support client of type '" + Type + "'.");
+
 			IPathTransaction transaction;
 
 			if (TransactionIdKey != null && (args != null && args.ContainsKey(TransactionIdKey))) {
@@ -172,11 +182,7 @@ namespace Deveel.Data.Net.Client {
 				transaction = CreateTransaction(pathName);
 			}
 
-			HandlerContainer handler = GetMethodHandler(pathName);
-			if (handler == null)
-				throw new InvalidOperationException("No handler was found for the path '" + pathName + "' in this context.");
-
-			ActionRequest request = GetMethodRequest(type, transaction, requestStream);
+			ActionRequest request = GetMethodRequest(type, ((PathTransaction) transaction), requestStream);
 			if (args != null) {
 				foreach(KeyValuePair<string, object> pair in args) {
 					request.Attributes.Add(pair.Key, pair.Value);
@@ -303,26 +309,31 @@ namespace Deveel.Data.Net.Client {
 			public int Id {
 				get { return id; }
 			}
+
 			public void Dispose() {
-				transaction.Dispose();
+				Transaction.Dispose();
 
 				HandlerContainer container = service.GetMethodHandler(context.PathName);
 				container.RemoveTransaction(this);
 
-				service.OnTransactionDisposed(context.PathName, transaction);
+				service.OnTransactionDisposed(context.PathName, Transaction);
 			}
 
 			public IPathContext Context {
 				get { return context; }
 			}
 
+			public IPathTransaction Transaction {
+				get { return transaction; }
+			}
+
 			public DataAddress Commit() {
-				DataAddress address = transaction.Commit();
+				DataAddress address = Transaction.Commit();
 
 				HandlerContainer container = service.GetMethodHandler(context.PathName);
 				container.RemoveTransaction(this);
 
-				service.OnTransactionCommitted(context.PathName, transaction, address);
+				service.OnTransactionCommitted(context.PathName, Transaction, address);
 				return address;
 			}
 		}

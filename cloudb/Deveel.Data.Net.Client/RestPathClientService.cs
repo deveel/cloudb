@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using System.Text;
 using System.Threading;
 
 namespace Deveel.Data.Net.Client {
@@ -13,6 +14,10 @@ namespace Deveel.Data.Net.Client {
 		
 		public RestPathClientService(HttpServiceAddress address, IServiceAddress managerAddress, IServiceConnector connector)
 			: base(address, managerAddress, connector) {
+		}
+
+		protected override string Type {
+			get { return "rest"; }
 		}
 
 		public override IActionSerializer ActionSerializer {
@@ -92,6 +97,16 @@ namespace Deveel.Data.Net.Client {
 
 			base.OnInit();
 		}
+
+		protected override void Dispose(bool disposing) {
+			if (disposing) {
+				polling = false;
+				listener.Stop();
+				listener = null;
+			}
+
+			base.Dispose(disposing);
+		}
 		
 		#region HttpConnection
 
@@ -104,10 +119,11 @@ namespace Deveel.Data.Net.Client {
 
 			public void Work(object state) {
 				HttpListenerContext context = (HttpListenerContext)state;
+
 				try {
 					// Get the credentials if specified,
 					if (context.User != null) {
-						HttpListenerBasicIdentity identity = (HttpListenerBasicIdentity) context.User.Identity;
+						HttpListenerBasicIdentity identity = (HttpListenerBasicIdentity)context.User.Identity;
 						IPathClientAuthorize authorize = service.Authorize;
 						if (authorize != null && !authorize.IsAuthorized(identity)) {
 							context.Response.StatusCode = 401;
@@ -117,111 +133,126 @@ namespace Deveel.Data.Net.Client {
 					}
 
 					// The main command dispatch loop for this connection,
-					while (true) {
-						string method = context.Request.HttpMethod;
-						RequestType requestType = (RequestType)Enum.Parse(typeof(RequestType), method, true);
-						
-						string pathName = context.Request.Url.PathAndQuery;
-						string resourceId = null;
-						int tid = -1;
-						
-						if (String.IsNullOrEmpty(pathName))
-							throw new InvalidOperationException("None path specified.");
-						
-						if (pathName[0] == '/')
-							pathName = pathName.Substring(1);
-						if (pathName[pathName.Length - 1] == '/')
-							pathName = pathName.Substring(0, pathName.Length - 1);
 
-						int index = pathName.IndexOf('?');
+					string method = context.Request.HttpMethod;
+					RequestType requestType = (RequestType)Enum.Parse(typeof(RequestType), method, true);
 
-						Dictionary<string, object> args = null;
+					string pathName = context.Request.Url.PathAndQuery;
+					string resourceId = null;
+
+					if (String.IsNullOrEmpty(pathName))
+						throw new InvalidOperationException("None path specified.");
+
+					if (pathName[0] == '/')
+						pathName = pathName.Substring(1);
+					if (pathName[pathName.Length - 1] == '/')
+						pathName = pathName.Substring(0, pathName.Length - 1);
+
+					int index = pathName.IndexOf('?');
+
+					Dictionary<string, object> args = new Dictionary<string, object>();
+					if (index != -1) {
+						//TODO: extract the transaction id from the query ...
+						string query = pathName.Substring(index + 1);
+						pathName = pathName.Substring(0, index);
+
+						if (!String.IsNullOrEmpty(query)) {
+							string[] sp = query.Split('&');
+							for (int i = 0; i < sp.Length; i++) {
+								string s = sp[i].Trim();
+								int idx = s.IndexOf('=');
+								if (idx == -1) {
+									args[s] = String.Empty;
+								} else {
+									string key = s.Substring(0, index);
+									string value = s.Substring(index + 1);
+									args[key] = value;
+								}
+							}
+						}
+					}
+
+					index = pathName.IndexOf('/');
+					if (index != -1) {
+						resourceId = pathName.Substring(index + 1);
+						pathName = pathName.Substring(0, index);
+					}
+
+					if (!String.IsNullOrEmpty(resourceId)) {
+						index = resourceId.IndexOf('/');
 						if (index != -1) {
-							//TODO: extract the transaction id from the query ...
-							string query = pathName.Substring(index + 1);
-							pathName = pathName.Substring(0, index);
+							string id = resourceId.Substring(index + 1);
+							resourceId = resourceId.Substring(0, index);
+							args[ActionRequest.ItemIdName] = id;
+						}
 
-							if (!String.IsNullOrEmpty(query)) {
-								args = new Dictionary<string, object>();
+						args[ActionRequest.ResourceIdName] = resourceId;
+					}
 
-								string[] sp = query.Split('&');
-								for (int i = 0; i < sp.Length; i++) {
-									string s = sp[i].Trim();
-									int idx = s.IndexOf('=');
-									if (idx == -1) {
-										args[s] = String.Empty;
-									} else {
-										string key = s.Substring(0, index);
-										string value = s.Substring(index + 1);
-										args[key] = value;
-									}
+					Stream requestStream = null;
+					if (requestType == RequestType.Post ||
+						requestType == RequestType.Put)
+						requestStream = context.Request.InputStream;
+
+					ActionResponse response = service.HandleRequest(requestType, pathName, args, requestStream);
+
+					if (requestStream != null)
+						requestStream.Close();
+
+					if (response.Code == ActionResponseCode.NotFound) {
+						context.Response.StatusCode = 404;
+					} else if (response.Code == ActionResponseCode.UnsupportedFormat) {
+						context.Response.StatusCode = 415;
+					} else if (response.Code == ActionResponseCode.Error) {
+						context.Response.StatusCode = 500;
+						if (response.Arguments.Contains("message")) {
+							ActionArgument messageArg = response.Arguments["message"];
+							byte[] bytes = context.Response.ContentEncoding.GetBytes(messageArg.ToString());
+							context.Response.OutputStream.Write(bytes, 0, bytes.Length);
+							context.Response.OutputStream.Flush();
+						}
+					} else if (response.Code == ActionResponseCode.Success) {
+						if (requestType == RequestType.Post ||
+							requestType == RequestType.Put)
+							context.Response.StatusCode = 201;
+						else if (requestType == RequestType.Delete) {
+							context.Response.StatusCode = 204;
+							context.Response.Close();
+							return;
+						} else
+							context.Response.StatusCode = 200;
+
+						// TODO: make it recurive ...
+						if (!response.Request.HasItemId) {
+							foreach(ActionArgument argument in response.Arguments) {
+								if (argument.HasId) {
+									StringBuilder href = new StringBuilder(service.Address.ToString());
+									if (href[href.Length - 1] != '/')
+										href.Append("/");
+									href.Append(response.Request.ResourceId);
+									href.Append("/");
+									href.Append(argument.Id);
+									href.Append("/");
+									argument.Attributes["href"] = href.ToString();
 								}
 							}
 						}
 
-						index = pathName.IndexOf('/');
-						if (index != -1) {
-							resourceId = pathName.Substring(index + 1);
-							pathName = pathName.Substring(0, index);
-						}
-
-						if (!String.IsNullOrEmpty(resourceId)) {
-							index = resourceId.IndexOf('/');
-							if (index != -1) {
-								string id = resourceId.Substring(index + 1);
-								resourceId = resourceId.Substring(0, index);
-
-								if (args == null)
-									args = new Dictionary<string, object>();
-								args[ActionRequest.ItemIdName] = id;
-							}
-
-							args[ActionRequest.ResourceIdName] = resourceId;
-						}
-
-						Stream requestStream = null;
-						if (requestType == RequestType.Post ||
-						    requestType == RequestType.Put)
-							requestStream = context.Request.InputStream;
-
-						ActionResponse response = service.HandleRequest(requestType, pathName, args, requestStream);
-
-						if (requestStream != null)
-							requestStream.Close();
-						
-						if (response.Code == ActionResponseCode.NotFound) {
-							context.Response.StatusCode = 404;
-						} else if (response.Code == ActionResponseCode.UnsupportedFormat) {
-							context.Response.StatusCode = 415;
-						} else if (response.Code == ActionResponseCode.Error) {
-							context.Response.StatusCode = 500;
-							//TODO: write down the error...
-						} else if (response.Code == ActionResponseCode.Success) {
-							if (requestType == RequestType.Post ||
-							    requestType == RequestType.Put)
-								context.Response.StatusCode = 201;
-							else if (requestType == RequestType.Delete)
-								context.Response.StatusCode = 204;
-							else
-								context.Response.StatusCode = 200;
-							
-							// Write and flush the output message,
-							Stream responseStream = context.Response.OutputStream;
-							service.ActionSerializer.SerializeResponse(response, responseStream);
-							responseStream.Flush();
-							responseStream.Close();
-						}
-						
-						context.Response.Close();
-					} // while (true)
-
+						// Write and flush the output message,
+						Stream responseStream = context.Response.OutputStream;
+						service.ActionSerializer.SerializeResponse(response, responseStream);
+						responseStream.Flush();
+						responseStream.Close();
+					}
 				} catch (IOException e) {
+					context.Response.StatusCode = 500;
+
 					if (e is EndOfStreamException) {
 						// Ignore this one also,
 					} else {
 						//TODO: ERROR log ...
 					}
-				}  finally {
+				} finally {
 					// Make sure the socket is closed before we return from the thread,
 					try {
 						context.Response.Close();

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -18,15 +19,10 @@ namespace Deveel.Data.Net.Client {
 		}
 
 		private static string ReadString(XmlReader reader) {
-			string value = null;
-			if (reader.Read()) {
-				if (reader.NodeType != XmlNodeType.Text)
-					throw new FormatException("Invalid contents of a string element.");
+			if (reader.NodeType != XmlNodeType.Text)
+				throw new FormatException("Invalid contents of a string element.");
 
-				value = reader.Value;
-			}
-
-			return value;
+			return reader.Value;
 		}
 
 		private static long ReadLong(XmlReader reader) {
@@ -71,25 +67,24 @@ namespace Deveel.Data.Net.Client {
 		}
 
 		private static DateTime ReadDateTime(XmlReader reader, string format) {
-			string value = null;
-			if (reader.Read()) {
-				if (reader.NodeType == XmlNodeType.Attribute &&
-				    reader.LocalName == "format") {
-					format = reader.Value;
-					if (!reader.Read())
-						throw new FormatException("The dateTime element is not properly formatted.");
-				}
-
-				if (reader.NodeType != XmlNodeType.Text)
-					throw new FormatException("Invalid contents of a dateTime element.");
-
-				value = reader.Value;
+			if (reader.NodeType == XmlNodeType.Attribute &&
+			    reader.LocalName == "format") {
+				format = reader.Value;
+				if (!reader.Read())
+					throw new FormatException("The dateTime element is not properly formatted.");
 			}
+
+			if (reader.NodeType != XmlNodeType.Text)
+				throw new FormatException("Invalid contents of a dateTime element.");
+
+			string value = reader.Value;
 
 			if (String.IsNullOrEmpty(value))
 				throw new FormatException();
 
-			return !String.IsNullOrEmpty(format) ? DateTime.ParseExact(value, format, CultureInfo.InvariantCulture) : DateTime.Parse(value);
+			return !String.IsNullOrEmpty(format)
+			       	? DateTime.ParseExact(value, format, CultureInfo.InvariantCulture)
+			       	: DateTime.Parse(value);
 		}
 
 		private static Stream ReadBinary(XmlReader reader) {
@@ -99,14 +94,14 @@ namespace Deveel.Data.Net.Client {
 		}
 
 		private static object ReadValue(XmlReader reader, string valueType) {
-			if (valueType == "bool")
+			if (valueType == "boolean")
 				return ReadBoolean(reader);
 			if (String.IsNullOrEmpty(valueType) || 
 			    valueType == "string")
 				return ReadString(reader);
-			if (valueType == "int")
+			if (valueType == "int4")
 				return ReadInt(reader);
-			if (valueType == "long")
+			if (valueType == "int8")
 				return ReadLong(reader);
 			if (valueType == "double")
 				return ReadDouble(reader);
@@ -118,9 +113,9 @@ namespace Deveel.Data.Net.Client {
 			// Arrays 
 			if (valueType == "stringArray")
 				return ReadArray(reader, typeof(string));
-			if (valueType == "intArray")
+			if (valueType == "int4Array")
 				return ReadArray(reader, typeof(int));
-			if (valueType == "longArray")
+			if (valueType == "int8Array")
 				return ReadArray(reader, typeof(long));
 			if (valueType == "doubleArray")
 				return ReadArray(reader, typeof(double));
@@ -164,9 +159,9 @@ namespace Deveel.Data.Net.Client {
 
 					if (type == null) {
 						string elemName = reader.LocalName;
-						if (elemName == "int")
+						if (elemName == "int4")
 							type = typeof(int);
-						else if (elemName == "long")
+						else if (elemName == "int8")
 							type = typeof(long);
 						else if (elemName == "string")
 							type = typeof(string);
@@ -174,7 +169,7 @@ namespace Deveel.Data.Net.Client {
 							type = typeof(double);
 						else if (elemName == "dateTime")
 							type = typeof(DateTime);
-						else if (elemName == "bool")
+						else if (elemName == "boolean")
 							type = typeof(bool);
 						else if (elemName == "binary")
 							type = typeof(Stream);
@@ -208,29 +203,51 @@ namespace Deveel.Data.Net.Client {
 			return array;
 		}
 
-		private static object ReadValue(XmlReader reader) {
+		private static ActionArgument ReadArgument(XmlReader reader) {
+			ActionArgument argument = null;
+			string attributeName = reader.LocalName;
+
 			string valueType = null;
 			object value = null;
 			while (reader.Read()) {
 				XmlNodeType valueNodeType = reader.NodeType;
 
 				if (valueNodeType == XmlNodeType.Comment ||
-				    valueNodeType == XmlNodeType.Whitespace)
+					valueNodeType == XmlNodeType.Whitespace)
 					continue;
 
 				if (valueNodeType == XmlNodeType.Attribute) {
-					valueType = reader.Value;
+					if (reader.LocalName == "type") {
+						valueType = reader.Value;
+						continue;
+					}
+					if (argument == null)
+						argument = new ActionArgument(attributeName, value);
+
+					argument.Attributes.Add(reader.LocalName, reader.Value);
+				} else if (reader.NodeType == XmlNodeType.Element) {
+					if (argument == null)
+						argument = new ActionArgument(attributeName, value);
+
+					argument.Children.Add(ReadArgument(reader));
 				} else if (reader.NodeType == XmlNodeType.EndElement) {
 					break;
 				} else {
 					value = ReadValue(reader, valueType);
+
+					if (argument == null) {
+						argument = new ActionArgument(attributeName, value);
+					} else {
+						argument.Value = value;
+					}
 				}
 			}
 
-			return value;
+			return argument;
 		}
 
 		public override void DeserializeRequest(ActionRequest request, XmlReader reader) {
+			string requestName = null;
 			while (reader.Read()) {
 				XmlNodeType nodeType = reader.NodeType;
 				//TODO: should we take the 'encoding' attribute?
@@ -243,12 +260,15 @@ namespace Deveel.Data.Net.Client {
 
 				if (nodeType == XmlNodeType.Element) {
 					string elementName = reader.LocalName;
-					if (elementName == "request")
+					if (requestName == null) {
+						requestName = elementName;
 						continue;
+					}
 
-					object value = ReadValue(reader);
-
-					request.Arguments.Add(new ActionArgument(elementName, value));
+					ActionArgument argument = ReadArgument(reader);
+					request.Arguments.Add(argument);
+				} else if (nodeType == XmlNodeType.Attribute) {
+					request.Attributes.Add(reader.LocalName, reader.Value);
 				} else if (nodeType == XmlNodeType.EndElement) {
 					break;
 				}
@@ -257,16 +277,26 @@ namespace Deveel.Data.Net.Client {
 
 		public override void SerializeResponse(ActionResponse response, XmlWriter writer) {
 			writer.WriteStartDocument(true);
-			writer.WriteAttributeString("encoding", ContentEncoding.BodyName);
-			writer.WriteEndDocument();
 
-			writer.WriteStartElement("response");
+			string rootElement = "response";
+			if (response.HasName)
+				rootElement = response.Name;
+
+			writer.WriteStartElement(rootElement);
+			if (response.Attributes.Count > 0) {
+				foreach(KeyValuePair<string, object> attribute in response.Attributes) {
+					writer.WriteStartAttribute(attribute.Key);
+					writer.WriteValue(attribute.Value);
+					writer.WriteEndAttribute();
+				}
+			}
 
 			foreach(ActionArgument argument in response.Arguments) {
 				WriteArgument(writer, argument, true);
 			}
 
 			writer.WriteEndElement();
+			writer.WriteEndDocument();
 		}
 
 		private static string GetValueType(Type type) {
@@ -275,9 +305,9 @@ namespace Deveel.Data.Net.Client {
 			if (type == typeof(bool))
 				return "boolean";
 			if (type == typeof(int))
-				return "int";
+				return "int4";
 			if (type == typeof(long))
-				return "long";
+				return "int8";
 			if (type == typeof(double))
 				return "double";
 			if (type == typeof(DateTime))
@@ -301,36 +331,47 @@ namespace Deveel.Data.Net.Client {
 		}
 
 		private static void WriteArgument(XmlWriter writer, ActionArgument argument, bool printType) {
-			writer.WriteStartElement(argument.Name);			
+			writer.WriteStartElement(argument.Name);
+
+			if (argument.Attributes.Count > 0) {
+				foreach(KeyValuePair<string, object> attribute in argument.Attributes) {
+					writer.WriteStartAttribute(attribute.Key);
+					if (attribute.Value != null)
+						writer.WriteValue(attribute.Value);
+					writer.WriteEndAttribute();
+				}
+			}
 
 			object value = argument.Value;
 
-			string valueType = GetValueType(value);
+			if (value != null) {
+				string valueType = GetValueType(value);
 
-			if (printType)
-				writer.WriteAttributeString("type", valueType);
+				if (printType)
+					writer.WriteAttributeString("type", valueType);
 
-			if (value is Array) {
-				string elemType = valueType.Substring(0, valueType.Length - 5);
+				if (value is Array) {
+					string elemType = valueType.Substring(0, valueType.Length - 5);
 
-				Array array = (Array) value;
-				int length = array.GetLength(0);
-				for (int i = 0; i < length; i++) {
-					// this is an ugly hack, but speeds work ...
-					WriteArgument(writer, new ActionArgument(elemType, array.GetValue(i)), false);
+					Array array = (Array) value;
+					int length = array.GetLength(0);
+					for (int i = 0; i < length; i++) {
+						// this is an ugly hack, but speeds work ...
+						WriteArgument(writer, new ActionArgument(elemType, array.GetValue(i)), false);
+					}
+				} else {
+					if (value is DateTime) {
+						string format = argument.Format;
+						value = !String.IsNullOrEmpty(format) ? ((DateTime) value).ToString(format) : ((DateTime) value).ToString();
+					} else if (value is Stream) {
+						Stream stream = (Stream) value;
+						byte[] bytes = new byte[stream.Length];
+						stream.Read(bytes, 0, bytes.Length);
+						value = Convert.ToBase64String(bytes);
+					}
+
+					writer.WriteValue(value);
 				}
-			} else {
-				if (value is DateTime) {
-					string format = argument.Format;
-					value = !String.IsNullOrEmpty(format) ? ((DateTime) value).ToString(format) : ((DateTime) value).ToString();
-				} else if (value is Stream) {
-					Stream stream = (Stream) value;
-					byte[] bytes = new byte[stream.Length];
-					stream.Read(bytes, 0, bytes.Length);
-					value = Convert.ToBase64String(bytes);
-				}
-
-				writer.WriteValue(value);
 			}
 
 			writer.WriteEndElement();

@@ -322,7 +322,7 @@ namespace Deveel.Data {
 		}
 
 		public bool ContainsSortKey(long index) {
-			return SearchFirst(index, KeyComparer) > 0;
+			return SearchFirst(index, KeyComparer) >= 0;
 		}
 
 		#region KeyComparerImpl
