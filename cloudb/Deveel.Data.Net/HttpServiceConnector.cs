@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 
+using Deveel.Data.Net.Client;
+
 namespace Deveel.Data.Net {
 	public sealed class HttpServiceConnector : IServiceConnector {		
 		public HttpServiceConnector(string userName, string password) {
@@ -96,8 +98,8 @@ namespace Deveel.Data.Net {
 			}
 
 			
-			public MessageStream Process(MessageStream messageStream) {
-				return DoProcess(messageStream, 0);
+			public Message Process(Message message) {
+				return DoProcess(message, 0);
 			}
 		}
 		

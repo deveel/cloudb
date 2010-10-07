@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 
+using Deveel.Data.Net.Client;
+
 namespace Deveel.Data.Net {
 	public abstract class ManagerService : Service {
 		private readonly IServiceConnector connector;
@@ -854,7 +856,7 @@ namespace Deveel.Data.Net {
 
 			private readonly ManagerService service;
 
-			public MessageStream Process(MessageStream messageStream) {
+			public Message Process(Message messageStream) {
 				MessageStream responseStream = new MessageStream(32);
 
 				// The messages in the stream,

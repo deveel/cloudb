@@ -6,6 +6,8 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
+using Deveel.Data.Net.Client;
+
 namespace Deveel.Data.Net {
 	public class TcpAdminService : AdminService {
 		private bool polling;
@@ -124,10 +126,10 @@ namespace Deveel.Data.Net {
 				random = new Random();
 			}
 
-			private static MessageStream NoServiceError() {
-				MessageStream msg_out = new MessageStream(16);
-				msg_out.AddErrorMessage(new ServiceException(new Exception("The service requested is not being run on the instance")));
-				return msg_out;
+			private static MessageResponse NoServiceError(MessageRequest request) {
+				MessageResponse response = request.CreateResponse();
+				response.Arguments.Add(new MessageError(new Exception("The service requested is not being run on the instance")));
+				return response;
 			}
 
 			public void Close() {

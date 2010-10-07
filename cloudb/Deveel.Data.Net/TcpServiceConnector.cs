@@ -6,6 +6,8 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
+using Deveel.Data.Net.Client;
+
 namespace Deveel.Data.Net {
 	public class TcpServiceConnector : IServiceConnector {
 		public TcpServiceConnector(string password) {
@@ -167,7 +169,7 @@ namespace Deveel.Data.Net {
 			private readonly ServiceType serviceType;
 			private readonly TcpServiceConnector connector;
 
-			private MessageStream DoProcess(MessageStream messageStream, int tryCount) {
+			private Message DoProcess(Message messageStream, int tryCount) {
 				TcpConnection c = null;
 
 				try {
@@ -226,7 +228,7 @@ namespace Deveel.Data.Net {
 
 			#region Implementation of IMessageProcessor
 
-			public MessageStream Process(MessageStream messageStream) {
+			public Message Process(Message messageStream) {
 				return DoProcess(messageStream, 0);
 			}
 

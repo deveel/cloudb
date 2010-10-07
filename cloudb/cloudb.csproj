@@ -112,7 +112,6 @@
     <Compile Include="Deveel.Data.Net.Client\RestPathClientService.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Deveel.Data.Net\IJsonSerializable.cs" />
     <Compile Include="Deveel.Data.Net.Client\IXmlSerializable.cs" />
     <Compile Include="Deveel.Data.Net.Client\BinaryPathClientService.cs">
       <SubType>Component</SubType>
@@ -143,14 +142,10 @@
     <Compile Include="Deveel.Data.Net\IAdminServiceDelegator.cs" />
     <Compile Include="Deveel.Data.Net\IBlockStore.cs" />
     <Compile Include="Deveel.Data.Net\HttpServiceAddress.cs" />
-    <Compile Include="Deveel.Data.Net\IMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Client\IRequestHandler.cs" />
-    <Compile Include="Deveel.Data.Net\ITextMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net\JsonMessageStreamSerializer.cs" />
     <Compile Include="Deveel.Data.Net\MemoryAdminServiceDelegator.cs" />
     <Compile Include="Deveel.Data.Net.Client\RequestType.cs" />
     <Compile Include="Deveel.Data.Net\ServiceStatus.cs" />
-    <Compile Include="Deveel.Data.Net\XmlMessageStreamSerializer.cs" />
     <Compile Include="Deveel.Data\IIndexCursor.cs" />
     <Compile Include="Deveel.Data\IIndex.cs" />
     <Compile Include="Deveel.Data\IInteractiveEnumerator.cs">
@@ -158,7 +153,6 @@
     </Compile>
     <Compile Include="Deveel.Data\IPathConnection.cs" />
     <Compile Include="Deveel.Data\IPath.cs" />
-    <Compile Include="Deveel.Data.Net\IMessageProcessor.cs" />
     <Compile Include="Deveel.Data.Net\INetworkCache.cs" />
     <Compile Include="Deveel.Data.Net\IService.cs" />
     <Compile Include="Deveel.Data.Net\IServiceAddress.cs" />
@@ -180,7 +174,6 @@
     <Compile Include="Deveel.Data.Net\MemoryRootService.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Deveel.Data.Net\BinaryMessageStreamSerializer.cs" />
     <Compile Include="Deveel.Data.Net\NetworkAdminException.cs" />
     <Compile Include="Deveel.Data.Net\NetworkClient.cs" />
     <Compile Include="Deveel.Data.Net\NetworkConfigSource.cs" />
@@ -227,8 +220,6 @@
     <Compile Include="Deveel.Data.Store\IOStoreDataAccessor.cs" />
     <Compile Include="Deveel.Data.Store\IStore.cs" />
     <Compile Include="Deveel.Data.Store\IStoreDataAccessor.cs" />
-    <Compile Include="Deveel.Data.Net\Message.cs" />
-    <Compile Include="Deveel.Data.Net\MessageStream.cs" />
     <Compile Include="Deveel.Data.Net\Node.cs" />
     <Compile Include="Deveel.Data.Net\NodeSet.cs" />
     <Compile Include="Deveel.Data.Net\Service.cs">

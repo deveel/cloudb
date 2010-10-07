@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 
 using Deveel.Data.Diagnostics;
+using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
 	public sealed partial class NetworkProfile {

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading;
-
 using Deveel.Data.Diagnostics;
+using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
 	public class AdminService : Service {
@@ -150,13 +150,16 @@ namespace Deveel.Data.Net {
 				return stats;
 			}
 
-			public MessageStream Process(MessageStream messageStream) {
-				MessageStream outputStream = new MessageStream(32);
+			public Message Process(Message message) {
+				Message response;
+				if (MessageStream.TryProcess(this, message, out response))
+					return response;
+				
+				MessageRequest request = (MessageRequest)message;
 
 				// For each message in the message input,
-				foreach (Message m in messageStream) {
 					try {
-						string command = m.Name;
+						string command = request.Name;
 						// Report on the services running,
 						if (command.Equals("report")) {
 							lock (service.serverManagerLock) {
@@ -165,25 +168,25 @@ namespace Deveel.Data.Net {
 								long fm = 0;		// Free Memory
 								long td = 0;		// Total Space
 								long fd = 0;		// Free Space
-								outputStream.StartMessage("R");
+								response.StartMessage("R");
 								if (service.Block == null) {
-									outputStream.AddMessageArgument("block=no");
+									response.AddMessageArgument("block=no");
 								} else {
-									outputStream.AddMessageArgument(service.Block.BlockCount.ToString());
+									response.AddMessageArgument(service.Block.BlockCount.ToString());
 								}
-								outputStream.AddMessageArgument("manager=" + (service.Manager == null ? "no" : "yes"));
-								outputStream.AddMessageArgument("root=" + (service.Root == null ? "no" : "yes"));
-								outputStream.AddMessageArgument(tm - fm);
-								outputStream.AddMessageArgument(tm);
-								outputStream.AddMessageArgument(td - fd);
-								outputStream.AddMessageArgument(td);
-								outputStream.CloseMessage();
+								response.AddMessageArgument("manager=" + (service.Manager == null ? "no" : "yes"));
+								response.AddMessageArgument("root=" + (service.Root == null ? "no" : "yes"));
+								response.AddMessageArgument(tm - fm);
+								response.AddMessageArgument(tm);
+								response.AddMessageArgument(td - fd);
+								response.AddMessageArgument(td);
+								response.CloseMessage();
 							}
 						} else if (command.Equals("reportStats")) {
 							// Analytics stats; we convert the stats to a long[] array and
 							// send it as a reply.
 							long[] stats = GetStats();
-							outputStream.AddMessage("R", stats);
+							response.AddMessage("R", stats);
 						} else {
 							// Starts a service,
 							if (command.Equals("init")) {
@@ -199,7 +202,7 @@ namespace Deveel.Data.Net {
 							}
 
 							// Add reply message,
-							outputStream.AddMessage("R", 1L);
+							response.AddMessage("R", 1L);
 						}
 
 					} catch (OutOfMemoryException e) {
@@ -208,10 +211,10 @@ namespace Deveel.Data.Net {
 						throw;
 					} catch (Exception e) {
 						service.Logger.Error("Error while processing.");
-						outputStream.AddErrorMessage(new ServiceException(e));
+						response.AddErrorMessage(new ServiceException(e));
 					}
-				}
-				return outputStream;
+					
+				return response;
 			}
 		}
 

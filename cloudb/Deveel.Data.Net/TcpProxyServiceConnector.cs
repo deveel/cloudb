@@ -4,6 +4,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
+using Deveel.Data.Net.Client;
+
 namespace Deveel.Data.Net {
 	public class TcpProxyServiceConnector : IServiceConnector {
 		public TcpProxyServiceConnector(IPAddress proxyAddress, int proxyPort, string password) {
@@ -114,7 +116,7 @@ namespace Deveel.Data.Net {
 
 			#region Implementation of IMessageProcessor
 
-			public MessageStream Process(MessageStream messageStream) {
+			public Message Process(Message messageStream) {
 				try {
 					lock (connector.proxy_lock) {
 						IMessageSerializer serializer = connector.Serializer;

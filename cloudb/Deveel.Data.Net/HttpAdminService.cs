@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 
 using Deveel.Data.Diagnostics;
+using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
 	public sealed class HttpAdminService : AdminService {

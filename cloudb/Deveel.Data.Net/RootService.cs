@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 
+using Deveel.Data.Net.Client;
 using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
@@ -474,7 +475,7 @@ namespace Deveel.Data.Net {
 			
 			private readonly RootService service;			
 			
-			public MessageStream Process(MessageStream messageStream) {
+			public Message Process(Message messageStream) {
 				// The reply message,
 				MessageStream responseStream = new MessageStream(32);
 

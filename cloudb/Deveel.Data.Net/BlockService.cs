@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading;
 
 using Deveel.Data.Diagnostics;
+using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
 	public abstract class BlockService : Service {
@@ -416,13 +417,16 @@ namespace Deveel.Data.Net {
 				return container.CreateChecksum();
 			}
 			
-			public MessageStream Process(MessageStream messageStream) {
+			public Message Process(Message messageStream) {
+				Message responseStream;
+				
+				if (MessageStream.TryProcess(this, messageStream, out responseStream))
+					return responseStream;
+				
 				// The map of containers touched,
 				Dictionary<long, BlockContainer> containersTouched = new Dictionary<long, BlockContainer>();
 				// The nodes fetched in this message,
 				List<long> readNodes = null;
-				
-				MessageStream responseStream = new MessageStream(32);
 				
 				foreach(Message m in messageStream) {
 					try {

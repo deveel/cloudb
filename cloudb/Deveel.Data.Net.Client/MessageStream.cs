@@ -53,7 +53,7 @@ namespace Deveel.Data.Net.Client {
 			return messages[index];
 		}
 		
-		public bool TryProcess(IMessageProcessor processor, Message request, out Message response) {
+		public static bool TryProcess(IMessageProcessor processor, Message request, out Message response) {
 			MessageStream requestStream = request as MessageStream;
 			if (requestStream == null) {
 				response = null;
