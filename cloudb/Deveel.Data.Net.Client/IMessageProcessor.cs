@@ -2,6 +2,6 @@
 
 namespace Deveel.Data.Net.Client {
 	public interface IMessageProcessor {
-		Message Process(Message message);
+		ResponseMessage Process(RequestMessage message);
 	}
 }

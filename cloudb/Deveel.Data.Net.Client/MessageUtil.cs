@@ -12,8 +12,8 @@ namespace Deveel.Data.Net.Client {
 		}
 
 		public static MessageError GetError(Message message) {
-			if (message is MessageStream) {
-				foreach (Message msg in (MessageStream)message) {
+			if (message is ResponseMessageStream) {
+				foreach (Message msg in (ResponseMessageStream)message) {
 					MessageError error = GetError(msg);
 					if (error != null)
 						return error;
@@ -24,6 +24,11 @@ namespace Deveel.Data.Net.Client {
 			return message.Arguments.Count == 1 && message.Arguments[0].Value is MessageError
 			       	? (MessageError) message.Arguments[0].Value
 			       	: null;
+		}
+
+		public static string GetErrorStackTrace(Message message) {
+			MessageError error = GetError(message);
+			return error == null ? null : error.StackTrace;
 		}
 	}
 }

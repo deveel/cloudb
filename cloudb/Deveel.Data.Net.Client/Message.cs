@@ -27,7 +27,7 @@ namespace Deveel.Data.Net.Client {
 			}
 		}
 
-		public abstract MessageType Type { get; }
+		protected abstract MessageType MessageType { get; }
 
 		public virtual MessageAttributes Attributes {
 			get { return attributes; }
@@ -35,18 +35,6 @@ namespace Deveel.Data.Net.Client {
 
 		public virtual MessageArguments Arguments {
 			get { return arguments; }
-		}
-
-		public bool HasError {
-			get { return MessageUtil.HasError(this); }
-		}
-
-		public string ErrorMessage {
-			get { return MessageUtil.GetErrorMessage(this); }
-		}
-
-		public MessageError Error {
-			get { return MessageUtil.GetError(this); }
 		}
 
 		bool IAttributesHandler.IsReadOnly {

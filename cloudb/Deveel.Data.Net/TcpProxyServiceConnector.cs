@@ -37,7 +37,7 @@ namespace Deveel.Data.Net {
 		public IMessageSerializer Serializer {
 			get {
 				if (serializer == null)
-					serializer = new BinaryMessageStreamSerializer();
+					serializer = new BinaryRpcMessageSerializer();
 				return serializer;
 			}
 			set { serializer = value; }
@@ -116,7 +116,7 @@ namespace Deveel.Data.Net {
 
 			#region Implementation of IMessageProcessor
 
-			public Message Process(Message messageStream) {
+			public ResponseMessage Process(RequestMessage messageStream) {
 				try {
 					lock (connector.proxy_lock) {
 						IMessageSerializer serializer = connector.Serializer;
@@ -139,7 +139,7 @@ namespace Deveel.Data.Net {
 						serializer.Serialize(messageStream, connector.pout.BaseStream);
 						connector.pout.Flush();
 
-						return serializer.Deserialize(connector.pin.BaseStream);
+						return (ResponseMessage) serializer.Deserialize(connector.pin.BaseStream);
 					}
 				} catch (IOException e) {
 					// Probably caused because the proxy closed the connection when a

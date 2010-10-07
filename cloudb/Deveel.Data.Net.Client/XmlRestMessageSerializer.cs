@@ -246,8 +246,9 @@ namespace Deveel.Data.Net.Client {
 			return argument;
 		}
 
-		protected override void Deserialize(Message message, XmlReader reader) {
-			string requestName = null;
+		protected override Message Deserialize(XmlReader reader) {
+			Message message = null;
+
 			while (reader.Read()) {
 				XmlNodeType nodeType = reader.NodeType;
 				//TODO: should we take the 'encoding' attribute?
@@ -260,27 +261,33 @@ namespace Deveel.Data.Net.Client {
 
 				if (nodeType == XmlNodeType.Element) {
 					string elementName = reader.LocalName;
-					if (requestName == null) {
-						requestName = elementName;
+					if (message == null) {
+						//TODO: find a more elegant way to recognize a response ...
+						if (elementName == "response")
+							message = new ResponseMessage(elementName);
+						else
+							message = new RequestMessage(elementName);
 						continue;
 					}
 
 					MessageArgument argument = ReadArgument(reader);
 					message.Arguments.Add(argument);
 				} else if (nodeType == XmlNodeType.Attribute) {
+					if (message == null)
+						throw new FormatException("Attribute found in a wrong moment.");
+
 					message.Attributes.Add(reader.LocalName, reader.Value);
 				} else if (nodeType == XmlNodeType.EndElement) {
 					break;
 				}
 			}
+
+			return message;
 		}
 
 		protected override void Serialize(Message response, XmlWriter writer) {
 			writer.WriteStartDocument(true);
 			
-			if (response is MessageStream)
-				throw new NotImplementedException("not yet implemented");
-
 			string rootElement = "message";
 			if (response.HasName)
 				rootElement = response.Name;

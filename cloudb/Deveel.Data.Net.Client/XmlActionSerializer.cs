@@ -41,16 +41,16 @@ namespace Deveel.Data.Net.Client {
 			get { return "text/xml"; }
 		}
 
-		public void Deserialize(Message message, Stream input) {
+		public Message Deserialize(Stream input) {
 			if (input == null)
 				throw new ArgumentNullException("input");
 			if (!input.CanRead)
 				throw new ArgumentException("The input stream cannot be read");
 
-			Deserialize(message, new XmlTextReader(new StreamReader(input, ContentEncoding)));
+			return Deserialize(new XmlTextReader(new StreamReader(input, ContentEncoding)));
 		}
 
-		protected abstract void Deserialize(Message message, XmlReader reader);
+		protected abstract Message Deserialize(XmlReader reader);
 
 		public void Serialize(Message message, Stream output) {
 			if (output == null)

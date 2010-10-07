@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.Text;
 
 using Deveel.Data.Diagnostics;
+using Deveel.Data.Net.Client;
 using Deveel.Data.Store;
 using Deveel.Data.Util;
 
@@ -58,12 +59,12 @@ namespace Deveel.Data.Net {
 			}
 
 			IMessageProcessor manager = connector.Connect(managerAddress, ServiceType.Manager);
-			MessageStream message_out = new MessageStream(16);
-			message_out.AddMessage(new Message("notifyBlockServerFailure", new object[] { address }));
+			RequestMessage requestMessage = new RequestMessage("notifyBlockServerFailure");
+			requestMessage.Arguments.Add(address);
 			// Process the failure report message on the manager server,
-			MessageStream message_in = manager.Process(message_out);
-			if (message_in.HasError)
-				logger.Error("Error found while processing 'notifyBlockServerFailure': " + message_in.ErrorMessage.ErrorMessage);
+			ResponseMessage responseMessage = manager.Process(requestMessage);
+			if (responseMessage.HasError)
+				logger.Error("Error found while processing 'notifyBlockServerFailure': " + responseMessage.ErrorMessage);
 		}
 
 		//TODO: should this work also for other kind of addresses?
@@ -133,25 +134,27 @@ namespace Deveel.Data.Net {
 			// blocks.
 
 			IMessageProcessor manager = connector.Connect(managerAddress, ServiceType.Manager);
-			MessageStream message_out = new MessageStream(15);
+			RequestMessageStream message_out = new RequestMessageStream();
 
 			foreach (long block_id in noneCached) {
-				message_out.AddMessage(new Message("getServerListForBlock", new object[] { block_id }));
+				RequestMessage request = new RequestMessage("getServerListForBlock");
+				request.Arguments.Add(block_id);
+				message_out.AddMessage(request);
 			}
 
-			MessageStream message_in = manager.Process(message_out);
+			ResponseMessageStream message_in = (ResponseMessageStream) manager.Process(message_out);
 
 			int n = 0;
-			foreach (Message m in message_in) {
-				if (m.IsError)
-					throw new Exception(m.ErrorMessage, m.Error);
+			foreach (ResponseMessage m in message_in) {
+				if (m.HasError)
+					throw new Exception(m.ErrorMessage, m.Error.AsException());
 
-				int sz = (int) m[0];
+				int sz = m.Arguments[0].ToInt32();
 				List<BlockServerElement> srvs = new List<BlockServerElement>(sz);
+				IServiceAddress[] addresses = (IServiceAddress[]) m.Arguments[1].Value;
+				int[] status = (int[]) m.Arguments[2].Value;
 				for (int i = 0; i < sz; ++i) {
-					IServiceAddress address = (IServiceAddress) m[1 + (i*2)];
-					int status = (int) m[1 + (i*2) + 1];
-					srvs.Add(new BlockServerElement(address, (ServiceStatus) status));
+					srvs.Add(new BlockServerElement(addresses[i], (ServiceStatus) status[i]));
 				}
 
 				// Shuffle the list
@@ -305,7 +308,7 @@ namespace Deveel.Data.Net {
 			DataAddress[] refs = new DataAddress[sz];
 			long[] outRefs = new long[sz];
 
-			MessageStream allocate_message = new MessageStream((sz * 3) + 16);
+			RequestMessageStream allocate_message = new RequestMessageStream();
 
 			// Make a connection with the manager server,
 			IMessageProcessor manager = connector.Connect(managerAddress, ServiceType.Manager);
@@ -313,18 +316,21 @@ namespace Deveel.Data.Net {
 			// Allocate the space first,
 			for (int i = 0; i < sz; ++i) {
 				ITreeNode node = nodes[i];
+				RequestMessage request = new RequestMessage("allocateNode");
 				// Is it a branch node?
 				if (node is TreeBranch) {
 					// Branch nodes are 1K in size,
-					allocate_message.AddMessage(new Message("allocateNode", new object[] { 1024 }));
+					request.Arguments.Add(1024);
 				} else {
 					// Leaf nodes are 4k in size,
-					allocate_message.AddMessage(new Message("allocateNode", new object[] { 4096 }));
+					request.Arguments.Add(4096);
 				}
+
+				allocate_message.AddMessage(request);
 			}
 
 			// The result of the set of allocations,
-			MessageStream result_stream = manager.Process(allocate_message);
+			ResponseMessageStream result_stream = (ResponseMessageStream) manager.Process(allocate_message);
 			//DEBUG: ++network_comm_count;
 
 			// The unique list of blocks,
@@ -333,11 +339,11 @@ namespace Deveel.Data.Net {
 			// Parse the result stream one message at a time, the order will be the
 			// order of the allocation messages,
 			int n = 0;
-			foreach (Message m in result_stream) {
-				if (m.IsError)
-					throw m.Error;
+			foreach (ResponseMessage m in result_stream) {
+				if (m.HasError)
+					throw m.Error.AsException();
 
-				DataAddress addr = (DataAddress) m[0];
+				DataAddress addr = (DataAddress) m.Arguments[0].Value;
 				refs[n] = addr;
 				// Make a list of unique block identifiers,
 				if (!unique_blocks.Contains(addr.BlockId)) {
@@ -352,9 +358,9 @@ namespace Deveel.Data.Net {
 
 			// Make message streams for each unique block
 			int ubid_count = unique_blocks.Count;
-			MessageStream[] ubid_stream = new MessageStream[ubid_count];
+			RequestMessageStream[] ubid_stream = new RequestMessageStream[ubid_count];
 			for (int i = 0; i < ubid_stream.Length; ++i) {
-				ubid_stream[i] = new MessageStream(512);
+				ubid_stream[i] = new RequestMessageStream();
 			}
 
 			// Scan all the blocks and create the message streams,
@@ -426,12 +432,12 @@ namespace Deveel.Data.Net {
 				// Get the block id,
 				long blockId = address.BlockId;
 				int bid = unique_blocks.IndexOf(blockId);
-				ubid_stream[bid].StartMessage("writeToBlock");
-				ubid_stream[bid].AddMessageArgument(address);
-				ubid_stream[bid].AddMessageArgument(node_buf);
-				ubid_stream[bid].AddMessageArgument(0);
-				ubid_stream[bid].AddMessageArgument(node_buf.Length);
-				ubid_stream[bid].CloseMessage();
+				RequestMessage request = new RequestMessage("writeToBlock");
+				request.Arguments.Add(address);
+				request.Arguments.Add(node_buf);
+				request.Arguments.Add(0);
+				request.Arguments.Add(node_buf.Length);
+				ubid_stream[bid].AddMessage(request);
 
 				// Update 'out_refs' array,
 				outRefs[i] = refs[i].Value;
@@ -444,7 +450,7 @@ namespace Deveel.Data.Net {
 			// Now process the streams on the servers,
 			for (int i = 0; i < ubid_stream.Length; ++i) {
 				// The output message,
-				MessageStream message_out = ubid_stream[i];
+				RequestMessageStream message_out = ubid_stream[i];
 				// Get the servers this message needs to be sent to,
 				long block_id = unique_blocks[i];
 				IList<BlockServerElement> block_servers = block_to_server_map[block_id];
@@ -455,51 +461,46 @@ namespace Deveel.Data.Net {
 				for (int o = 0; o < bssz; ++o) {
 					IServiceAddress address = block_servers[o].Address;
 					block_server_procs[o] = connector.Connect(address, ServiceType.Block);
-					MessageStream message_in = block_server_procs[o].Process(message_out);
+					ResponseMessageStream message_in = (ResponseMessageStream) block_server_procs[o].Process(message_out);
 					//DEBUG: ++network_comm_count;
 
-					foreach (Message m in message_in) {
-						if (m.IsError) {
-							// If this is an error, we need to report the failure to the
-							// manager server,
-							ReportBlockServerFailure(address);
-							// Remove the block id from the server list cache,
-							networkCache.RemoveServers(block_id);
+					if (message_in.HasError) {
+						// If this is an error, we need to report the failure to the
+						// manager server,
+						ReportBlockServerFailure(address);
+						// Remove the block id from the server list cache,
+						networkCache.RemoveServers(block_id);
 
-							// Rollback any server writes already successfully made,
-							for (int p = 0; p < success_process.Count; p += 2) {
-								IServiceAddress blocks_addr = (IServiceAddress)success_process[p];
-								MessageStream to_rollback = (MessageStream)success_process[p + 1];
+						// Rollback any server writes already successfully made,
+						for (int p = 0; p < success_process.Count; p += 2) {
+							IServiceAddress blocks_addr = (IServiceAddress) success_process[p];
+							RequestMessageStream to_rollback = (RequestMessageStream) success_process[p + 1];
 
-								List<DataAddress> rollback_nodes = new List<DataAddress>(128);
-								foreach (Message rm in to_rollback) {
-									DataAddress raddr = (DataAddress)rm[0];
-									rollback_nodes.Add(raddr);
-								}
-								// Create the rollback message,
-								MessageStream rollback_msg = new MessageStream(16);
-								rollback_msg.StartMessage("rollbackNodes");
-								rollback_msg.AddMessageArgument(rollback_nodes.ToArray());
-								rollback_msg.CloseMessage();
-
-								// Send it to the block server,
-								MessageStream msg_in = connector.Connect(blocks_addr, ServiceType.Block).Process(rollback_msg);
-								//DEBUG: ++network_comm_count;
-								foreach (Message rbm in msg_in) {
-									// If rollback generated an error we throw the error now
-									// because this likely is a serious network error.
-									if (rbm.IsError)
-										throw new NetworkException("Rollback wrote failed: " + rbm.ErrorMessage);
-								}
+							List<DataAddress> rollback_nodes = new List<DataAddress>(128);
+							foreach(Message rm in to_rollback) {
+								DataAddress raddr = (DataAddress) rm.Arguments[0].Value;
+								rollback_nodes.Add(raddr);
 							}
+							// Create the rollback message,
+							RequestMessage rollback_msg = new RequestMessage("rollbackNodes");
+							rollback_msg.Arguments.Add(rollback_nodes.ToArray());
 
-							// Retry,
-							if (tryCount > 0)
-								return DoPersist(sequence, tryCount - 1);
-								
-							// Otherwise we fail the write
-							throw new NetworkException(m.ErrorMessage);
+							// Send it to the block server,
+							ResponseMessage msg_in = connector.Connect(blocks_addr, ServiceType.Block).Process(rollback_msg);
+							//DEBUG: ++network_comm_count;
+
+							// If rollback generated an error we throw the error now
+							// because this likely is a serious network error.
+							if (msg_in.HasError)
+								throw new NetworkException("Rollback wrote failed: " + msg_in.ErrorMessage);
 						}
+
+						// Retry,
+						if (tryCount > 0)
+							return DoPersist(sequence, tryCount - 1);
+
+						// Otherwise we fail the write
+						throw new NetworkException(message_in.ErrorMessage);
 					}
 
 					// If we succeeded without an error, add to the log
@@ -562,7 +563,7 @@ namespace Deveel.Data.Net {
 		public IServiceAddress GetRootServer(string pathName) {
 
 			// Check if this is stored in the cache first,
-			lock (pathToRoot) {
+			lock(pathToRoot) {
 				IServiceAddress saddr;
 				if (pathToRoot.TryGetValue(pathName, out saddr))
 					return saddr;
@@ -570,28 +571,23 @@ namespace Deveel.Data.Net {
 
 			// It isn't, so query the manager server on the network
 			IMessageProcessor manager = connector.Connect(managerAddress, ServiceType.Manager);
-			MessageStream message_out = new MessageStream(16);
-			message_out.AddMessage(new Message("getRootForPath", new object[] { pathName }));
+			RequestMessage requestMessage = new RequestMessage("getRootForPath");
+			requestMessage.Arguments.Add(pathName);
 			// Process the 'getRootFor' command,
-			MessageStream msg_in = manager.Process(message_out);
+			ResponseMessage msg_in = manager.Process(requestMessage);
 			//DEBUG ++networkCommCount;
 
-			foreach (Message m in msg_in) {
-				if (m.IsError)
-					throw new Exception(m.ErrorMessage, m.Error);
+			if (msg_in.HasError)
+				throw new Exception(msg_in.ErrorMessage, msg_in.Error.AsException());
 
-				// Return the service address result,
-				IServiceAddress saddr = (IServiceAddress) m[0];
-				// Put it in the map,
-				lock(pathToRoot) {
-					pathToRoot[pathName] = saddr;
-				}
-
-				return saddr;
+			// Return the service address result,
+			IServiceAddress address = (IServiceAddress) msg_in.Arguments[0].Value;
+			// Put it in the map,
+			lock(pathToRoot) {
+				pathToRoot[pathName] = address;
 			}
 
-			throw new Exception("Bad formatted message stream");
-
+			return address;
 		}
 
 		public ITransaction CreateTransaction(DataAddress rootNode) {
@@ -619,67 +615,58 @@ namespace Deveel.Data.Net {
 
 		public DataAddress Commit(IServiceAddress root_server, String path_name, DataAddress proposal) {
 			IMessageProcessor processor = connector.Connect(root_server, ServiceType.Root);
-			MessageStream msg_out = new MessageStream(16);
-			msg_out.AddMessage(new Message("commit", new object[] { path_name, proposal }));
-			MessageStream msg_in = processor.Process(msg_out);
+			RequestMessage request = new RequestMessage("commit");
+			request.Arguments.Add(path_name);
+			request.Arguments.Add(proposal);
+			ResponseMessage response = processor.Process(request);
 
-			foreach (Message m in msg_in) {
-				if (m.IsError) {
-					ServiceException et = m.Error;
-					// If it's a commit fault exception, wrap it locally.
-					if (et.Source.Equals("Deveel.Data.Net.CommitFaultException"))
-						throw new CommitFaultException(et.Message);
+			if (response.HasError) {
+				MessageError et = response.Error;
+				// If it's a commit fault exception, wrap it locally.
+				if (et.Source.Equals("Deveel.Data.Net.CommitFaultException"))
+					throw new CommitFaultException(et.Message);
 
-					throw new Exception(et.Message);
-				}
-
-				// Return the DataAddress of the result transaction,
-				return (DataAddress) m[0];
+				throw new Exception(et.Message);
 			}
 
-			throw new Exception("Bad formatted message stream");
+			// Return the DataAddress of the result transaction,
+			return (DataAddress) response.Arguments[0].Value;
 		}
 
 		public string[] FindAllPaths() {
 			IMessageProcessor processor = connector.Connect(managerAddress, ServiceType.Manager);
-			MessageStream msg_out = new MessageStream(16);
-			msg_out.AddMessage(new Message("getAllPaths"));
-			MessageStream msg_in = processor.Process(msg_out);
-			if (msg_in.HasError) {
-				logger.Error("An error occurred in 'getAllPath': " + msg_in.ErrorMessage.ErrorMessage);
-				throw new Exception(msg_in.ErrorMessage.ErrorMessage);
+			RequestMessage request = new RequestMessage("getAllPaths");
+			ResponseMessage response = processor.Process(request);
+			if (response.HasError) {
+				logger.Error("An error occurred in 'getAllPath': " + response.ErrorMessage);
+				throw new Exception(response.ErrorMessage);
 			}
 			
-			return (string[])msg_in["getAllPaths"][0];
+			return (string[])response.Arguments[0].Value;
 		}
 
 		public DataAddress GetSnapshot(IServiceAddress root_server, String name) {
 			IMessageProcessor processor = connector.Connect(root_server, ServiceType.Root);
-			MessageStream msg_out = new MessageStream(16);
-			msg_out.AddMessage(new Message("getSnapshot", new object[] { name }));
-			MessageStream msg_in = processor.Process(msg_out);
-			foreach (Message m in msg_in) {
-				if (m.IsError)
-					throw new Exception(m.ErrorMessage);
-				
-				return (DataAddress)m[0];
-			}
-			throw new Exception("Bad formatted message stream");
+			RequestMessage request = new RequestMessage("getSnapshot");
+			request.Arguments.Add(name);
+			ResponseMessage response = processor.Process(request);
+			if (response.HasError)
+				throw new Exception(response.ErrorMessage);
+
+			return (DataAddress) response.Arguments[0].Value;
 		}
 
 		public DataAddress[] GetSnapshots(IServiceAddress rootServer, string name, DateTime timeStart, DateTime timeEnd) {
 			IMessageProcessor processor = connector.Connect(rootServer, ServiceType.Root);
-			MessageStream msg_out = new MessageStream(16);
-			msg_out.AddMessage(new Message("getSnapshots", new object[] { name, timeStart.Ticks, timeEnd.Ticks }));
-			MessageStream msg_in = processor.Process(msg_out);
-			foreach (Message m in msg_in) {
-				if (m.IsError)
-					throw new Exception(m.ErrorMessage);
-				
-				return (DataAddress[])m[0];
-			}
+			RequestMessage request = new RequestMessage("getSnapshots");
+			request.Arguments.Add(name);
+			request.Arguments.Add(timeStart.ToBinary());
+			request.Arguments.Add(timeEnd.ToBinary());
+			ResponseMessage response = processor.Process(request);
+			if (response.HasError)
+				throw new Exception(response.ErrorMessage);
 
-			throw new Exception("Bad formatted message stream");
+			return (DataAddress[]) response.Arguments[0].Value;
 		}
 
 		#region Implementation of ITreeStorageSystem
@@ -764,11 +751,13 @@ namespace Deveel.Data.Net {
 			// For each unique block list,
 			foreach (List<long> blist in uniqueBlockList) {
 				// Make a block server request for each node in the block,
-				MessageStream block_server_msg = new MessageStream((4 * blist.Count) + 4);
+				RequestMessageStream block_server_msg = new RequestMessageStream();
 				long block_id = -1;
 				foreach (long node_ref in blist) {
 					DataAddress address = new DataAddress(node_ref);
-					block_server_msg.AddMessage(new Message("readFromBlock", new object[] { address }));
+					RequestMessage request = new RequestMessage("readFromBlock");
+					request.Arguments.Add(address);
+					block_server_msg.AddMessage(request);
 					block_id = address.BlockId;
 				}
 
@@ -787,15 +776,15 @@ namespace Deveel.Data.Net {
 					if (server.IsStatusUp) {
 						// Open a connection with the block server,
 						IMessageProcessor block_server_proc = connector.Connect(server.Address, ServiceType.Block);
-						MessageStream message_in = block_server_proc.Process(block_server_msg);
+						ResponseMessageStream message_in = (ResponseMessageStream) block_server_proc.Process(block_server_msg);
 						// DEBUG: ++networkCommCount;
 						// DEBUG: ++networkFetchCommCount;
 
 						bool is_error = false;
 						bool severe_error = false;
 						// Turn each none-error message into a node
-						foreach (Message m in message_in) {
-							if (m.IsError) {
+						foreach (ResponseMessage m in message_in) {
+							if (m.HasError) {
 								// See if this error is a block read error. If it is, we don't
 								// tell the manager server to lock this server out completely.
 								bool is_block_read_error = m.Error.Source.Equals("Deveel.Data.Net.BlockReadException");
@@ -807,7 +796,7 @@ namespace Deveel.Data.Net {
 								is_error = true;
 							} else if (!is_error) {
 								// The reply contains the block of data read.
-								NodeSet node_set = (NodeSet)m[0];
+								NodeSet node_set = (NodeSet)m.Arguments[0].Value;
 
 								// Decode the node items into node objects,
 								IEnumerator<Node> item_iterator = node_set.GetEnumerator();

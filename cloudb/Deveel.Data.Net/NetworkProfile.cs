@@ -78,14 +78,9 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		private Message Command(IServiceAddress machine, ServiceType serviceType, MessageStream outputStream) {
+		private ResponseMessage Command(IServiceAddress machine, ServiceType serviceType, RequestMessage request) {
 			IMessageProcessor proc = network_connector.Connect(machine, serviceType);
-			MessageStream inputStream = proc.Process(outputStream);
-			Message message = null;
-			foreach (Message m in inputStream) {
-				message = m;
-			}
-			return message;
+			return proc.Process(request);
 		}
 
 		private MachineProfile CheckMachineInNetwork(IServiceAddress machine) {

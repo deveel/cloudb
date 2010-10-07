@@ -236,21 +236,21 @@ namespace Deveel.Data.Net {
 		}
 		
 		#region BlockServerMessageProcessor
-		
+
 		private sealed class BlockServerMessageProcessor : IMessageProcessor {
 			private readonly BlockService service;
-			
+
 			public BlockServerMessageProcessor(BlockService service) {
 				this.service = service;
 			}
-			
+
 			private void CloseContainers(Dictionary<long, BlockContainer> touched) {
-				foreach(KeyValuePair<long, BlockContainer> c in touched) {
+				foreach (KeyValuePair<long, BlockContainer> c in touched) {
 					//TODO: DEBUG log ..
 					c.Value.Close();
 				}
 			}
-			
+
 			private BlockContainer GetBlock(IDictionary<long, BlockContainer> touched, long blockId) {
 				BlockContainer b;
 				if (!touched.TryGetValue(blockId, out b)) {
@@ -265,7 +265,7 @@ namespace Deveel.Data.Net {
 				}
 				return b;
 			}
-			
+
 			private void WriteToBlock(Dictionary<long, BlockContainer> touched, DataAddress address, byte[] buf, int off, int len) {
 				// The block being written to,
 				long blockId = address.BlockId;
@@ -280,7 +280,7 @@ namespace Deveel.Data.Net {
 				// Schedule the block to flushed 5 seconds after a write
 				service.ScheduleBlockFlush(container, 5000);
 			}
-			
+
 			private NodeSet ReadFromBlock(IDictionary<long, BlockContainer> touched, DataAddress address) {
 				// The block being written to,
 				long blockId = address.BlockId;
@@ -292,7 +292,7 @@ namespace Deveel.Data.Net {
 				// Read the data,
 				return container.GetNodeSet(dataId);
 			}
-			
+
 			private void DeleteNodes(IDictionary<long, BlockContainer> touched, DataAddress[] addresses) {
 				foreach (DataAddress address in addresses) {
 					// The block being removed from,
@@ -308,7 +308,7 @@ namespace Deveel.Data.Net {
 					service.ScheduleBlockFlush(container, 5000);
 				}
 			}
-			
+
 			private long SendBlockTo(long blockId, IServiceAddress destination,
 									 long destServerGuid,
 									 IServiceAddress managerAddress) {
@@ -326,215 +326,222 @@ namespace Deveel.Data.Net {
 					return processId;
 				}
 			}
-			
+
 			private void SendBlock(object state) {
 				SendBlockInfo info = (SendBlockInfo)state;
-				
+
 				BlockContainer container = service.FetchBlockContainer(info.blockId);
 				if (!container.Exists)
 					return;
-				
+
 				// Connect to the destination service address,
 				IMessageProcessor p = service.connector.Connect(info.destination, ServiceType.Block);
-				
+
 				try {
 					// If the block was accessed less than 5 minutes ago, we don't allow
 					// the copy to happen,
 					if (info.blockId == service.lastBlockId) {
 						//TODO: INFO log ...
 						return;
-					} else if (container.LastWriteTime > 
-					           DateTime.Now.AddMilliseconds(-(6 * 60 * 1000))) {
+					} else if (container.LastWriteTime >
+							   DateTime.Now.AddMilliseconds(-(6 * 60 * 1000))) {
 						// Won't copy a block that was written to within the last 6 minutes,
 						//TODO: INFO log ...
 						return;
 					}
-					
-					MessageStream inputStream, outputStream;
+
+					ResponseMessage inputStream;
+					RequestMessage outputStream;
 
 					// If the block does exist, push it over,
 					byte[] buf = new byte[16384];
 					int pos = 0;
-					using(Stream input = container.OpenInputStream()) {
+					using (Stream input = container.OpenInputStream()) {
 						int read;
 						while ((read = input.Read(buf, 0, buf.Length)) != 0) {
-							outputStream = new MessageStream(8);
-							outputStream.AddMessage("sendBlockPart", info.blockId, pos, 
-							                        container.Type, buf, read);
+							outputStream = new RequestMessage("sendBlockPart");
+							outputStream.Arguments.Add(info.blockId);
+							outputStream.Arguments.Add(pos);
+							outputStream.Arguments.Add(container.Type);
+							outputStream.Arguments.Add(buf);
+							outputStream.Arguments.Add(read);
 							// Process the message,
 							inputStream = p.Process(outputStream);
-							// Get the input iterator,
-							foreach(Message m in inputStream) {
-								if (m.IsError) {
-									service.log.Log(LogLevel.Error, "sendBlockPath Error: " + m.ErrorMessage);
-									return;
-								}
+
+							if (inputStream.HasError) {
+								service.log.Log(LogLevel.Error, "sendBlockPath Error: " + inputStream.ErrorMessage);
+								return;
 							}
-	
+
 							pos += read;
 						}
 					}
-					
+
 					// Send the 'complete' command,
-					outputStream = new MessageStream(8);
-					outputStream.AddMessage("sendBlockComplete", info.blockId, container.Type);
+					outputStream = new RequestMessage("sendBlockComplete");
+					outputStream.Arguments.Add(info.blockId);
+					outputStream.Arguments.Add(container.Type);
+
 					// Process the message,
 					inputStream = p.Process(outputStream);
-					// Get the input iterator,
-					foreach(Message m in inputStream) {
-						if (m.IsError) {
-							service.log.Error("sendBlockComplete Error: " + m.ErrorMessage);
-							return;
-						}
+
+					if (inputStream.HasError) {
+						service.log.Error("sendBlockComplete Error: " + inputStream.ErrorMessage);
+						return;
 					}
 
 					// Tell the manager service about this new block mapping,
 					IMessageProcessor mp = service.connector.Connect(info.managerAddress, ServiceType.Manager);
-					outputStream = new MessageStream(8);
-					outputStream.AddMessage("addBlockServerMapping", info.blockId, info.destServerGuid);
-					
+					outputStream = new RequestMessage("addBlockServerMapping");
+					outputStream.Arguments.Add(info.blockId);
+					outputStream.Arguments.Add(info.destServerGuid);
+
 					//TODO: DEBUG log ...
 
 					// Process the message,
 					inputStream = mp.Process(outputStream);
-					// Get the input iterator,
-					foreach(Message m in inputStream) {
-						if (m.IsError) {
-							service.log.Error("addBlockServerMapping Error: " + m.ErrorMessage);
-							return;
-						}
+					
+					if (inputStream.HasError) {
+						service.log.Error("addBlockServerMapping Error: " + inputStream.ErrorMessage);
+						return;
 					}
 
 				} catch (IOException e) {
 					service.log.Error("IO Error: " + e.Message);
 				}
 			}
-			
+
 			private long GetBlockChecksum(IDictionary<long, BlockContainer> touched, long blockId) {
 				// Fetch the block container,
 				BlockContainer container = GetBlock(touched, blockId);
 				// Calculate the checksum value,
 				return container.CreateChecksum();
 			}
-			
-			public Message Process(Message messageStream) {
-				Message responseStream;
-				
-				if (MessageStream.TryProcess(this, messageStream, out responseStream))
-					return responseStream;
-				
+
+			// The nodes fetched in this message,
+			private List<long> readNodes;
+
+			public ResponseMessage Process(RequestMessage message) {
+				ResponseMessage response;
+				readNodes = null;
+
+				if (RequestMessageStream.TryProcess(this, message, out response)) {
+					readNodes = null;
+					return response;
+				}
+
 				// The map of containers touched,
 				Dictionary<long, BlockContainer> containersTouched = new Dictionary<long, BlockContainer>();
-				// The nodes fetched in this message,
-				List<long> readNodes = null;
-				
-				foreach(Message m in messageStream) {
-					try {
-						service.CheckErrorState();
-						
-						switch(m.Name) {
-							case "bindWithManager":
-							case "unbindWithManager":
-								//TODO: is this needed for a block service?
-								responseStream.AddMessage("R", 1L);
-								break;
-							case "serverGUID":
-								responseStream.AddMessage("R", service.serverGuid);
-								break;
-							case "writeToBlock": {
-								DataAddress address = (DataAddress)m[0];
-								byte[] buffer = (byte[])m[1];
-								int offset = (int)m[2];
-								int length = (int)m[3];
-								WriteToBlock(containersTouched, address, buffer, offset, length);
-								responseStream.AddMessage("R", 1L);
-								break;
+
+				RequestMessage request = (RequestMessage) message;
+				response = request.CreateResponse();
+
+				try {
+					service.CheckErrorState();
+
+					switch (request.Name) {
+						case "bindWithManager":
+						case "unbindWithManager":
+							//TODO: is this needed for a block service?
+							response.Arguments.Add(1L);
+							break;
+						case "serverGUID":
+							response.Arguments.Add(service.serverGuid);
+							break;
+						case "writeToBlock": {
+							DataAddress address = (DataAddress) request.Arguments[0].Value;
+							byte[] buffer = (byte[]) request.Arguments[1].Value;
+							int offset = request.Arguments[2].ToInt32();
+							int length = request.Arguments[3].ToInt32();
+							WriteToBlock(containersTouched, address, buffer, offset, length);
+							response.Arguments.Add(1L);
+							break;
+						}
+						case "readFromBlock": {
+							if (readNodes == null)
+								readNodes = new List<long>();
+
+							DataAddress address = (DataAddress) request.Arguments[0].Value;
+							if (!readNodes.Contains(address.Value)) {
+								NodeSet nodeSet = ReadFromBlock(containersTouched, address);
+								response.Arguments.Add(nodeSet);
+								foreach(long node in nodeSet.NodeIds)
+									readNodes.Add(node);
 							}
-							case "readFromBlock": {
-								if (readNodes == null)
-									readNodes = new List<long>();
-								
-								DataAddress address = (DataAddress)m[0];
-								if (!readNodes.Contains(address.Value)) {
-									NodeSet nodeSet = ReadFromBlock(containersTouched, address);
-									responseStream.AddMessage("R", nodeSet);
-									foreach (long node in nodeSet.NodeIds)
-										readNodes.Add(node);
-								}
-								break;
-							}
-							case "rollbackNodes": {
-								DataAddress[] addresses = (DataAddress[])m[0];
-								DeleteNodes(containersTouched, addresses);
-								responseStream.AddMessage("R", 1L);
-								break;	
-							}
-							case "deleteBlock": {
-								long blockId = (long)m[0];
-								//TODO: ...
-								responseStream.AddMessage("R", 1L);
-								break;	
-							}
-							case "blockSetReport": {
-								long[] blockIds = service.ListBlocks();
-								responseStream.AddMessage("R", service.serverGuid, blockIds);
-								break;
-							}
-							case "blockChecksum": {
-								long blockId = (long)m[0];
+							break;
+						}
+						case "rollbackNodes": {
+							DataAddress[] addresses = (DataAddress[]) request.Arguments[0].Value;
+							DeleteNodes(containersTouched, addresses);
+							response.Arguments.Add(1L);
+							break;
+						}
+						case "deleteBlock": {
+							long blockId = request.Arguments[0].ToInt64();
+							//TODO: Can we delete blocks? Only in extreme conditions ... but how?
+							response.Arguments.Add(1L);
+							break;
+						}
+						case "blockSetReport": {
+							long[] blockIds = service.ListBlocks();
+							response.Arguments.Add(service.serverGuid);
+							response.Arguments.Add(blockIds);
+							break;
+						}
+						case "blockChecksum": {
+								long blockId = request.Arguments[0].ToInt64();
 								long checksum = GetBlockChecksum(containersTouched, blockId);
-								responseStream.AddMessage("R", checksum);
-								break;	
+								response.Arguments.Add(checksum);
+								break;
 							}
-							case "sendBlockTo": {
+						case "sendBlockTo": {
 								// Returns immediately. There's currently no way to determine
 								// when this process will happen or if it will happen.
-								long blockId = (long)m[0];
-								IServiceAddress destAddress = (IServiceAddress)m[1];
-								long destServerGuid = (long)m[2];
-								IServiceAddress managerAddress = (IServiceAddress)m[3];
+								long blockId = request.Arguments[0].ToInt64();
+								IServiceAddress destAddress = (IServiceAddress)request.Arguments[1].Value;
+								long destServerGuid = request.Arguments[2].ToInt64();
+								IServiceAddress managerAddress = (IServiceAddress)request.Arguments[3].Value;
 								long processId = SendBlockTo(blockId, destAddress, destServerGuid, managerAddress);
-								responseStream.AddMessage("R", processId);
+								response.Arguments.Add(processId);
 								break;
 							}
-							case "sendBlockPart": {
-								long blockId = (long)m[0];
-								long pos = (long)m[1];
-								int storeType = (int)m[2];
-								byte[] buffer = (byte[])m[3];
-								int length = (int)m[4];
+						case "sendBlockPart": {
+								long blockId = request.Arguments[0].ToInt64();
+								long pos = request.Arguments[1].ToInt64();
+								int storeType = request.Arguments[2].ToInt32();
+								byte[] buffer = (byte[])request.Arguments[3].Value;
+								int length = request.Arguments[4].ToInt32();
 								service.WriteBlockPart(blockId, pos, storeType, buffer, length);
-								responseStream.AddMessage("R", 1L);
-								break;	
-							}
-							case "sendBlockComplete": {
-								long blockId = (long)m[0];
-								int storeType = (int)m[1];
-								service.CompleteBlockWrite(blockId, storeType);
-								responseStream.AddMessage("R", 1L);
+								response.Arguments.Add(1L);
 								break;
 							}
-							default:
-								throw new ApplicationException("Unknown message name: " + m.Name);
-						}
-					} catch(OutOfMemoryException e) {
-						service.log.Error("Out of Memory");
-						service.SetErrorState(e);
-						throw;
-					} catch (Exception e) {
-						service.log.Error("Error while processing: " + e.Message, e);
-						responseStream.AddErrorMessage(new ServiceException(e));
+						case "sendBlockComplete": {
+								long blockId = request.Arguments[0].ToInt64();
+								int storeType = request.Arguments[1].ToInt32();
+								service.CompleteBlockWrite(blockId, storeType);
+								response.Arguments.Add(1L);
+								break;
+							}
+						default:
+							throw new ApplicationException("Unknown message name: " + request.Name);
 					}
+				} catch (OutOfMemoryException e) {
+					service.log.Error("Out of Memory");
+					service.SetErrorState(e);
+					throw;
+				} catch (Exception e) {
+					service.log.Error("Error while processing: " + e.Message, e);
+					response.Arguments.Add(new MessageError(e));
 				}
-				
+
 				// Release any containers touched,
 				try {
 					CloseContainers(containersTouched);
 				} catch (Exception e) {
 					service.log.Error("Error while closing containers: " + e.Message, e);
 				}
-				
-				return responseStream;
+
+				return response;
 			}
 		}
 		

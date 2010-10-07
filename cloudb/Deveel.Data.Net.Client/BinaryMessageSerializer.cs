@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -27,10 +26,14 @@ namespace Deveel.Data.Net.Client {
 		public void Serialize(Message message, Stream output) {
 			BinaryWriter writer = new BinaryWriter(output, Encoding);
 
-			if (message is MessageStream) {
-				MessageStream messageStream = (MessageStream) message;
+			if (message is IMessageStream) {
+				IMessageStream messageStream = (IMessageStream) message;
 
-				writer.Write(2);
+				if (messageStream.Type ==MessageType.Request)
+					writer.Write(2);
+				else
+					writer.Write(3);
+
 				int sz = messageStream.MessageCount;
 				writer.Write(sz);
 
@@ -45,37 +48,33 @@ namespace Deveel.Data.Net.Client {
 
 		protected abstract void Serialize(Message message, BinaryWriter writer);
 
-		public void Deserialize(Message message, Stream input) {
+		public Message Deserialize(Stream input) {
 			if (!input.CanRead)
 				throw new ArgumentException("The inpuit stream cannot be read.");
 
 			BinaryReader reader = new BinaryReader(input, Encoding);
 			int type = reader.ReadInt32();
-			if (type == 1) {
-				Deserialize(message, reader);
-			} else if (type == 2) {
-				if (!(message is MessageStream))
-					throw new ArgumentException();
-
-				MessageStream stream = (MessageStream) message;
-
-				Message msg;
-				if (stream.Type == MessageType.Request) {
-					msg = new MessageRequest();
-				} else {
-					msg = new MessageResponse(null, null);
-				}
+			if (type == 1)
+				return Deserialize(reader);
+			if (type == 2 || type == 3) {
+				IMessageStream stream;
+				if (type == 2)
+					stream = new RequestMessageStream();
+				else
+					stream = new ResponseMessageStream();
 
 				int sz = reader.ReadInt32();
 				for (int i = 0; i < sz; i++) {
-					Deserialize(msg, reader);
+					stream.AddMessage(Deserialize(reader));
 				}
-			} else {
-				throw new InvalidOperationException();
+
+				return stream as Message;
 			}
+				
+			throw new InvalidOperationException();
 		}
 
-		protected abstract void Deserialize(Message message, BinaryReader input);
+		protected abstract Message Deserialize(BinaryReader input);
 
 	}
 }

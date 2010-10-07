@@ -211,28 +211,21 @@ namespace Deveel.Data.Net {
 			IMessageProcessor processor = connector.Connect(serviceAddress, ServiceType.Block);
 
 			// Lock the block service with this manager
-			MessageStream outputStream = new MessageStream(16);
-			outputStream.AddMessage("bindWithManager", address);
-			MessageStream inputStream = processor.Process(outputStream);
-			foreach (Message m in inputStream) {
-				if (m.IsError)
-					throw new ApplicationException(m.ErrorMessage);
-			}
+			RequestMessage request = new RequestMessage("bindWithManager");
+			request.Arguments.Add(address);
+			ResponseMessage response = processor.Process(request);
+			if (response.HasError)
+				throw new ApplicationException(response.ErrorMessage);
 
 			// Get the block set report from the service,
-			outputStream = new MessageStream(16);
-			outputStream.AddMessage("blockSetReport");
-			inputStream = processor.Process(outputStream);
-			Message rm = null;
-			foreach (Message m in inputStream) {
-				if (m.IsError)
-					throw new ApplicationException(m.ErrorMessage);
-				
-				rm = m;
-			}
+			request = new RequestMessage("blockSetReport");
+			response = processor.Process(request);
 
-			long serverGuid = (long)rm[0];
-			long[] blockIdList = (long[])rm[1];
+			if (response.HasError)
+				throw new ApplicationException(response.ErrorMessage);
+				
+			long serverGuid = response.Arguments[0].ToInt64();
+			long[] blockIdList = (long[])response.Arguments[1].Value;
 
 			// Create a transaction
 			lock (blockDbWriteLock) {
@@ -283,13 +276,11 @@ namespace Deveel.Data.Net {
 			IMessageProcessor processor = connector.Connect(serviceAddress, ServiceType.Block);
 
 			// Unlock the block service from this manager
-			MessageStream outputStream = new MessageStream(16);
-			outputStream.AddMessage("unbindWithManager", address);
-			MessageStream inputStream = processor.Process(outputStream);
-			foreach (Message m in inputStream) {
-				if (m.IsError)
-					throw new ApplicationException(m.ErrorMessage);
-			}
+			RequestMessage request = new RequestMessage("unbindWithManager");
+			request.Arguments.Add(address);
+			ResponseMessage inputStream = processor.Process(request);
+			if (inputStream.HasError)
+				throw new ApplicationException(inputStream.ErrorMessage);
 
 			// Remove it from the map and persist
 			lock (blockServersMap) {
@@ -325,13 +316,11 @@ namespace Deveel.Data.Net {
 				IMessageProcessor processor = connector.Connect(s.Address, ServiceType.Block);
 
 				// Unlock the block service from this manager
-				MessageStream outputStream = new MessageStream(16);
-				outputStream.AddMessage("unbindWithManager", address);
-				MessageStream inputStream = processor.Process(outputStream);
-				foreach (Message m in inputStream) {
-					if (m.IsError)
-						throw new ApplicationException(m.ErrorMessage);
-				}
+				RequestMessage request = new RequestMessage("unbindWithManager");
+				request.Arguments.Add(address);
+				ResponseMessage response = processor.Process(request);
+				if (response.HasError)
+					throw new ApplicationException(response.ErrorMessage);
 			}
 
 			// Remove the entries from the map and persist
@@ -386,27 +375,20 @@ namespace Deveel.Data.Net {
 			IMessageProcessor processor = connector.Connect(serviceAddress, ServiceType.Root);
 
 			// Lock the root service with this manager
-			MessageStream outputStream = new MessageStream(16);
-			outputStream.AddMessage("bindWithManager", address);
-			MessageStream inputStream = processor.Process(outputStream);
-			foreach (Message m in inputStream) {
-				if (m.IsError)
-					throw new ApplicationException(m.ErrorMessage);
-			}
+			RequestMessage request = new RequestMessage("bindWithManager");
+			request.Arguments.Add(address);
+			ResponseMessage response = processor.Process(request);
+			if (response.HasError)
+				throw new ApplicationException(response.ErrorMessage);
 
 			// Get the database path report from the service,
-			outputStream = new MessageStream(16);
-			outputStream.AddMessage(new Message("pathReport"));
-			inputStream = processor.Process(outputStream);
-			Message rm = null;
-			foreach (Message m in inputStream) {
-				if (m.IsError)
-					throw new ApplicationException(m.ErrorMessage);
+			request = new RequestMessage("pathReport");
+			response = processor.Process(request);
+			if (response.HasError)
+				throw new ApplicationException(response.ErrorMessage);
 				
-				rm = m;
-			}
 
-			string[] pathsNames = (String[])rm[0];
+			string[] pathsNames = (String[])response.Arguments[0].Value;
 
 			// Create a transaction
 			lock (blockDbWriteLock) {
@@ -444,13 +426,11 @@ namespace Deveel.Data.Net {
 			IMessageProcessor processor = connector.Connect(serviceAddress, ServiceType.Root);
 
 			// Unlock the block service from this manager
-			MessageStream outputStream = new MessageStream(16);
-			outputStream.AddMessage("unbindWithManager", address);
-			MessageStream inputStream = processor.Process(outputStream);
-			foreach (Message m in inputStream) {
-				if (m.IsError)
-					throw new ApplicationException(m.ErrorMessage);
-			}
+			RequestMessage request = new RequestMessage("unbindWithManager");
+			request.Arguments.Add(address);
+			ResponseMessage response = processor.Process(request);
+			if (response.HasError)
+				throw new ApplicationException(response.ErrorMessage);
 
 			// Remove it from the map and persist
 			lock (rootServers) {
@@ -477,13 +457,11 @@ namespace Deveel.Data.Net {
 				IMessageProcessor processor = connector.Connect(s.Address, ServiceType.Root);
 
 				// Unlock the root service from this manager
-				MessageStream outputStream = new MessageStream(16);
-				outputStream.AddMessage("unbindWithManager", address);
-				MessageStream inputStream = processor.Process(outputStream);
-				foreach (Message m in inputStream) {
-					if (m.IsError)
-						throw new ApplicationException(m.ErrorMessage);
-				}
+				RequestMessage request = new RequestMessage("unbindWithManager");
+				request.Arguments.Add(address);
+				ResponseMessage response = processor.Process(request);
+				if (response.HasError)
+					throw new ApplicationException(response.ErrorMessage);
 			}
 
 			// Remove the entries from the map and persist
@@ -755,14 +733,12 @@ namespace Deveel.Data.Net {
 
 			// Send the poll command to the service,
 			IMessageProcessor p = connector.Connect(server.Address, ServiceType.Block);
-			MessageStream msg_out = new MessageStream(16);
-			msg_out.AddMessage("poll", "manager heartbeat");
-			MessageStream msg_in = p.Process(msg_out);
-			foreach (Message m in msg_in) {
+			RequestMessage request = new RequestMessage("poll");
+			request.Arguments.Add("manager heartbeat");
+			ResponseMessage response = p.Process(request);
 				// Any error with the poll means no status change,
-				if (m.IsError) {
+				if (response.HasError) {
 					pollOk = false;
-				}
 			}
 
 			// If the poll is ok, set the status of the service to UP and remove from
@@ -856,146 +832,150 @@ namespace Deveel.Data.Net {
 
 			private readonly ManagerService service;
 
-			public Message Process(Message messageStream) {
-				MessageStream responseStream = new MessageStream(32);
+			public ResponseMessage Process(RequestMessage request) {
+				ResponseMessage response;
+				if (RequestMessageStream.TryProcess(this, request, out response))
+					return response;
+
+				response = request.CreateResponse();
 
 				// The messages in the stream,
-				foreach (Message m in messageStream) {
-					try {
-						// Check the service isn't in a stop state,
-						service.CheckErrorState();
+				try {
+					// Check the service isn't in a stop state,
+					service.CheckErrorState();
 
-						switch (m.Name) {
-							case "getServerListForBlock": {
-								long blockId = (long) m[0];
-								BlockServerInfo[] servers = service.GetServerListForBlock(blockId);
-								Message response = new Message("R");
-								response.AddArgument(servers.Length);
-								for (int i = 0; i < servers.Length; i++) {
-									response.AddArgument(servers[i].Address);
-									response.AddArgument((int) servers[i].Status);
-								}
-								responseStream.AddMessage(response);
-								break;
+					switch (request.Name) {
+						case "getServerListForBlock": {
+							long blockId = request.Arguments[0].ToInt64();
+							BlockServerInfo[] servers = service.GetServerListForBlock(blockId);
+							IServiceAddress[] addresses = new IServiceAddress[servers.Length];
+							int[] status = new int[servers.Length];
+							response.Arguments.Add(servers.Length);
+							for (int i = 0; i < servers.Length; i++) {
+								addresses[i] = servers[i].Address;
+								status[i] = (int) servers[i].Status;
 							}
-							case "allocateNode": {
-								int nodeSize = (int) m[0];
-								DataAddress address = service.AllocateNode(nodeSize);
-								responseStream.AddMessage("R", address);
-								break;
-							}
-							case "registerBlockServer": {
-								IServiceAddress address = (IServiceAddress) m[0];
-								service.RegisterBlockServer(address);
-								responseStream.AddMessage("R", 1);
-								break;
-							}
-							case "unregisterBlockServer": {
-								IServiceAddress address = (IServiceAddress) m[0];
-								service.UnregisterBlockServer(address);
-								responseStream.AddMessage("R", 1);
-								break;
-							}
-							case "unregisterAllBlockServers": {
-								service.UnregisterAllBlockServers();
-								responseStream.AddMessage("R", 1);
-								break;
-							}
-
-								// root servers
-							case "registerRootServer": {
-								IServiceAddress address = (IServiceAddress) m[0];
-								service.RegisterRootServer(address);
-								responseStream.AddMessage("R", 1);
-								break;
-							}
-							case "unregisterRootServer": {
-								IServiceAddress address = (IServiceAddress) m[0];
-								service.UnregisterRootServer(address);
-								responseStream.AddMessage("R", 1);
-								break;
-							}
-							case "unregisterAllRootServers": {
-								service.UnregisterAllRootServers();
-								responseStream.AddMessage("R", 1);
-								break;
-							}
-							case "getRootForPath": {
-								string pathName = (string) m[0];
-								IServiceAddress address = service.GetRootForPath(pathName);
-								responseStream.AddMessage("R", address);
-								break;
-							}
-							case "addPathRootMapping": {
-								string pathName = (string) m[0];
-								IServiceAddress address = (IServiceAddress) m[1];
-								service.AddPathRootMapping(pathName, address);
-								responseStream.AddMessage("R", 1);
-								break;
-							}
-							case "removePathRootMapping": {
-								string pathName = (string) m[0];
-								service.RemovePathRootMapping(pathName);
-								responseStream.AddMessage("R", 1);
-								break;
-							}
-							case "getPaths": {
-								string[] pathSet = service.GetPaths();
-								responseStream.AddMessage("R", pathSet);
-								break;
-							}
-							case "getServerGUIDList": {
-								long blockId = (long) m[0];
-								long[] serverGuids = service.GetServerGuidList(blockId);
-								responseStream.AddMessage("R", serverGuids);
-								break;
-							}
-							case "addBlockServerMapping": {
-								long blockId = (long) m[0];
-								long serverGuid = (long) m[1];
-								service.AddBlockServerMapping(blockId, serverGuid);
-								responseStream.AddMessage("R", 1);
-								break;
-							}
-							case "removeBlockServerMapping": {
-								long blockId = (long) m[0];
-								long serverGuid = (long) m[1];
-								service.RemoveBlockServerMapping(blockId, serverGuid);
-								responseStream.AddMessage("R", 1);
-								break;
-							}
-							case "notifyBlockServerFailure": {
-								IServiceAddress address = (IServiceAddress) m[0];
-								service.NotifyBlockServerFailure(address);
-								responseStream.AddMessage("R", 1);
-								break;
-							}
-							case "getBlockMappingCount": {
-								long blockMappingCount = service.GetBlockMappingCount();
-								responseStream.AddMessage("R", blockMappingCount);
-								break;
-							}
-							case "getBlockMappingRange": {
-								long start = (long) m[0];
-								long end = (long) m[1];
-								long[] mappings = service.GetBlockMappingRange(start, end);
-								responseStream.AddMessage("R", mappings);
-								break;
-							}
-							default:
-								throw new ApplicationException("Unknown message name: " + m.Name);
+							response.Arguments.Add(addresses);
+							response.Arguments.Add(status);
+							break;
 						}
-					} catch (OutOfMemoryException e) {
-						service.Logger.Error("Out of Memory", e);
-						service.SetErrorState(e);
-						throw;
-					} catch (Exception e) {
-						service.Logger.Error("Error while processing message", e);
-						responseStream.AddErrorMessage(new ServiceException(e));
+						case "allocateNode": {
+								int nodeSize = request.Arguments[0].ToInt32();
+								DataAddress address = service.AllocateNode(nodeSize);
+								response.Arguments.Add(address);
+								break;
+							}
+						case "registerBlockServer": {
+								IServiceAddress address = (IServiceAddress)request.Arguments[0].Value;
+								service.RegisterBlockServer(address);
+								response.Arguments.Add(1L);
+								break;
+							}
+						case "unregisterBlockServer": {
+								IServiceAddress address = (IServiceAddress)request.Arguments[0].Value;
+								service.UnregisterBlockServer(address);
+								response.Arguments.Add(1L);
+								break;
+							}
+						case "unregisterAllBlockServers": {
+								service.UnregisterAllBlockServers();
+								response.Arguments.Add(1L);
+								break;
+							}
+
+						// root servers
+						case "registerRootServer": {
+								IServiceAddress address = (IServiceAddress)request.Arguments[0].Value;
+								service.RegisterRootServer(address);
+								response.Arguments.Add(1L);
+								break;
+							}
+						case "unregisterRootServer": {
+								IServiceAddress address = (IServiceAddress)request.Arguments[0].Value;
+								service.UnregisterRootServer(address);
+								response.Arguments.Add(1L);
+								break;
+							}
+						case "unregisterAllRootServers": {
+								service.UnregisterAllRootServers();
+								response.Arguments.Add(1L);
+								break;
+							}
+						case "getRootForPath": {
+								string pathName = (string)request.Arguments[0].Value;
+								IServiceAddress address = service.GetRootForPath(pathName);
+								response.Arguments.Add(address);
+								break;
+							}
+						case "addPathRootMapping": {
+								string pathName = request.Arguments[0].ToString();
+								IServiceAddress address = (IServiceAddress)request.Arguments[1].Value;
+								service.AddPathRootMapping(pathName, address);
+								response.Arguments.Add(1L);
+								break;
+							}
+						case "removePathRootMapping": {
+								string pathName = request.Arguments[0].ToString();
+								service.RemovePathRootMapping(pathName);
+								response.Arguments.Add(1L);
+								break;
+							}
+						case "getPaths": {
+								string[] pathSet = service.GetPaths();
+								response.Arguments.Add(pathSet);
+								break;
+							}
+						case "getServerGUIDList": {
+								long blockId = request.Arguments[0].ToInt64();
+								long[] serverGuids = service.GetServerGuidList(blockId);
+								response.Arguments.Add(serverGuids);
+								break;
+							}
+						case "addBlockServerMapping": {
+								long blockId = request.Arguments[0].ToInt64();
+								long serverGuid = request.Arguments[1].ToInt64();
+								service.AddBlockServerMapping(blockId, serverGuid);
+								response.Arguments.Add(1L);
+								break;
+							}
+						case "removeBlockServerMapping": {
+								long blockId = request.Arguments[0].ToInt64();
+								long serverGuid = request.Arguments[1].ToInt64();
+								service.RemoveBlockServerMapping(blockId, serverGuid);
+								response.Arguments.Add(1L);
+								break;
+							}
+						case "notifyBlockServerFailure": {
+								IServiceAddress address = (IServiceAddress)request.Arguments[0].Value;
+								service.NotifyBlockServerFailure(address);
+								response.Arguments.Add(1L);
+								break;
+							}
+						case "getBlockMappingCount": {
+								long blockMappingCount = service.GetBlockMappingCount();
+								response.Arguments.Add(blockMappingCount);
+								break;
+							}
+						case "getBlockMappingRange": {
+								long start = request.Arguments[0].ToInt64();
+								long end = request.Arguments[1].ToInt64();
+								long[] mappings = service.GetBlockMappingRange(start, end);
+								response.Arguments.Add(mappings);
+								break;
+							}
+						default:
+							throw new ApplicationException("Unknown message name: " + request.Name);
 					}
+				} catch (OutOfMemoryException e) {
+					service.Logger.Error("Out of Memory", e);
+					service.SetErrorState(e);
+					throw;
+				} catch (Exception e) {
+					service.Logger.Error("Error while processing message", e);
+					response.Arguments.Add(new MessageError(e));
 				}
 
-				return responseStream;
+				return response;
 			}
 		}
 

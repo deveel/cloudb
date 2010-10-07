@@ -125,14 +125,14 @@ namespace Deveel.Data.Net.Client {
 								sb.Append(reader.ReadChar());
 							}
 
-							args[MessageRequest.ResourceIdName] = sb.ToString();
+							args[RequestMessage.ResourceIdName] = sb.ToString();
 						}
 
 						int tid = reader.ReadInt32();
 						if (!String.IsNullOrEmpty(service.TransactionIdKey))
 							args[service.TransactionIdKey] = tid;
 
-						MessageResponse response = service.HandleRequest(type, pathName, args, socketStream);
+						ResponseMessage response = service.HandleRequest(type, pathName, args, socketStream);
 
 						// Write and flush the output message,
 						service.MessageSerializer.Serialize(response, socketStream);

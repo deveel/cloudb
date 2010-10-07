@@ -183,10 +183,10 @@ namespace Deveel.Data.Net.Client {
 						if (index != -1) {
 							string id = resourceId.Substring(index + 1);
 							resourceId = resourceId.Substring(0, index);
-							args[MessageRequest.ItemIdName] = id;
+							args[RequestMessage.ItemIdName] = id;
 						}
 
-						args[MessageRequest.ResourceIdName] = resourceId;
+						args[RequestMessage.ResourceIdName] = resourceId;
 					}
 
 					Stream requestStream = null;
@@ -194,7 +194,7 @@ namespace Deveel.Data.Net.Client {
 						requestType == RequestType.Put)
 						requestStream = context.Request.InputStream;
 
-					MessageResponse response = service.HandleRequest(requestType, pathName, args, requestStream);
+					ResponseMessage response = service.HandleRequest(requestType, pathName, args, requestStream);
 
 					if (requestStream != null)
 						requestStream.Close();

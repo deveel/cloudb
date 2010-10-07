@@ -23,7 +23,7 @@ namespace Deveel.Data.Net {
 		public IMessageSerializer Serializer {
 			get { 
 				if (serializer == null)
-					serializer = new XmlMessageStreamSerializer();
+					serializer = new XmlRpcMessageSerializer();
 				return serializer;
 			}
 			set { serializer = value; }
@@ -56,7 +56,7 @@ namespace Deveel.Data.Net {
 				this.serviceType = serviceType;
 			}
 			
-			private MessageStream DoProcess(MessageStream messageStream, int tryCount) {
+			private ResponseMessage DoProcess(RequestMessage messageStream, int tryCount) {
 				try {
 					HttpWebRequest request = (HttpWebRequest) HttpWebRequest.Create(address.ToUri());
 					lock (request) {
@@ -74,31 +74,40 @@ namespace Deveel.Data.Net {
 						HttpWebResponse response = (HttpWebResponse) request.GetResponse();
 						if (response.StatusCode != HttpStatusCode.OK)
 							throw new InvalidOperationException();
-												
+
 						Stream input = response.GetResponseStream();
-						return connector.Serializer.Deserialize(input);
+						return (ResponseMessage) connector.Serializer.Deserialize(input);
 					}
 				} catch (Exception e) {
 					if (tryCount == 0 && e is WebException)
 						// retry ...
 						return DoProcess(messageStream, tryCount + 1);
 
-					ServiceException error;
+					MessageError error;
 					if (e is WebException) {
-						error = new ServiceException(new Exception("Web Error: maybe a timeout in the request.", e));
+						error = new MessageError(new Exception("Web Error: maybe a timeout in the request.", e));
 					} else {
 						// Report this error as a msg_stream fault,
-						error = new ServiceException(new Exception(e.Message, e));
+						error = new MessageError(new Exception(e.Message, e));
 					}
 
-					MessageStream outputStream = new MessageStream(16);
-					outputStream.AddMessage("E", error);
-					return outputStream;
+					ResponseMessage responseMessage;
+					if (messageStream is RequestMessageStream) {
+						responseMessage = new ResponseMessageStream();
+						ResponseMessage errorMessage = new ResponseMessage("error", messageStream);
+						errorMessage.Arguments.Add(error);
+						((ResponseMessageStream)responseMessage).AddMessage(errorMessage);
+					} else {
+						responseMessage = messageStream.CreateResponse("error");
+						responseMessage.Arguments.Add(error);
+					}
+
+					return responseMessage;
 				}
 			}
 
 			
-			public Message Process(Message message) {
+			public ResponseMessage Process(RequestMessage message) {
 				return DoProcess(message, 0);
 			}
 		}
