@@ -6,16 +6,16 @@ using System.Text;
 using System.Xml;
 
 namespace Deveel.Data.Net.Client {
-	public sealed class XmlRestActionSerializer : XmlActionSerializer {
-		public XmlRestActionSerializer(string encoding)
+	public sealed class XmlRestMessageSerializer : XmlMessageSerializer, IMessageStreamSupport {
+		public XmlRestMessageSerializer(string encoding)
 			: base(encoding) {
 		}
 
-		public XmlRestActionSerializer(Encoding encoding)
+		public XmlRestMessageSerializer(Encoding encoding)
 			: base(encoding) {
 		}
 
-		public XmlRestActionSerializer() {
+		public XmlRestMessageSerializer() {
 		}
 
 		private static string ReadString(XmlReader reader) {
@@ -203,8 +203,8 @@ namespace Deveel.Data.Net.Client {
 			return array;
 		}
 
-		private static ActionArgument ReadArgument(XmlReader reader) {
-			ActionArgument argument = null;
+		private static MessageArgument ReadArgument(XmlReader reader) {
+			MessageArgument argument = null;
 			string attributeName = reader.LocalName;
 
 			string valueType = null;
@@ -222,12 +222,12 @@ namespace Deveel.Data.Net.Client {
 						continue;
 					}
 					if (argument == null)
-						argument = new ActionArgument(attributeName, value);
+						argument = new MessageArgument(attributeName, value);
 
 					argument.Attributes.Add(reader.LocalName, reader.Value);
 				} else if (reader.NodeType == XmlNodeType.Element) {
 					if (argument == null)
-						argument = new ActionArgument(attributeName, value);
+						argument = new MessageArgument(attributeName, value);
 
 					argument.Children.Add(ReadArgument(reader));
 				} else if (reader.NodeType == XmlNodeType.EndElement) {
@@ -236,7 +236,7 @@ namespace Deveel.Data.Net.Client {
 					value = ReadValue(reader, valueType);
 
 					if (argument == null) {
-						argument = new ActionArgument(attributeName, value);
+						argument = new MessageArgument(attributeName, value);
 					} else {
 						argument.Value = value;
 					}
@@ -246,7 +246,7 @@ namespace Deveel.Data.Net.Client {
 			return argument;
 		}
 
-		public override void DeserializeRequest(ActionRequest request, XmlReader reader) {
+		protected override void Deserialize(Message message, XmlReader reader) {
 			string requestName = null;
 			while (reader.Read()) {
 				XmlNodeType nodeType = reader.NodeType;
@@ -265,20 +265,23 @@ namespace Deveel.Data.Net.Client {
 						continue;
 					}
 
-					ActionArgument argument = ReadArgument(reader);
-					request.Arguments.Add(argument);
+					MessageArgument argument = ReadArgument(reader);
+					message.Arguments.Add(argument);
 				} else if (nodeType == XmlNodeType.Attribute) {
-					request.Attributes.Add(reader.LocalName, reader.Value);
+					message.Attributes.Add(reader.LocalName, reader.Value);
 				} else if (nodeType == XmlNodeType.EndElement) {
 					break;
 				}
 			}
 		}
 
-		public override void SerializeResponse(ActionResponse response, XmlWriter writer) {
+		protected override void Serialize(Message response, XmlWriter writer) {
 			writer.WriteStartDocument(true);
+			
+			if (response is MessageStream)
+				throw new NotImplementedException("not yet implemented");
 
-			string rootElement = "response";
+			string rootElement = "message";
 			if (response.HasName)
 				rootElement = response.Name;
 
@@ -291,7 +294,7 @@ namespace Deveel.Data.Net.Client {
 				}
 			}
 
-			foreach(ActionArgument argument in response.Arguments) {
+			foreach(MessageArgument argument in response.Arguments) {
 				WriteArgument(writer, argument, true);
 			}
 
@@ -330,7 +333,7 @@ namespace Deveel.Data.Net.Client {
 			return GetValueType(type);
 		}
 
-		private static void WriteArgument(XmlWriter writer, ActionArgument argument, bool printType) {
+		private static void WriteArgument(XmlWriter writer, MessageArgument argument, bool printType) {
 			writer.WriteStartElement(argument.Name);
 
 			if (argument.Attributes.Count > 0) {
@@ -357,7 +360,7 @@ namespace Deveel.Data.Net.Client {
 					int length = array.GetLength(0);
 					for (int i = 0; i < length; i++) {
 						// this is an ugly hack, but speeds work ...
-						WriteArgument(writer, new ActionArgument(elemType, array.GetValue(i)), false);
+						WriteArgument(writer, new MessageArgument(elemType, array.GetValue(i)), false);
 					}
 				} else {
 					if (value is DateTime) {

@@ -30,7 +30,7 @@ namespace Deveel.Data.Net.Client {
 		private readonly IServiceAddress address;
 		private readonly IServiceAddress managerAddress;
 		private readonly IServiceConnector connector;
-		private IActionSerializer actionSerializer;
+		private IMessageSerializer messageSerializer;
 		private readonly Logger log;
 
 		private IPathClientAuthorize authorize;
@@ -64,13 +64,13 @@ namespace Deveel.Data.Net.Client {
 			get { return log; }
 		}
 
-		public virtual IActionSerializer ActionSerializer {
+		public virtual IMessageSerializer MessageSerializer {
 			get {
-				if (actionSerializer == null)
-					actionSerializer = new BinaryActionSerializer();
-				return actionSerializer;
+				if (messageSerializer == null)
+					messageSerializer = new BinaryRpcMessageSerializer();
+				return messageSerializer;
 			}
-			set { actionSerializer = value; }
+			set { messageSerializer = value; }
 		}
 
 		public virtual IPathClientAuthorize Authorize {
@@ -157,14 +157,14 @@ namespace Deveel.Data.Net.Client {
 		protected virtual void OnInit() {
 		}
 
-		private ActionRequest GetMethodRequest(RequestType type, PathTransaction transaction, Stream requestStream) {
-			ActionRequest request = new ActionRequest(Type, type, transaction.Transaction);
+		private ClientMessageRequest GetMethodRequest(RequestType type, PathTransaction transaction, Stream requestStream) {
+			ClientMessageRequest request = new ClientMessageRequest(Type, type, transaction.Transaction);
 			if (requestStream != null)
-				ActionSerializer.DeserializeRequest(request, requestStream);
+				MessageSerializer.Deserialize(request, requestStream);
 			return request;
 		}
 
-		protected ActionResponse HandleRequest(RequestType type, string pathName, IDictionary<string, object> args, Stream requestStream) {
+		protected MessageResponse HandleRequest(RequestType type, string pathName, IDictionary<string, object> args, Stream requestStream) {
 			//TODO: allow having multiple handlers for the service ...
 			HandlerContainer handler = GetMethodHandler(pathName);
 			if (handler == null)
@@ -182,7 +182,7 @@ namespace Deveel.Data.Net.Client {
 				transaction = CreateTransaction(pathName);
 			}
 
-			ActionRequest request = GetMethodRequest(type, ((PathTransaction) transaction), requestStream);
+			MessageRequest request = GetMethodRequest(type, ((PathTransaction) transaction), requestStream);
 			if (args != null) {
 				foreach(KeyValuePair<string, object> pair in args) {
 					request.Attributes.Add(pair.Key, pair.Value);
@@ -192,7 +192,7 @@ namespace Deveel.Data.Net.Client {
 			return handler.Handler.HandleRequest(request);
 		}
 		
-		protected ActionResponse HandleRequest(RequestType type, string pathName, Stream requestStream) {
+		protected MessageResponse HandleRequest(RequestType type, string pathName, Stream requestStream) {
 			return HandleRequest(type, pathName, null, requestStream);
 		}
 

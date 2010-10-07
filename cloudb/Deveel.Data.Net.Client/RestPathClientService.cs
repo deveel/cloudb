@@ -20,19 +20,19 @@ namespace Deveel.Data.Net.Client {
 			get { return "rest"; }
 		}
 
-		public override IActionSerializer ActionSerializer {
-			get { return base.ActionSerializer; }
+		public override IMessageSerializer MessageSerializer {
+			get { return base.MessageSerializer; }
 			set {
-				if (!(value is XmlRestActionSerializer) &&
-					!(value is JsonRestActionSerializer))
+				if (!(value is XmlRestMessageSerializer) &&
+					!(value is JsonRestMessageSerializer))
 					throw new ArgumentException("Format not supported.");
 
-				if (value is XmlRestActionSerializer)
+				if (value is XmlRestMessageSerializer)
 					format = RestFormat.Xml;
-				else if (value is JsonRestActionSerializer)
+				else if (value is JsonRestMessageSerializer)
 					format = RestFormat.Json;
 
-				base.ActionSerializer = value;
+				base.MessageSerializer = value;
 			}
 		}
 
@@ -41,9 +41,9 @@ namespace Deveel.Data.Net.Client {
 			set {
 				if (value != format) {
 					if (value == RestFormat.Xml)
-						base.ActionSerializer = new XmlRestActionSerializer();
+						base.MessageSerializer = new XmlRestMessageSerializer();
 					else if (value == RestFormat.Json)
-						base.ActionSerializer = new JsonRestActionSerializer();
+						base.MessageSerializer = new JsonRestMessageSerializer();
 				}
 
 				format = value;
@@ -183,10 +183,10 @@ namespace Deveel.Data.Net.Client {
 						if (index != -1) {
 							string id = resourceId.Substring(index + 1);
 							resourceId = resourceId.Substring(0, index);
-							args[ActionRequest.ItemIdName] = id;
+							args[MessageRequest.ItemIdName] = id;
 						}
 
-						args[ActionRequest.ResourceIdName] = resourceId;
+						args[MessageRequest.ResourceIdName] = resourceId;
 					}
 
 					Stream requestStream = null;
@@ -194,24 +194,24 @@ namespace Deveel.Data.Net.Client {
 						requestType == RequestType.Put)
 						requestStream = context.Request.InputStream;
 
-					ActionResponse response = service.HandleRequest(requestType, pathName, args, requestStream);
+					MessageResponse response = service.HandleRequest(requestType, pathName, args, requestStream);
 
 					if (requestStream != null)
 						requestStream.Close();
 
-					if (response.Code == ActionResponseCode.NotFound) {
+					if (response.Code == MessageResponseCode.NotFound) {
 						context.Response.StatusCode = 404;
-					} else if (response.Code == ActionResponseCode.UnsupportedFormat) {
+					} else if (response.Code == MessageResponseCode.UnsupportedFormat) {
 						context.Response.StatusCode = 415;
-					} else if (response.Code == ActionResponseCode.Error) {
+					} else if (response.Code == MessageResponseCode.Error) {
 						context.Response.StatusCode = 500;
 						if (response.Arguments.Contains("message")) {
-							ActionArgument messageArg = response.Arguments["message"];
+							MessageArgument messageArg = response.Arguments["message"];
 							byte[] bytes = context.Response.ContentEncoding.GetBytes(messageArg.ToString());
 							context.Response.OutputStream.Write(bytes, 0, bytes.Length);
 							context.Response.OutputStream.Flush();
 						}
-					} else if (response.Code == ActionResponseCode.Success) {
+					} else if (response.Code == MessageResponseCode.Success) {
 						if (requestType == RequestType.Post ||
 							requestType == RequestType.Put)
 							context.Response.StatusCode = 201;
@@ -224,7 +224,7 @@ namespace Deveel.Data.Net.Client {
 
 						// TODO: make it recurive ...
 						if (!response.Request.HasItemId) {
-							foreach(ActionArgument argument in response.Arguments) {
+							foreach(MessageArgument argument in response.Arguments) {
 								if (argument.HasId) {
 									StringBuilder href = new StringBuilder(service.Address.ToString());
 									if (href[href.Length - 1] != '/')
@@ -240,7 +240,7 @@ namespace Deveel.Data.Net.Client {
 
 						// Write and flush the output message,
 						Stream responseStream = context.Response.OutputStream;
-						service.ActionSerializer.SerializeResponse(response, responseStream);
+						service.MessageSerializer.Serialize(response, responseStream);
 						responseStream.Flush();
 						responseStream.Close();
 					}
