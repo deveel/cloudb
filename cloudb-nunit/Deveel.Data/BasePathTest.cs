@@ -583,10 +583,11 @@ namespace Deveel.Data {
 			using (DbTransaction transaction = session.CreateTransaction()) {
 				try {
 					DbTable table = transaction.GetTable("comics");
-
+					
 					foreach(DbRow row in table) {
 						table.Delete(row);
 						deleteCount++;
+						break;
 					}
 
 					transaction.Commit();
