@@ -32,6 +32,8 @@ namespace Deveel.Data.Net {
 			blockContainerCache = new Dictionary<long, BlockContainer>(5279);
 			blockContainerAccessList = new LinkedList<BlockContainer>();
 			blocksPendingFlush = new LinkedList<BlockContainer>();
+			
+			log = LogManager.NetworkLogger;
 		}
 		
 		public override ServiceType ServiceType {
@@ -121,7 +123,7 @@ namespace Deveel.Data.Net {
 				} catch (IOException e) {
 					// We log the warning, but otherwise ignore any IO Error on a
 					// file synchronize.
-					//TODO: WARN log ...
+					log.Warning("Error while flushing block content: " + e.Message);
 				}
 			}
 		}
@@ -246,7 +248,7 @@ namespace Deveel.Data.Net {
 
 			private void CloseContainers(Dictionary<long, BlockContainer> touched) {
 				foreach (KeyValuePair<long, BlockContainer> c in touched) {
-					//TODO: DEBUG log ..
+					service.log.Log(LogLevel.Information, service, "Closing block (ID: " + c.Key + ")");
 					c.Value.Close();
 				}
 			}
@@ -261,7 +263,7 @@ namespace Deveel.Data.Net {
 						service.lastBlockId = blockId;
 					}
 					touched[blockId] = b;
-					//TODO: DEBUG log ...
+					service.log.Log(LogLevel.Information, service, "Opening block (ID: " + blockId+")");
 				}
 				return b;
 			}
@@ -341,17 +343,17 @@ namespace Deveel.Data.Net {
 					// If the block was accessed less than 5 minutes ago, we don't allow
 					// the copy to happen,
 					if (info.blockId == service.lastBlockId) {
-						//TODO: INFO log ...
+						service.log.Info(String.Format("Can't copy last block_id ( {0} ) on server.", info.blockId));
 						return;
 					} else if (container.LastWriteTime > 
 					           DateTime.Now.AddMilliseconds(-(6 * 60 * 1000))) {
 						// Won't copy a block that was written to within the last 6 minutes,
-						//TODO: INFO log ...
+						service.log.Info(String.Format("Can't copy block ( {0} ) written to within the last 6 minutes.", info.blockId));
 						return;
 					}
 
 					MessageRequest request;
-					MessageResponse response;
+					Message response;
 
 					// If the block does exist, push it over,
 					byte[] buf = new byte[16384];
@@ -359,8 +361,7 @@ namespace Deveel.Data.Net {
 					using(Stream input = container.OpenInputStream()) {
 						int read;
 						while ((read = input.Read(buf, 0, buf.Length)) != 0) {
-							request = new MessageRequest();
-							request.Name = "sendBlockPart";
+							request = new MessageRequest("sendBlockPart");
 							request.Arguments.Add(info.blockId);
 							request.Arguments.Add(pos);
 							request.Arguments.Add(container.Type);
@@ -368,9 +369,8 @@ namespace Deveel.Data.Net {
 							request.Arguments.Add(read);
 							
 							// Process the request,
-							response = (MessageResponse) p.ProcessMessage(request);
+							response = p.ProcessMessage(request);
 
-							// Get the input iterator,
 								if (response.HasError) {
 									service.log.Log(LogLevel.Error, "sendBlockPath Error: " + response.ErrorMessage);
 									return;
@@ -381,13 +381,12 @@ namespace Deveel.Data.Net {
 					}
 					
 					// Send the 'complete' command,
-					request = new MessageRequest();
-					request.Name = "sendBlockComplete";
+					request = new MessageRequest("sendBlockComplete");
 					request.Arguments.Add(info.blockId);
 					request.Arguments.Add(container.Type);
 
 					// Process the response,
-					response = (MessageResponse) p.ProcessMessage(request);
+					response = p.ProcessMessage(request);
 
 					if (response.HasError) {
 						service.log.Error("sendBlockComplete Error: " + response.ErrorMessage);
@@ -400,10 +399,10 @@ namespace Deveel.Data.Net {
 					request.Arguments.Add(info.blockId);
 					request.Arguments.Add(info.destServerGuid);
 					
-					//TODO: DEBUG log ...
+					service.log.Info(String.Format("Adding block_id->server mapping ({0} -> {1})", info.blockId, info.destServerGuid));
 
 					// Process the message,
-					response = (MessageResponse) mp.ProcessMessage(request);
+					response = mp.ProcessMessage(request);
 
 					if (response.HasError) {
 						service.log.Error("addBlockServerMapping Error: " + response.ErrorMessage);
@@ -535,6 +534,11 @@ namespace Deveel.Data.Net {
 								int storeType = request.Arguments[1].ToInt32();
 								service.CompleteBlockWrite(blockId, storeType);
 							response = request.CreateResponse("R");
+								response.Arguments.Add(1L);
+								break;
+							}
+							case "poll": {
+								response = request.CreateResponse("R");
 								response.Arguments.Add(1L);
 								break;
 							}

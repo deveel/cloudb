@@ -15,11 +15,11 @@ namespace Deveel.Data.Net.Client {
 		public XmlRpcMessageSerializer() {
 		}
 
-		public override void Serialize(Message message, XmlWriter writer) {
+		protected override void Serialize(Message message, XmlWriter writer) {
 			throw new NotImplementedException();
 		}
 
-		public override void Deserialize(Message message, XmlReader reader) {
+		protected override void Deserialize(Message message, XmlReader reader) {
 			throw new NotImplementedException();
 		}
 	}

@@ -19,10 +19,10 @@ namespace Deveel.Data.Net {
 				throw new NetworkAdminException("No manager server found");
 
 			// Check with the root server that the class instantiates,
-			MessageRequest outputStream = new MessageRequest("checkPathType");
-			outputStream.Arguments.Add(pathType);
+			MessageRequest request = new MessageRequest("checkPathType");
+			request.Arguments.Add(pathType);
 
-			Message m = Command(root, ServiceType.Root, outputStream);
+			Message m = Command(root, ServiceType.Root, request);
 			if (m.HasError)
 				throw new NetworkAdminException("Type '" + pathType + "' doesn't instantiate on the root");
 
@@ -35,27 +35,27 @@ namespace Deveel.Data.Net {
 			client.Disconnect();
 
 			// Perform the command,
-			outputStream = new MessageRequest("addPath");
-			outputStream.Arguments.Add(pathName);
-			outputStream.Arguments.Add(pathType);
-			outputStream.Arguments.Add(dataAddress);
-			m = Command(root, ServiceType.Root, outputStream);
-			if (m.HasError)
-				throw new NetworkAdminException(m.ErrorMessage);
+			MessageStream requestStream = new MessageStream(MessageType.Request);
+			request = new MessageRequest("addPath");
+			request.Arguments.Add(pathName);
+			request.Arguments.Add(pathType);
+			request.Arguments.Add(dataAddress);
+			requestStream.AddMessage(request);
+			
+			request = new MessageRequest("initPath");
+			request.Arguments.Add(pathName);
+			requestStream.AddMessage(request);
 
-			outputStream = new MessageRequest("initPath");
-			outputStream.Arguments.Add(pathName);
-
-			m = Command(root, ServiceType.Root, outputStream);
+			m = Command(root, ServiceType.Root, requestStream);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 
 			// Tell the manager server about this path,
-			outputStream = new MessageRequest("addPathRootMapping");
-			outputStream.Arguments.Add(pathName);
-			outputStream.Arguments.Add(root);
+			request = new MessageRequest("addPathRootMapping");
+			request.Arguments.Add(pathName);
+			request.Arguments.Add(root);
 
-			m = Command(managerServer, ServiceType.Manager, outputStream);
+			m = Command(managerServer, ServiceType.Manager, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 		}

@@ -404,7 +404,7 @@ namespace Deveel.Data.Net {
 		}
 
 		protected override IMessageProcessor CreateProcessor() {
-			return new RootServerMessageProcessor(this);
+			return new RootServiceMessageProcessor(this);
 		}
 						
 		protected abstract PathAccess FetchPathAccess(string pathName);
@@ -466,10 +466,10 @@ namespace Deveel.Data.Net {
 		
 		#endregion
 		
-		#region RootServerProcessor
+		#region RootServiceMessageProcessor
 
-		class RootServerMessageProcessor : IMessageProcessor {
-			public RootServerMessageProcessor(RootService service) {
+		class RootServiceMessageProcessor : IMessageProcessor {
+			public RootServiceMessageProcessor(RootService service) {
 				this.service = service;
 			}
 

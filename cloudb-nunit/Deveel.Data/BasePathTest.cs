@@ -1,8 +1,7 @@
 ﻿using System;
 using System.IO;
-
+using Deveel.Data.Diagnostics;
 using Deveel.Data.Net;
-
 using NUnit.Framework;
 
 namespace Deveel.Data {
@@ -33,6 +32,10 @@ namespace Deveel.Data {
 
 				config.SetValue("node_directory", path);
 			}
+			
+			config.SetValue("network_log_type", "simple-console");
+			
+			LogManager.Init(config);
 
 			adminService.Config = config;
 			adminService.Init();

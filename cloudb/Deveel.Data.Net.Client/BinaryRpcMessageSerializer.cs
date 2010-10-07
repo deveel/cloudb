@@ -164,7 +164,7 @@ namespace Deveel.Data.Net.Client {
 					writer.Write(s[i]);
 				}
 				// Extensions ...
-			} else if (valueType == typeof(IServiceAddress)) {
+			} else if (typeof(IServiceAddress).IsAssignableFrom(valueType)) {
 				IServiceAddress address = (IServiceAddress) value;
 				IServiceAddressHandler handler = ServiceAddresses.GetHandler(address);
 				byte[] buffer = handler.ToBytes(address);
@@ -181,7 +181,7 @@ namespace Deveel.Data.Net.Client {
 				writer.Write(e.Source);
 				writer.Write(e.Message);
 				writer.Write(e.StackTrace);
-			} else if (valueType == typeof(NodeSet)) {
+			} else if (typeof(NodeSet).IsAssignableFrom(valueType)) {
 				if (value is SingleNodeSet) {
 					writer.Write((byte)1);
 				} else if (value is CompressedNodeSet) {

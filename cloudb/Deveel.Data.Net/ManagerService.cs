@@ -837,11 +837,18 @@ namespace Deveel.Data.Net {
 			private readonly ManagerService service;
 
 			public Message ProcessMessage(Message message) {
-				if (!(message is MessageRequest))
-					throw new ArgumentException();
-
+				if (message is MessageStream) {
+					MessageStream requestStream = (MessageStream)message;
+					MessageStream responseStream = new MessageStream(MessageType.Response);
+					foreach(Message streamMessage in requestStream) {
+						responseStream.AddMessage(ProcessMessage(streamMessage));
+					}
+					
+					return responseStream;
+				}
+				
 				MessageRequest request = (MessageRequest) message;
-				MessageResponse responseStream;
+				MessageResponse response;
 
 				// The messages in the stream,
 				try {
@@ -852,40 +859,39 @@ namespace Deveel.Data.Net {
 						case "getServerListForBlock": {
 								long blockId = request.Arguments[0].ToInt64();
 								BlockServerInfo[] servers = service.GetServerListForBlock(blockId);
-							MessageResponse response = request.CreateResponse("R");
+							response = request.CreateResponse("R");
 								response.Arguments.Add(servers.Length);
 								for (int i = 0; i < servers.Length; i++) {
 									response.Arguments.Add(servers[i].Address);
 									response.Arguments.Add((int)servers[i].Status);
 								}
-							responseStream = response;
 								break;
 							}
 						case "allocateNode": {
 								int nodeSize = request.Arguments[0].ToInt32();
 								DataAddress address = service.AllocateNode(nodeSize);
-							responseStream = request.CreateResponse("R");
-								responseStream.Arguments.Add(address);
+							response = request.CreateResponse("R");
+								response.Arguments.Add(address);
 								break;
 							}
 						case "registerBlockServer": {
 								IServiceAddress address = (IServiceAddress)request.Arguments[0].Value;
 								service.RegisterBlockServer(address);
-							responseStream = request.CreateResponse("R");
-								responseStream.Arguments.Add(1L);
+							response = request.CreateResponse("R");
+								response.Arguments.Add(1L);
 								break;
 							}
 						case "unregisterBlockServer": {
 								IServiceAddress address = (IServiceAddress)request.Arguments[0].Value;
 								service.UnregisterBlockServer(address);
-							responseStream = request.CreateResponse("R");
-								responseStream.Arguments.Add(1L);
+							response = request.CreateResponse("R");
+								response.Arguments.Add(1L);
 								break;
 							}
 						case "unregisterAllBlockServers": {
 								service.UnregisterAllBlockServers();
-							responseStream = request.CreateResponse("R");
-								responseStream.Arguments.Add(1L);
+							response = request.CreateResponse("R");
+								response.Arguments.Add(1L);
 								break;
 							}
 
@@ -893,93 +899,93 @@ namespace Deveel.Data.Net {
 						case "registerRootServer": {
 								IServiceAddress address = (IServiceAddress)request.Arguments[0].Value;
 								service.RegisterRootServer(address);
-							responseStream = request.CreateResponse("R");
-								responseStream.Arguments.Add(1L);
+							response = request.CreateResponse("R");
+								response.Arguments.Add(1L);
 								break;
 							}
 						case "unregisterRootServer": {
 								IServiceAddress address = (IServiceAddress)request.Arguments[0].Value;
 								service.UnregisterRootServer(address);
-							responseStream = request.CreateResponse("R");
-								responseStream.Arguments.Add(1L);
+							response = request.CreateResponse("R");
+								response.Arguments.Add(1L);
 								break;
 							}
 						case "unregisterAllRootServers": {
 								service.UnregisterAllRootServers();
-							responseStream = request.CreateResponse("R");
-								responseStream.Arguments.Add(1);
+							response = request.CreateResponse("R");
+								response.Arguments.Add(1);
 								break;
 							}
 						case "getRootForPath": {
 								string pathName = request.Arguments[0].ToString();
 								IServiceAddress address = service.GetRootForPath(pathName);
-							responseStream = request.CreateResponse("R");
-								responseStream.Arguments.Add(address);
+							response = request.CreateResponse("R");
+								response.Arguments.Add(address);
 								break;
 							}
 						case "addPathRootMapping": {
 								string pathName = request.Arguments[0].ToString();
 								IServiceAddress address = (IServiceAddress)request.Arguments[1].Value;
 								service.AddPathRootMapping(pathName, address);
-							responseStream = request.CreateResponse("R");
-								responseStream.Arguments.Add(1L);
+							response = request.CreateResponse("R");
+								response.Arguments.Add(1L);
 								break;
 							}
 						case "removePathRootMapping": {
 								string pathName = request.Arguments[0].ToString();
 								service.RemovePathRootMapping(pathName);
-							responseStream = request.CreateResponse("R");
-								responseStream.Arguments.Add(1L);
+							response = request.CreateResponse("R");
+								response.Arguments.Add(1L);
 								break;
 							}
 						case "getPaths": {
 								string[] pathSet = service.GetPaths();
-							responseStream = request.CreateResponse("R");
-								responseStream.Arguments.Add(pathSet);
+							response = request.CreateResponse("R");
+								response.Arguments.Add(pathSet);
 								break;
 							}
 						case "getServerGUIDList": {
 								long blockId = request.Arguments[0].ToInt64();
 								long[] serverGuids = service.GetServerGuidList(blockId);
-							responseStream = request.CreateResponse("R");
-								responseStream.Arguments.Add(serverGuids);
+							response = request.CreateResponse("R");
+								response.Arguments.Add(serverGuids);
 								break;
 							}
 						case "addBlockServerMapping": {
 								long blockId = request.Arguments[0].ToInt64();
 								long serverGuid = request.Arguments[1].ToInt64();
 								service.AddBlockServerMapping(blockId, serverGuid);
-							responseStream = request.CreateResponse("R");
-								responseStream.Arguments.Add(1L);
+							response = request.CreateResponse("R");
+								response.Arguments.Add(1L);
 								break;
 							}
 						case "removeBlockServerMapping": {
 								long blockId = request.Arguments[0].ToInt64();
 								long serverGuid = request.Arguments[1].ToInt64();
 								service.RemoveBlockServerMapping(blockId, serverGuid);
-							responseStream = request.CreateResponse("R");
-								responseStream.Arguments.Add(1L);
+							response = request.CreateResponse("R");
+								response.Arguments.Add(1L);
 								break;
 							}
 						case "notifyBlockServerFailure": {
 								IServiceAddress address = (IServiceAddress)request.Arguments[0].Value;
 								service.NotifyBlockServerFailure(address);
-							responseStream = request.CreateResponse("R");
-								responseStream.Arguments.Add(1L);
+							response = request.CreateResponse("R");
+								response.Arguments.Add(1L);
 								break;
 							}
 						case "getBlockMappingCount": {
 								long blockMappingCount = service.GetBlockMappingCount();
-							responseStream = request.CreateResponse("R");
-								responseStream.Arguments.Add(blockMappingCount);
+							response = request.CreateResponse("R");
+								response.Arguments.Add(blockMappingCount);
 								break;
 							}
 						case "getBlockMappingRange": {
 								long start = request.Arguments[0].ToInt64();
 								long end = request.Arguments[1].ToInt64();
 								long[] mappings = service.GetBlockMappingRange(start, end);
-							responseStream = request.CreateResponse("R");
-								responseStream.Arguments.Add(mappings);
+							response = request.CreateResponse("R");
+								response.Arguments.Add(mappings);
 								break;
 							}
 						default:
@@ -991,12 +997,12 @@ namespace Deveel.Data.Net {
 					throw;
 				} catch (Exception e) {
 					service.Logger.Error("Error while processing message", e);
-					responseStream = request.CreateResponse("E");
-					responseStream.Code = MessageResponseCode.Error;
-					responseStream.Arguments.Add(new MessageError(e));
+					response = request.CreateResponse("E");
+					response.Code = MessageResponseCode.Error;
+					response.Arguments.Add(new MessageError(e));
 				}
 
-				return responseStream;
+				return response;
 			}
 		}
 

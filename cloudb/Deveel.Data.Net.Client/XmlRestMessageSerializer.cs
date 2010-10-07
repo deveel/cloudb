@@ -246,7 +246,7 @@ namespace Deveel.Data.Net.Client {
 			return argument;
 		}
 
-		public override void Deserialize(Message message, XmlReader reader) {
+		protected override void Deserialize(Message message, XmlReader reader) {
 			string requestName = null;
 			while (reader.Read()) {
 				XmlNodeType nodeType = reader.NodeType;
@@ -275,7 +275,7 @@ namespace Deveel.Data.Net.Client {
 			}
 		}
 
-		public override void Serialize(Message message, XmlWriter writer) {
+		protected override void Serialize(Message message, XmlWriter writer) {
 			writer.WriteStartDocument(true);
 
 			string rootElement = "message";

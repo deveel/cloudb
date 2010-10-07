@@ -4,7 +4,7 @@ using System.Text;
 using System.Xml;
 
 namespace Deveel.Data.Net.Client {
-	public abstract class XmlMessageSerializer : ITextMessageSerializer {
+	public abstract class XmlMessageSerializer : ITextMessageSerializer, ISystemMessageSerializer {
 		private Encoding encoding;
 
 		protected XmlMessageSerializer(string encoding)
@@ -52,7 +52,7 @@ namespace Deveel.Data.Net.Client {
 			writer.Flush();
 		}
 
-		public abstract void Serialize(Message message, XmlWriter writer);
+		protected abstract void Serialize(Message message, XmlWriter writer);
 
 		public void Deserialize(Message message, Stream input) {
 			if (input == null)
@@ -63,6 +63,6 @@ namespace Deveel.Data.Net.Client {
 			Deserialize(message, new XmlTextReader(new StreamReader(input, ContentEncoding)));
 		}
 
-		public abstract void Deserialize(Message message, XmlReader reader);
+		protected abstract void Deserialize(Message message, XmlReader reader);
 	}
 }

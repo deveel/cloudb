@@ -4,7 +4,7 @@ using System.IO;
 using System.Text;
 
 namespace Deveel.Data.Net.Client {
-	public abstract class BinaryMessageSerializer : IMessageSerializer {
+	public abstract class BinaryMessageSerializer : IMessageSerializer, ISystemMessageSerializer {
 		private static readonly Dictionary<byte, Type> typeCodes;
 
 		private Encoding encoding;
@@ -62,12 +62,17 @@ namespace Deveel.Data.Net.Client {
 		}
 
 		public static byte GetCode(Type type) {
+			if (type.IsArray)
+				return 57;
+			
 			foreach(KeyValuePair<byte, Type> pair in typeCodes) {
-				if (pair.Value == type)
+				if (pair.Value == type ||
+				    (pair.Value.IsInterface && 
+				     pair.Value.IsAssignableFrom(type)))
 					return pair.Key;
 			}
 
-			throw new InvalidOperationException();
+			throw new InvalidOperationException("The type '" + type + "' has no corresponding code: unhandled.");
 		}
 
 		public void Serialize(Message message, Stream output) {

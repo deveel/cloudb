@@ -36,5 +36,29 @@ namespace Deveel.Data.Net.Client {
 		public string Message {
 			get { return message; }
 		}
+		
+		public Exception AsException() {
+			return new MessageErrorException(this);
+		}
+		
+		#region MessageErrorException
+		
+		class MessageErrorException : Exception {
+			private readonly MessageError error;
+			
+			public MessageErrorException(MessageError error) {
+				this.error = error;
+			}
+			
+			public override string Message {
+				get { return error.Message; }
+			}
+			
+			public override string StackTrace {
+				get { return error.StackTrace; }
+			}
+		}
+		
+		#endregion
 	}
 }
