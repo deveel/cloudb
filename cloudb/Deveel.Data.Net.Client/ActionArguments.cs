@@ -3,19 +3,15 @@ using System.Collections;
 using System.Collections.Generic;
 
 namespace Deveel.Data.Net.Client {
-	public sealed class MessageArguments : IList<MessageArgument>, ICloneable {
-		internal MessageArguments(bool readOnly) {
+	public sealed class ActionArguments : IList<ActionArgument>, ICloneable {
+		internal ActionArguments(bool readOnly) {
 			this.readOnly = readOnly;
-			children = new List<MessageArgument>();
+			children = new List<ActionArgument>();
 		}
 
 		private bool readOnly;
-		private List<MessageArgument> children;
+		private List<ActionArgument> children;
 		private string[] keys;
-
-		private int unnamedCount = -1;
-
-		private const string UnnamedKey = "#ARG{0}#";
 		
 		public string[] Names {
 			get {
@@ -41,7 +37,7 @@ namespace Deveel.Data.Net.Client {
 			keys = null;
 		}
 
-		private void CheckHasChild(MessageArgument arg) {
+		private void CheckHasChild(ActionArgument arg) {
 			if (Contains(arg))
 				throw new ArgumentException("This argument was already inserted.");
 		}
@@ -54,7 +50,7 @@ namespace Deveel.Data.Net.Client {
 			}
 		}
 
-		public IEnumerator<MessageArgument> GetEnumerator() {
+		public IEnumerator<ActionArgument> GetEnumerator() {
 			return children.GetEnumerator();
 		}
 
@@ -62,24 +58,20 @@ namespace Deveel.Data.Net.Client {
 			return GetEnumerator();
 		}
 
-		internal void SafeAdd(MessageArgument item) {
+		internal void SafeAdd(ActionArgument item) {
 			CheckHasChild(item);
 			children.Add(item);
 		}
 
-		public void Add(MessageArgument item) {
+		public void Add(ActionArgument item) {
 			CheckReadOnly();
 			SafeAdd(item);
 		}
 
-		public MessageArgument Add(string name, object value) {
-			MessageArgument item = new MessageArgument(name, value);
+		public ActionArgument Add(string name, object value) {
+			ActionArgument item = new ActionArgument(name, value);
 			Add(item);
 			return item;
-		}
-
-		public MessageArgument Add(object value) {
-			return Add(String.Format(UnnamedKey, ++unnamedCount), value);
 		}
 
 		public void Clear() {
@@ -87,7 +79,7 @@ namespace Deveel.Data.Net.Client {
 			children.Clear();
 		}
 
-		public bool Contains(MessageArgument item) {
+		public bool Contains(ActionArgument item) {
 			return IndexOf(item) != -1;
 		}
 
@@ -95,11 +87,11 @@ namespace Deveel.Data.Net.Client {
 			return IndexOf(name) != -1;
 		}
 
-		public void CopyTo(MessageArgument[] array, int arrayIndex) {
+		public void CopyTo(ActionArgument[] array, int arrayIndex) {
 			children.CopyTo(array, arrayIndex);
 		}
 
-		public bool Remove(MessageArgument item) {
+		public bool Remove(ActionArgument item) {
 			CheckReadOnly();
 			return children.Remove(item);
 		}
@@ -109,7 +101,7 @@ namespace Deveel.Data.Net.Client {
 
 			int removeCount = 0;
 			for(int i = children.Count - 1; i > 0; i--) {
-				MessageArgument arg = children[i];
+				ActionArgument arg = children[i];
 				if (arg.Name.Equals(name)) {
 					children.RemoveAt(i);
 					removeCount++;
@@ -119,14 +111,14 @@ namespace Deveel.Data.Net.Client {
 			return removeCount > 0;
 		}
 		
-		public MessageArgument RemoveFirst(string name) {
+		public ActionArgument RemoveFirst(string name) {
 			CheckReadOnly();
 			
 			int index = IndexOf(name);
 			if (index == -1)
 				return null;
 			
-			MessageArgument arg = children[index];
+			ActionArgument arg = children[index];
 			children.RemoveAt(index);
 			return arg;
 		}
@@ -139,9 +131,9 @@ namespace Deveel.Data.Net.Client {
 			get { return readOnly; }
 		}
 
-		public int IndexOf(MessageArgument item) {
+		public int IndexOf(ActionArgument item) {
 			for (int i = 0; i < children.Count; i++) {
-				MessageArgument child = children[i];
+				ActionArgument child = children[i];
 				if (child.Equals(item))
 					return i;
 			}
@@ -151,7 +143,7 @@ namespace Deveel.Data.Net.Client {
 
 		public int IndexOf(string name) {
 			for (int i = 0; i < children.Count; i++) {
-				MessageArgument child = children[i];
+				ActionArgument child = children[i];
 				if (child.Name.Equals(name))
 					return i;
 			}
@@ -159,14 +151,10 @@ namespace Deveel.Data.Net.Client {
 			return -1;
 		}
 
-		public void Insert(int index, MessageArgument item) {
+		public void Insert(int index, ActionArgument item) {
 			CheckReadOnly();
 			CheckHasChild(item);
 			children.Insert(index, item);
-		}
-
-		public void Insert(int index, object value) {
-			Insert(index, new MessageArgument(String.Format(UnnamedKey, ++unnamedCount)));
 		}
 
 		public void RemoveAt(int index) {
@@ -174,7 +162,7 @@ namespace Deveel.Data.Net.Client {
 			children.RemoveAt(index);
 		}
 
-		public MessageArgument this[int index] {
+		public ActionArgument this[int index] {
 			get { return children[index]; }
 			set {
 				CheckReadOnly();
@@ -182,7 +170,7 @@ namespace Deveel.Data.Net.Client {
 			}
 		}
 
-		public MessageArgument this[string name] {
+		public ActionArgument this[string name] {
 			get { 
 				int index = IndexOf(name);
 				return index == -1 ? null : children[index];
@@ -198,10 +186,10 @@ namespace Deveel.Data.Net.Client {
 			}
 		}
 		
-		public MessageArgument[] GetArguments(string name) {
-			List<MessageArgument> args = new List<MessageArgument>(Count);
+		public ActionArgument[] GetArguments(string name) {
+			List<ActionArgument> args = new List<ActionArgument>(Count);
 			for(int i = 0; i < children.Count; i++) {
-				MessageArgument arg = children[i];
+				ActionArgument arg = children[i];
 				if (arg.Name.Equals(name))
 					args.Add(arg);
 			}
@@ -210,10 +198,10 @@ namespace Deveel.Data.Net.Client {
 		}
 
 		public object Clone() {
-			MessageArguments c = new MessageArguments(readOnly);
-			c.children = new List<MessageArgument>(children.Count);
+			ActionArguments c = new ActionArguments(readOnly);
+			c.children = new List<ActionArgument>(children.Count);
 			for (int i = 0; i < children.Count; i++) {
-				c.children.Add((MessageArgument)children[i].Clone());
+				c.children.Add((ActionArgument)children[i].Clone());
 			}
 			return c;
 		}

@@ -5,11 +5,10 @@ using System.Text;
 using System.Threading;
 
 using Deveel.Data.Diagnostics;
-using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
 	public sealed class HttpAdminService : AdminService {
-		private IMessageSerializer messageSerializer;
+		private IMessageSerializer serializer;
 		private bool polling;
 		private HttpListener listener;
 		private Thread pollingThread;
@@ -22,13 +21,13 @@ namespace Deveel.Data.Net {
 			: base(address, new HttpServiceConnector(), delegator) {
 		}
 		
-		public IMessageSerializer MessageSerializer {
+		public IMessageSerializer Serializer {
 			get { 
-				if (messageSerializer == null)
-					messageSerializer = new XmlRpcMessageSerializer();
-				return messageSerializer;
+				if (serializer == null)
+					serializer = new XmlMessageStreamSerializer();
+				return serializer;
 			}
-			set { messageSerializer = value; }
+			set { serializer = value; }
 		}
 		
 		private void Poll() {
@@ -39,7 +38,7 @@ namespace Deveel.Data.Net {
 						// The socket to run the service,
 						context = listener.GetContext();						
 						// Make sure this ip address is allowed,
-						IPAddress ipAddress = context.Request.RemoteEndPoint.Address;
+						IPAddress ipAddress = ((IPEndPoint)context.Request.RemoteEndPoint).Address;
 
 						Logger.Info("Connection opened with HTTP client " + ipAddress);
 
@@ -111,10 +110,9 @@ namespace Deveel.Data.Net {
 				this.service = service;
 			}
 
-			private static MessageResponse NoServiceError(MessageRequest request) {
-				MessageResponse msg_out = request.CreateResponse("E");
-				msg_out.Code = MessageResponseCode.Error;
-				msg_out.Arguments.Add(new MessageError(new Exception("The service requested is not being run on the instance")));
+			private static MessageStream NoServiceError() {
+				MessageStream msg_out = new MessageStream(16);
+				msg_out.AddErrorMessage(new ServiceException(new Exception("The service requested is not being run on the instance")));
 				return msg_out;
 			}
 
@@ -143,42 +141,41 @@ namespace Deveel.Data.Net {
 						ServiceType serviceType = (ServiceType)Enum.Parse(typeof(ServiceType), serviceTypeString, true);
 
 						// Read the message stream object
-						IMessageSerializer messageSerializer = service.MessageSerializer;
-						MessageRequest request = new MessageRequest();
-						messageSerializer.Deserialize(request, context.Request.InputStream);
+						IMessageSerializer serializer = service.Serializer;
+						MessageStream message_stream = serializer.Deserialize(context.Request.InputStream);
 
-						Message message_out;
+						MessageStream message_out;
 
 						// For analytics
 						DateTime benchmark_start = DateTime.Now;
 
 						// Destined for the administration module,
 						if (serviceType == ServiceType.Admin) {
-							message_out = service.Processor.ProcessMessage(request);
+							message_out = service.Processor.Process(message_stream);
 						}
 							// For a block service in this machine
 						else if (serviceType == ServiceType.Block) {
 							if (service.Block == null) {
-								message_out = NoServiceError(request);
+								message_out = NoServiceError();
 							} else {
-								message_out = service.Block.Processor.ProcessMessage(request);
+								message_out = service.Block.Processor.Process(message_stream);
 							}
 
 						}
 							// For a manager service in this machine
 						else if (serviceType == ServiceType.Manager) {
 							if (service.Manager == null) {
-								message_out = NoServiceError(request);
+								message_out = NoServiceError();
 							} else {
-								message_out = service.Manager.Processor.ProcessMessage(request);
+								message_out = service.Manager.Processor.Process(message_stream);
 							}
 						}
 							// For a root service in this machine
 						else if (serviceType == ServiceType.Root) {
 							if (service.Root == null) {
-								message_out = NoServiceError(request);
+								message_out = NoServiceError();
 							} else {
-								message_out = service.Root.Processor.ProcessMessage(request);
+								message_out = service.Root.Processor.Process(message_stream);
 							}
 						} else {
 							throw new InvalidOperationException("Invalid destination service.");
@@ -191,12 +188,12 @@ namespace Deveel.Data.Net {
 
 						// Write and flush the output message,
 						context.Response.StatusCode = (int)HttpStatusCode.OK;
-						if (messageSerializer is ITextMessageSerializer) {
-							ITextMessageSerializer textMessageSerializer = (ITextMessageSerializer) messageSerializer;
-							context.Response.ContentEncoding = Encoding.GetEncoding(textMessageSerializer.ContentEncoding);
-							context.Response.ContentType = textMessageSerializer.ContentType;
+						if (serializer is ITextMessageSerializer) {
+							ITextMessageSerializer textSerializer = (ITextMessageSerializer) serializer;
+							context.Response.ContentEncoding = Encoding.GetEncoding(textSerializer.ContentEncoding);
+							context.Response.ContentType = textSerializer.ContentType;
 						}
-						messageSerializer.Serialize(message_out, context.Response.OutputStream);
+						serializer.Serialize(message_out, context.Response.OutputStream);
 						context.Response.OutputStream.Flush();
 						context.Response.Close();
 					} // while (true)

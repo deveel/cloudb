@@ -5,20 +5,20 @@ using Deveel.Data.Net.Client;
 
 namespace Deveel.Data {
 	[Handle(typeof(BasePath))]
-	public sealed class BasePathRequestHandler : IMessageRequestHandler {
-		private static MessageResponse HandleRestRequest(ClientMessageRequest request) {
+	public sealed class BasePathRequestHandler : IRequestHandler {
+		private static ActionResponse HandleRestRequest(ActionRequest request) {
 			if (!request.HasResourceId)
 				throw new ArgumentException("The request must specify the table name.");
 
 			DbTransaction transaction = (DbTransaction)request.Transaction;
 			string tableName = (string)request.ResourceId;
 
-			MessageResponse response = null;
+			ActionResponse response = null;
 
 			try {
 				if (!transaction.TableExists(tableName)) {
 					response = request.CreateResponse("error");
-					response.Code = MessageResponseCode.NotFound;
+					response.Code = ActionResponseCode.NotFound;
 					response.Arguments.Add("Message", "Table '" + tableName + "' not found within the current context.");
 					return response;
 				}
@@ -26,7 +26,7 @@ namespace Deveel.Data {
 				DbTable table = transaction.GetTable(tableName);
 				if (table == null) {
 					response = request.CreateResponse("error");
-					response.Code = MessageResponseCode.NotFound;
+					response.Code = ActionResponseCode.NotFound;
 					response.Arguments.Add("message", "Table '" + tableName + "' not found within the current context.");
 					return response;
 				}
@@ -46,14 +46,14 @@ namespace Deveel.Data {
 
 						for (int i = 0; i < schema.ColumnCount; i++) {
 							string columnName = schema.Columns[i];
-							MessageArgument arg = response.Arguments.Add("column", null);
+							ActionArgument arg = response.Arguments.Add("column", null);
 							arg.Attributes["name"] = columnName;
 							arg.Attributes["indexed"] = schema.IsColumnIndexed(columnName);
 						}
 
 						DbRowCursor cursor = table.GetCursor();
 						while (cursor.MoveNext()) {
-							MessageArgument argument = response.Arguments.Add("row", null);
+							ActionArgument argument = response.Arguments.Add("row", null);
 							argument.SetId("id", cursor.CurrentRowId);
 						}
 					} else {
@@ -67,16 +67,16 @@ namespace Deveel.Data {
 								response.Arguments.Add(schema.Columns[i], row.GetValue(schema.Columns[i]));
 							}
 
-							response.Code = MessageResponseCode.Success;
+							response.Code = ActionResponseCode.Success;
 						} catch (Exception) {
-							response.Code = MessageResponseCode.Error;
+							response.Code = ActionResponseCode.Error;
 							response.Arguments.Add("message", "Error while retrieving the row '" + rowid + "' from the table '" + tableName + "'.");
 						}
 					}
 				} else if (request.Type == RequestType.Delete) {
 					if (!request.HasItemId) {
 						response = request.CreateResponse("error");
-						response.Code = MessageResponseCode.NotFound;
+						response.Code = ActionResponseCode.NotFound;
 						return response;
 					}
 
@@ -84,13 +84,13 @@ namespace Deveel.Data {
 					if (!table.RowExists(rowid)) {
 						response = request.CreateResponse("error");
 						response.Arguments.Add("message", "The row '" + rowid + "' was not indexed in the table '" + tableName + "'.");
-						response.Code = MessageResponseCode.NotFound;
+						response.Code = ActionResponseCode.NotFound;
 						return response;
 					}
 
 					table.Delete(rowid);
 					response = request.CreateResponse();
-					response.Code = MessageResponseCode.Success;
+					response.Code = ActionResponseCode.Success;
 				} else if (request.Type == RequestType.Post) {
 					DbRow row;
 
@@ -98,7 +98,7 @@ namespace Deveel.Data {
 						row = BuildDbRow(table, request);
 					} catch (Exception e) {
 						response = request.CreateResponse("error");
-						response.Code = MessageResponseCode.UnsupportedFormat;
+						response.Code = ActionResponseCode.UnsupportedFormat;
 						response.Arguments.Add("message", e.Message);
 						return response;
 					}
@@ -106,7 +106,7 @@ namespace Deveel.Data {
 					table.Insert(row);
 					response = request.CreateResponse("row");
 					response.Attributes["id"] = row.RowId;
-					response.Code = MessageResponseCode.Success;
+					response.Code = ActionResponseCode.Success;
 				} else if (request.Type == RequestType.Put) {
 					DbRow row;
 
@@ -114,14 +114,14 @@ namespace Deveel.Data {
 						row = BuildDbRow(table, request);
 					} catch (Exception e) {
 						response = request.CreateResponse("error");
-						response.Code = MessageResponseCode.UnsupportedFormat;
+						response.Code = ActionResponseCode.UnsupportedFormat;
 						response.Arguments.Add("message", e.Message);
 						return response;
 					}
 
 					if (row.RowId == -1) {
 						response = request.CreateResponse("error");
-						response.Code = MessageResponseCode.UnsupportedFormat;
+						response.Code = ActionResponseCode.UnsupportedFormat;
 						response.Arguments.Add("message", "The id of the row to update was not specified.");
 						return response;
 					}
@@ -129,11 +129,11 @@ namespace Deveel.Data {
 					table.Update(row);
 					response = request.CreateResponse("row");
 					response.Attributes["id"] = row.RowId;
-					response.Code = MessageResponseCode.Success;
+					response.Code = ActionResponseCode.Success;
 				}
 			} catch (Exception e) {
 				response = request.CreateResponse("error");
-				response.Code = MessageResponseCode.Error;
+				response.Code = ActionResponseCode.Error;
 				response.Arguments.Add("ERR", e.Message);
 			}
 
@@ -148,22 +148,21 @@ namespace Deveel.Data {
 			return String.Compare(clientType, "rest", true) == 0;
 		}
 
-		public Message ProcessMessage(Message request) {
-			ClientMessageRequest clientRequest = (ClientMessageRequest) request;
-			if (clientRequest.IsRestClient)
-				return HandleRestRequest(clientRequest);
+		public ActionResponse HandleRequest(ActionRequest request) {
+			if (request.IsRestClient)
+				return HandleRestRequest(request);
 
 			throw new InvalidOperationException();
 		}
 
-		private static DbRow BuildDbRow(DbTable table, MessageRequest request) {
+		private static DbRow BuildDbRow(DbTable table, ActionRequest request) {
 			long rowid = -1;
 			if (request.HasItemId)
 				rowid = Convert.ToInt64(request.ItemId);
 
 			DbRow row = new DbRow(table, rowid);
 
-			foreach(MessageArgument argument in request.Arguments) {
+			foreach(ActionArgument argument in request.Arguments) {
 				row.SetValue(argument.Name, argument.ToString());
 			}
 

@@ -4,7 +4,6 @@ using System.IO;
 using System.Threading;
 
 using Deveel.Data.Diagnostics;
-using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
 	public abstract class BlockService : Service {
@@ -32,8 +31,6 @@ namespace Deveel.Data.Net {
 			blockContainerCache = new Dictionary<long, BlockContainer>(5279);
 			blockContainerAccessList = new LinkedList<BlockContainer>();
 			blocksPendingFlush = new LinkedList<BlockContainer>();
-			
-			log = LogManager.NetworkLogger;
 		}
 		
 		public override ServiceType ServiceType {
@@ -123,7 +120,7 @@ namespace Deveel.Data.Net {
 				} catch (IOException e) {
 					// We log the warning, but otherwise ignore any IO Error on a
 					// file synchronize.
-					log.Warning("Error while flushing block content: " + e.Message);
+					//TODO: WARN log ...
 				}
 			}
 		}
@@ -213,7 +210,7 @@ namespace Deveel.Data.Net {
 		protected abstract long[] ListBlocks();
 
 		protected override IMessageProcessor CreateProcessor() {
-			return new BlockServiceMessageProcessor(this);
+			return new BlockServerMessageProcessor(this);
 		}
 
 		protected override void OnInit() {
@@ -238,21 +235,21 @@ namespace Deveel.Data.Net {
 		}
 		
 		#region BlockServerMessageProcessor
-
-		private sealed class BlockServiceMessageProcessor : IMessageProcessor {
+		
+		private sealed class BlockServerMessageProcessor : IMessageProcessor {
 			private readonly BlockService service;
-
-			public BlockServiceMessageProcessor(BlockService service) {
+			
+			public BlockServerMessageProcessor(BlockService service) {
 				this.service = service;
 			}
-
+			
 			private void CloseContainers(Dictionary<long, BlockContainer> touched) {
-				foreach (KeyValuePair<long, BlockContainer> c in touched) {
-					service.log.Log(LogLevel.Information, service, "Closing block (ID: " + c.Key + ")");
+				foreach(KeyValuePair<long, BlockContainer> c in touched) {
+					//TODO: DEBUG log ..
 					c.Value.Close();
 				}
 			}
-
+			
 			private BlockContainer GetBlock(IDictionary<long, BlockContainer> touched, long blockId) {
 				BlockContainer b;
 				if (!touched.TryGetValue(blockId, out b)) {
@@ -263,11 +260,11 @@ namespace Deveel.Data.Net {
 						service.lastBlockId = blockId;
 					}
 					touched[blockId] = b;
-					service.log.Log(LogLevel.Information, service, "Opening block (ID: " + blockId+")");
+					//TODO: DEBUG log ...
 				}
 				return b;
 			}
-
+			
 			private void WriteToBlock(Dictionary<long, BlockContainer> touched, DataAddress address, byte[] buf, int off, int len) {
 				// The block being written to,
 				long blockId = address.BlockId;
@@ -282,7 +279,7 @@ namespace Deveel.Data.Net {
 				// Schedule the block to flushed 5 seconds after a write
 				service.ScheduleBlockFlush(container, 5000);
 			}
-
+			
 			private NodeSet ReadFromBlock(IDictionary<long, BlockContainer> touched, DataAddress address) {
 				// The block being written to,
 				long blockId = address.BlockId;
@@ -294,7 +291,7 @@ namespace Deveel.Data.Net {
 				// Read the data,
 				return container.GetNodeSet(dataId);
 			}
-
+			
 			private void DeleteNodes(IDictionary<long, BlockContainer> touched, DataAddress[] addresses) {
 				foreach (DataAddress address in addresses) {
 					// The block being removed from,
@@ -310,7 +307,7 @@ namespace Deveel.Data.Net {
 					service.ScheduleBlockFlush(container, 5000);
 				}
 			}
-
+			
 			private long SendBlockTo(long blockId, IServiceAddress destination,
 									 long destServerGuid,
 									 IServiceAddress managerAddress) {
@@ -328,7 +325,7 @@ namespace Deveel.Data.Net {
 					return processId;
 				}
 			}
-
+			
 			private void SendBlock(object state) {
 				SendBlockInfo info = (SendBlockInfo)state;
 				
@@ -343,17 +340,16 @@ namespace Deveel.Data.Net {
 					// If the block was accessed less than 5 minutes ago, we don't allow
 					// the copy to happen,
 					if (info.blockId == service.lastBlockId) {
-						service.log.Info(String.Format("Can't copy last block_id ( {0} ) on server.", info.blockId));
+						//TODO: INFO log ...
 						return;
 					} else if (container.LastWriteTime > 
 					           DateTime.Now.AddMilliseconds(-(6 * 60 * 1000))) {
 						// Won't copy a block that was written to within the last 6 minutes,
-						service.log.Info(String.Format("Can't copy block ( {0} ) written to within the last 6 minutes.", info.blockId));
+						//TODO: INFO log ...
 						return;
 					}
-
-					MessageRequest request;
-					Message response;
+					
+					MessageStream inputStream, outputStream;
 
 					// If the block does exist, push it over,
 					byte[] buf = new byte[16384];
@@ -361,209 +357,180 @@ namespace Deveel.Data.Net {
 					using(Stream input = container.OpenInputStream()) {
 						int read;
 						while ((read = input.Read(buf, 0, buf.Length)) != 0) {
-							request = new MessageRequest("sendBlockPart");
-							request.Arguments.Add(info.blockId);
-							request.Arguments.Add(pos);
-							request.Arguments.Add(container.Type);
-							request.Arguments.Add(buf);
-							request.Arguments.Add(read);
-							
-							// Process the request,
-							response = p.ProcessMessage(request);
-
-								if (response.HasError) {
-									service.log.Log(LogLevel.Error, "sendBlockPath Error: " + response.ErrorMessage);
+							outputStream = new MessageStream(8);
+							outputStream.AddMessage("sendBlockPart", info.blockId, pos, 
+							                        container.Type, buf, read);
+							// Process the message,
+							inputStream = p.Process(outputStream);
+							// Get the input iterator,
+							foreach(Message m in inputStream) {
+								if (m.IsError) {
+									service.log.Log(LogLevel.Error, "sendBlockPath Error: " + m.ErrorMessage);
 									return;
 								}
+							}
 	
 							pos += read;
 						}
 					}
 					
 					// Send the 'complete' command,
-					request = new MessageRequest("sendBlockComplete");
-					request.Arguments.Add(info.blockId);
-					request.Arguments.Add(container.Type);
-
-					// Process the response,
-					response = p.ProcessMessage(request);
-
-					if (response.HasError) {
-						service.log.Error("sendBlockComplete Error: " + response.ErrorMessage);
-						return;
+					outputStream = new MessageStream(8);
+					outputStream.AddMessage("sendBlockComplete", info.blockId, container.Type);
+					// Process the message,
+					inputStream = p.Process(outputStream);
+					// Get the input iterator,
+					foreach(Message m in inputStream) {
+						if (m.IsError) {
+							service.log.Error("sendBlockComplete Error: " + m.ErrorMessage);
+							return;
+						}
 					}
 
 					// Tell the manager service about this new block mapping,
 					IMessageProcessor mp = service.connector.Connect(info.managerAddress, ServiceType.Manager);
-					request = new MessageRequest("addBlockServerMapping");
-					request.Arguments.Add(info.blockId);
-					request.Arguments.Add(info.destServerGuid);
+					outputStream = new MessageStream(8);
+					outputStream.AddMessage("addBlockServerMapping", info.blockId, info.destServerGuid);
 					
-					service.log.Info(String.Format("Adding block_id->server mapping ({0} -> {1})", info.blockId, info.destServerGuid));
+					//TODO: DEBUG log ...
 
 					// Process the message,
-					response = mp.ProcessMessage(request);
-
-					if (response.HasError) {
-						service.log.Error("addBlockServerMapping Error: " + response.ErrorMessage);
-						return;
+					inputStream = mp.Process(outputStream);
+					// Get the input iterator,
+					foreach(Message m in inputStream) {
+						if (m.IsError) {
+							service.log.Error("addBlockServerMapping Error: " + m.ErrorMessage);
+							return;
+						}
 					}
 
 				} catch (IOException e) {
 					service.log.Error("IO Error: " + e.Message);
 				}
 			}
-
+			
 			private long GetBlockChecksum(IDictionary<long, BlockContainer> touched, long blockId) {
 				// Fetch the block container,
 				BlockContainer container = GetBlock(touched, blockId);
 				// Calculate the checksum value,
 				return container.CreateChecksum();
 			}
-
-			public Message ProcessMessage(Message message) {
-				if (message is MessageStream) {
-					MessageStream stream = (MessageStream) message;
-					MessageStream responseStream = new MessageStream(MessageType.Response);
-					foreach(Message msg in stream) {
-						responseStream.AddMessage(ProcessMessage(msg));
-					}
-
-					return responseStream;
-				}
-
+			
+			public MessageStream Process(MessageStream messageStream) {
 				// The map of containers touched,
 				Dictionary<long, BlockContainer> containersTouched = new Dictionary<long, BlockContainer>();
 				// The nodes fetched in this message,
 				List<long> readNodes = null;
-
-				MessageRequest request = (MessageRequest) message;
-				MessageResponse response = null;
-
-				try {
-					service.CheckErrorState();
-
-					switch (request.Name) {
-						case "bindWithManager":
-						case "unbindWithManager":
-							//TODO: is this needed for a block service?
-							response = request.CreateResponse("R");
-							response.Arguments.Add(1L);
-							break;
-						case "serverGUID":
-							response = request.CreateResponse("R");
-							response.Arguments.Add(service.serverGuid);
-							break;
-						case "writeToBlock": {
-								DataAddress address = (DataAddress)request.Arguments[0].Value;
-								byte[] buffer = (byte[])request.Arguments[1].Value;
-								int offset = request.Arguments[2].ToInt32();
-								int length = request.Arguments[3].ToInt32();
+				
+				MessageStream responseStream = new MessageStream(32);
+				
+				foreach(Message m in messageStream) {
+					try {
+						service.CheckErrorState();
+						
+						switch(m.Name) {
+							case "bindWithManager":
+							case "unbindWithManager":
+								//TODO: is this needed for a block service?
+								responseStream.AddMessage("R", 1L);
+								break;
+							case "serverGUID":
+								responseStream.AddMessage("R", service.serverGuid);
+								break;
+							case "writeToBlock": {
+								DataAddress address = (DataAddress)m[0];
+								byte[] buffer = (byte[])m[1];
+								int offset = (int)m[2];
+								int length = (int)m[3];
 								WriteToBlock(containersTouched, address, buffer, offset, length);
-							response = request.CreateResponse("R");
-								response.Arguments.Add(1L);
+								responseStream.AddMessage("R", 1L);
 								break;
 							}
-						case "readFromBlock": {
+							case "readFromBlock": {
 								if (readNodes == null)
 									readNodes = new List<long>();
-
-								DataAddress address = (DataAddress)request.Arguments[0].Value;
+								
+								DataAddress address = (DataAddress)m[0];
 								if (!readNodes.Contains(address.Value)) {
 									NodeSet nodeSet = ReadFromBlock(containersTouched, address);
-									response = request.CreateResponse("R");
-									response.Arguments.Add(nodeSet);
+									responseStream.AddMessage("R", nodeSet);
 									foreach (long node in nodeSet.NodeIds)
 										readNodes.Add(node);
 								}
 								break;
 							}
-						case "rollbackNodes": {
-								DataAddress[] addresses = (DataAddress[])request.Arguments[0].Value;
+							case "rollbackNodes": {
+								DataAddress[] addresses = (DataAddress[])m[0];
 								DeleteNodes(containersTouched, addresses);
-								response = request.CreateResponse("R");
-								response.Arguments.Add(1L);
-								break;
+								responseStream.AddMessage("R", 1L);
+								break;	
 							}
-						case "deleteBlock": {
-								long blockId = request.Arguments[0].ToInt64();
+							case "deleteBlock": {
+								long blockId = (long)m[0];
 								//TODO: ...
-								response = request.CreateResponse("R");
-								response.Arguments.Add(1L);
+								responseStream.AddMessage("R", 1L);
+								break;	
+							}
+							case "blockSetReport": {
+								long[] blockIds = service.ListBlocks();
+								responseStream.AddMessage("R", service.serverGuid, blockIds);
 								break;
 							}
-						case "blockSetReport": {
-							long[] blockIds = service.ListBlocks();
-							response = request.CreateResponse("R");
-							response.Arguments.Add(service.serverGuid);
-							response.Arguments.Add(blockIds);
-							break;
-						}
-						case "blockChecksum": {
-								long blockId = request.Arguments[0].ToInt64();
+							case "blockChecksum": {
+								long blockId = (long)m[0];
 								long checksum = GetBlockChecksum(containersTouched, blockId);
-							response = request.CreateResponse("R");
-								response.Arguments.Add(checksum);
-								break;
+								responseStream.AddMessage("R", checksum);
+								break;	
 							}
-						case "sendBlockTo": {
+							case "sendBlockTo": {
 								// Returns immediately. There's currently no way to determine
 								// when this process will happen or if it will happen.
-								long blockId = request.Arguments[0].ToInt64();
-								IServiceAddress destAddress = (IServiceAddress)request.Arguments[1].Value;
-								long destServerGuid = request.Arguments[2].ToInt64();
-								IServiceAddress managerAddress = (IServiceAddress)request.Arguments[3].Value;
+								long blockId = (long)m[0];
+								IServiceAddress destAddress = (IServiceAddress)m[1];
+								long destServerGuid = (long)m[2];
+								IServiceAddress managerAddress = (IServiceAddress)m[3];
 								long processId = SendBlockTo(blockId, destAddress, destServerGuid, managerAddress);
-							response = request.CreateResponse("R");
-								response.Arguments.Add(processId);
+								responseStream.AddMessage("R", processId);
 								break;
 							}
-						case "sendBlockPart": {
-								long blockId = request.Arguments[0].ToInt64();
-								long pos = request.Arguments[1].ToInt64();
-								int storeType = request.Arguments[2].ToInt32();
-								byte[] buffer = (byte[])request.Arguments[3].Value;
-								int length = request.Arguments[4].ToInt32();
+							case "sendBlockPart": {
+								long blockId = (long)m[0];
+								long pos = (long)m[1];
+								int storeType = (int)m[2];
+								byte[] buffer = (byte[])m[3];
+								int length = (int)m[4];
 								service.WriteBlockPart(blockId, pos, storeType, buffer, length);
-							response = request.CreateResponse("R");
-								response.Arguments.Add(1L);
-								break;
+								responseStream.AddMessage("R", 1L);
+								break;	
 							}
-						case "sendBlockComplete": {
-								long blockId = request.Arguments[0].ToInt64();
-								int storeType = request.Arguments[1].ToInt32();
+							case "sendBlockComplete": {
+								long blockId = (long)m[0];
+								int storeType = (int)m[1];
 								service.CompleteBlockWrite(blockId, storeType);
-							response = request.CreateResponse("R");
-								response.Arguments.Add(1L);
+								responseStream.AddMessage("R", 1L);
 								break;
 							}
-							case "poll": {
-								response = request.CreateResponse("R");
-								response.Arguments.Add(1L);
-								break;
-							}
-						default:
-							throw new ApplicationException("Unknown message name: " + request.Name);
+							default:
+								throw new ApplicationException("Unknown message name: " + m.Name);
+						}
+					} catch(OutOfMemoryException e) {
+						service.log.Error("Out of Memory");
+						service.SetErrorState(e);
+						throw;
+					} catch (Exception e) {
+						service.log.Error("Error while processing: " + e.Message, e);
+						responseStream.AddErrorMessage(new ServiceException(e));
 					}
-				} catch (OutOfMemoryException e) {
-					service.log.Error("Out of Memory");
-					service.SetErrorState(e);
-					throw;
-				} catch (Exception e) {
-					service.log.Error("Error while processing: " + e.Message, e);
-					response = request.CreateResponse("E");
-					response.Code = MessageResponseCode.Error;
-					response.Arguments.Add(new MessageError(e));
 				}
-
+				
 				// Release any containers touched,
 				try {
 					CloseContainers(containersTouched);
 				} catch (Exception e) {
 					service.log.Error("Error while closing containers: " + e.Message, e);
 				}
-
-				return response;
+				
+				return responseStream;
 			}
 		}
 		

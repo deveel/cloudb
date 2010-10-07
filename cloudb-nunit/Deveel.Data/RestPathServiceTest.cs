@@ -120,11 +120,11 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		private IMessageSerializer GetMethodSerializer() {
+		private IActionSerializer GetMethodSerializer() {
 			if (format == HttpMessageFormat.Json)
 				throw new NotSupportedException();
 			if (format == HttpMessageFormat.Xml)
-				return new XmlRestMessageSerializer();
+				return new XmlRestActionSerializer();
 			throw new NotSupportedException();
 		}
 		
@@ -195,7 +195,7 @@ namespace Deveel.Data.Net {
 			SetUpPath();
 
 			pathService = new RestPathClientService(LocalPath, Local, new TcpServiceConnector(NetworkPassword));
-			pathService.MessageSerializer = GetMethodSerializer();
+			pathService.ActionSerializer = GetMethodSerializer();
 			pathService.Init();
 
 			SetupEvent.Set();

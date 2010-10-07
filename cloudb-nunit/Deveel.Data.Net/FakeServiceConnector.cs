@@ -1,9 +1,7 @@
 ﻿using System;
 
-using Deveel.Data.Net.Client;
-
 namespace Deveel.Data.Net {
-	public delegate Message ProcessCallback(ServiceType serviceType, Message inputStream);
+	public delegate MessageStream ProcessCallback(ServiceType serviceType, MessageStream inputStream);
 
 	public sealed class FakeServiceConnector : IServiceConnector {
 		public FakeServiceConnector(ProcessCallback callback) {
@@ -17,14 +15,6 @@ namespace Deveel.Data.Net {
 		private readonly ProcessCallback callback;
 
 		public void Dispose() {
-		}
-
-		public bool IsConnected {
-			get { return true; }
-		}
-
-		public IMessageSerializer MessageSerializer {
-			get { return new BinaryRpcMessageSerializer(); }
 		}
 
 		public void Close() {
@@ -45,7 +35,7 @@ namespace Deveel.Data.Net {
 				this.serviceType = serviceType;
 			}
 
-			public Message ProcessMessage(Message messageStream) {
+			public MessageStream Process(MessageStream messageStream) {
 				return connector.callback(serviceType, messageStream);
 			}
 		}

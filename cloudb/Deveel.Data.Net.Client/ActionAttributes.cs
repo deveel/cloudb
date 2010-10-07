@@ -3,11 +3,11 @@ using System.Collections;
 using System.Collections.Generic;
 
 namespace Deveel.Data.Net.Client {
-	public sealed class MessageAttributes : IEnumerable<KeyValuePair<string, object>>, ICloneable {
+	public sealed class ActionAttributes : IEnumerable<KeyValuePair<string, object>>, ICloneable {
 		private readonly IAttributesHandler handler;
 		private Dictionary<string, object> values;
 
-		internal MessageAttributes(IAttributesHandler handler) {
+		internal ActionAttributes(IAttributesHandler handler) {
 			this.handler = handler;
 			values = new Dictionary<string, object>();
 		}
@@ -21,8 +21,6 @@ namespace Deveel.Data.Net.Client {
 			get { return values[name]; }
 			set {
 				CheckReadOnly();
-				if (value != null && value.GetType().IsArray)
-					throw new ArgumentException("An attribute cannot be a complex type.");
 				values[name] = value;
 			}
 		}
@@ -41,8 +39,6 @@ namespace Deveel.Data.Net.Client {
 
 		public void Add(string name, object value) {
 			CheckReadOnly();
-			if (value != null && value.GetType().IsArray)
-				throw new ArgumentException("An attribute cannot be a complex type.");
 			values.Add(name, value);
 		}
 
@@ -65,7 +61,7 @@ namespace Deveel.Data.Net.Client {
 		}
 
 		public object Clone() {
-			MessageAttributes attributes = new MessageAttributes(handler);
+			ActionAttributes attributes = new ActionAttributes(handler);
 			attributes.values = new Dictionary<string, object>(values.Count);
 			foreach(KeyValuePair<string, object> pair in values) {
 				object value = pair.Value;

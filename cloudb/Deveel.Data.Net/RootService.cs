@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 
-using Deveel.Data.Net.Client;
 using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
@@ -404,7 +403,7 @@ namespace Deveel.Data.Net {
 		}
 
 		protected override IMessageProcessor CreateProcessor() {
-			return new RootServiceMessageProcessor(this);
+			return new RootServerMessageProcessor(this);
 		}
 						
 		protected abstract PathAccess FetchPathAccess(string pathName);
@@ -466,146 +465,122 @@ namespace Deveel.Data.Net {
 		
 		#endregion
 		
-		#region RootServiceMessageProcessor
-
-		class RootServiceMessageProcessor : IMessageProcessor {
-			public RootServiceMessageProcessor(RootService service) {
+		#region RootServerProcessor
+		
+		class RootServerMessageProcessor : IMessageProcessor {
+			public RootServerMessageProcessor(RootService service) {
 				this.service = service;
 			}
-
-			private readonly RootService service;
-
-			public Message ProcessMessage(Message message) {
-				if (message is MessageStream) {
-					MessageStream requestStream = (MessageStream) message;
-					MessageStream responseStream = new MessageStream(MessageType.Response);
-
-					foreach(Message msg in requestStream) {
-						responseStream.AddMessage(ProcessMessage(msg));
-					}
-
-					return responseStream;
-				}
+			
+			private readonly RootService service;			
+			
+			public MessageStream Process(MessageStream messageStream) {
 				// The reply message,
-				MessageRequest request = (MessageRequest) message;
-				MessageResponse response;
+				MessageStream responseStream = new MessageStream(32);
 
 				// The messages input the stream,
-				try {
-					service.CheckErrorState();
-
-					switch (request.Name) {
-						case "publishPath": {
-								service.PublishPath(request.Arguments[0].ToString(), (DataAddress)request.Arguments[1].Value);
-							response = request.CreateResponse("R");
-								response.Arguments.Add(1L);
+				foreach (Message m in messageStream) {
+					try {
+						service.CheckErrorState();
+						
+						string messageName = m.Name;
+						switch(messageName) {
+							case "publishPath": {
+								service.PublishPath((string)m[0], (DataAddress)m[1]);
+								responseStream.AddMessage("R", 1);
 								break;
 							}
-						case "getSnapshot": {
-								string path = request.Arguments[0].ToString();
+							case "getSnapshot": {
+								string path = (string)m[0];
 								DataAddress address = service.GetSnapshot(path);
-							response = request.CreateResponse("R");
-							response.Arguments.Add(address);
+								responseStream.AddMessage("R", address);
 								break;
 							}
-						case "getSnapshots": {
-								string path = request.Arguments[0].ToString();
-								DateTime start = DateTime.FromBinary(request.Arguments[1].ToInt64());
-								DateTime end = DateTime.FromBinary(request.Arguments[2].ToInt64());
+							case "getSnapshots": {
+								string path = (string)m[0];
+								DateTime start = DateTime.FromBinary((long)m[1]);
+								DateTime end = DateTime.FromBinary((long)m[2]);
 								DataAddress[] addresses = service.GetSnapshots(path, start, end);
-							response = request.CreateResponse("R");
-								response.Arguments.Add(addresses);
+								responseStream.AddMessage("R", addresses);
 								break;
 							}
-						case "getCurrentTime": {
-							response = request.CreateResponse("R");
-								response.Arguments.Add(DateTime.Now.ToUniversalTime().ToBinary());
-								break;
+							case "getCurrentTime": {
+								responseStream.AddMessage("R", DateTime.Now.ToUniversalTime().ToBinary());
+								break;	
 							}
-						case "addPath": {
-								string pathName = request.Arguments[0].ToString();
-								string pathTypeName = request.Arguments[1].ToString();
-								DataAddress rootNode = (DataAddress)request.Arguments[2].Value;
+							case "addPath": {
+								string pathName = (string) m[0];
+								string pathTypeName = (string)m[1];
+								DataAddress rootNode = (DataAddress)m[2];
 								service.AddPath(pathName, pathTypeName, rootNode);
-							response = request.CreateResponse("R");
-								response.Arguments.Add(1L);
+								responseStream.AddMessage("R", 1);
 								break;
 							}
-						case "removePath": {
-								string pathName = request.Arguments[0].ToString();
+							case "removePath": {
+								string pathName = (string)m[0];
 								service.RemovePath(pathName);
-							response = request.CreateResponse("R");
-								response.Arguments.Add(1L);
-								break;
+								responseStream.AddMessage("R", 1);
+								break;	
 							}
-						case "getPathType": {
-								string pathName = request.Arguments[0].ToString();
+							case "getPathType": {
+								string pathName = (string)m[0];
 								string pathType = service.GetPathType(pathName);
-							response = request.CreateResponse("R");
-								response.Arguments.Add(pathType);
+								responseStream.AddMessage("R", pathType);
 								break;
 							}
-						case "checkPathType": {
-								string pathType = request.Arguments[0].ToString();
+							case "checkPathType": {
+								string pathType = (string)m[0];
 								service.CheckPathType(pathType);
-							response = request.CreateResponse("R");
-								response.Arguments.Add(1L);
-								break;
+								responseStream.AddMessage("R", 1);
+								break;	
 							}
-						case "initPath": {
-								string pathName = request.Arguments[0].ToString();
+							case "initPath": {
+								string pathName = (string) m[0];
 								service.InitPath(pathName);
-							response = request.CreateResponse("R");
-								response.Arguments.Add(1L);
-								break;
+								responseStream.AddMessage("R", 1);
+								break;	
 							}
-						case "commit": {
-							string pathName = request.Arguments[0].ToString();
-								DataAddress proposal = (DataAddress)request.Arguments[1].Value;
+							case "commit": {
+								string pathName = (string) m[0];
+								DataAddress proposal = (DataAddress)m[1];
 								DataAddress rootNode = service.Commit(pathName, proposal);
-							response = request.CreateResponse("R");
-								response.Arguments.Add(rootNode);
+								responseStream.AddMessage("R", rootNode);
 								break;
 							}
-						case "bindWithManager": {
-								IServiceAddress manager = (IServiceAddress)request.Arguments[0].Value;
+							case "bindWithManager": {
+								IServiceAddress manager = (IServiceAddress)m[0];
 								service.BindWithManager(manager);
-							response = request.CreateResponse("R");
-								response.Arguments.Add(1L);
+								responseStream.AddMessage("R", 1);
 								break;
 							}
-						case "unbindWithManager": {
-								IServiceAddress manager = (IServiceAddress)request.Arguments[0].Value;
+							case "unbindWithManager": {
+								IServiceAddress manager = (IServiceAddress)m[0];
 								service.UnbindWithManager(manager);
-							response = request.CreateResponse("R");
-								response.Arguments.Add(1L);
+								responseStream.AddMessage("R", 1);
 								break;
 							}
-						case "pathReport": {
+							case "pathReport": {
 								string[] pathNames, pathTypes;
 								service.PathReport(out pathNames, out pathTypes);
-							response = request.CreateResponse("R");
-							response.Arguments.Add(pathNames);
-							response.Arguments.Add(pathTypes);
+								responseStream.AddMessage("R", pathNames, pathTypes);
 								break;
 							}
-						default:
-							throw new ApplicationException("Unknown message received: " + request.Name);
+							default:
+								throw new ApplicationException("Unknown message received: " + messageName);
+						}
+					} catch (OutOfMemoryException e) {
+						//TODO: ERROR log ...
+						service.SetErrorState(e);
+						throw e;
+					} catch (Exception e) {
+						//TODO: ERROR log ...
+						responseStream.AddErrorMessage(new ServiceException(e));
 					}
-				} catch (OutOfMemoryException e) {
-					//TODO: ERROR log ...
-					service.SetErrorState(e);
-					throw e;
-				} catch (Exception e) {
-					//TODO: ERROR log ...
-					response = request.CreateResponse("E");
-					response.Code = MessageResponseCode.Error;
-					response.Arguments.Add(new MessageError(e));
 				}
 
-				return response;
+				return responseStream;
 			}
-		}
+		} 
 
 		#endregion
 		

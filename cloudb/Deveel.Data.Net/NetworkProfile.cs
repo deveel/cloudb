@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 
 using Deveel.Data.Diagnostics;
-using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
 	public sealed partial class NetworkProfile {
@@ -78,9 +77,14 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		private Message Command(IServiceAddress machine, ServiceType serviceType, Message request) {
+		private Message Command(IServiceAddress machine, ServiceType serviceType, MessageStream outputStream) {
 			IMessageProcessor proc = network_connector.Connect(machine, serviceType);
-			return proc.ProcessMessage(request);
+			MessageStream inputStream = proc.Process(outputStream);
+			Message message = null;
+			foreach (Message m in inputStream) {
+				message = m;
+			}
+			return message;
 		}
 
 		private MachineProfile CheckMachineInNetwork(IServiceAddress machine) {

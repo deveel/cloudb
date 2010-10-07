@@ -1,7 +1,7 @@
 ﻿using System;
 
 namespace Deveel.Data.Net.Client {
-	public interface ITextMessageSerializer : IMessageSerializer {
+	public interface ITextActionSerializer : IActionSerializer {
 		string ContentEncoding { get; }
 
 		string ContentType { get; }

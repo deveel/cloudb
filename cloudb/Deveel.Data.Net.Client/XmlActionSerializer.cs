@@ -4,22 +4,22 @@ using System.Text;
 using System.Xml;
 
 namespace Deveel.Data.Net.Client {
-	public abstract class XmlMessageSerializer : ITextMessageSerializer, ISystemMessageSerializer {
+	public abstract class XmlActionSerializer : ITextActionSerializer {
 		private Encoding encoding;
 
-		protected XmlMessageSerializer(string encoding)
+		protected XmlActionSerializer(string encoding)
 			: this(!String.IsNullOrEmpty(encoding) ? Encoding.GetEncoding(encoding) : Encoding.UTF8) {
 		}
 
-		protected XmlMessageSerializer(Encoding encoding) {
+		protected XmlActionSerializer(Encoding encoding) {
 			this.encoding = encoding;
 		}
 
-		protected XmlMessageSerializer()
+		protected XmlActionSerializer()
 			: this(Encoding.UTF8) {
 		}
 
-		string ITextMessageSerializer.ContentEncoding {
+		string ITextActionSerializer.ContentEncoding {
 			get { return encoding.BodyName; }
 		}
 
@@ -37,32 +37,32 @@ namespace Deveel.Data.Net.Client {
 			}
 		}
 
-		string ITextMessageSerializer.ContentType {
+		string ITextActionSerializer.ContentType {
 			get { return "text/xml"; }
 		}
 
-		public void Serialize(Message message, Stream output) {
+		public void DeserializeRequest(ActionRequest request, Stream input) {
+			if (input == null)
+				throw new ArgumentNullException("input");
+			if (!input.CanRead)
+				throw new ArgumentException("The input stream cannot be read");
+
+			DeserializeRequest(request, new XmlTextReader(new StreamReader(input, ContentEncoding)));
+		}
+
+		public abstract void DeserializeRequest(ActionRequest request, XmlReader reader);
+
+		public void SerializeResponse(ActionResponse response, Stream output) {
 			if (output == null)
 				throw new ArgumentNullException("output");
 			if (!output.CanWrite)
 				throw new ArgumentException("The output stream cannot be written.");
 
 			XmlTextWriter writer = new XmlTextWriter(new StreamWriter(output, ContentEncoding));
-			Serialize(message, writer);
+			SerializeResponse(response, writer);
 			writer.Flush();
 		}
 
-		protected abstract void Serialize(Message message, XmlWriter writer);
-
-		public void Deserialize(Message message, Stream input) {
-			if (input == null)
-				throw new ArgumentNullException("input");
-			if (!input.CanRead)
-				throw new ArgumentException("The input stream cannot be read");
-
-			Deserialize(message, new XmlTextReader(new StreamReader(input, ContentEncoding)));
-		}
-
-		protected abstract void Deserialize(Message message, XmlReader reader);
+		public abstract void SerializeResponse(ActionResponse response, XmlWriter writer);
 	}
 }

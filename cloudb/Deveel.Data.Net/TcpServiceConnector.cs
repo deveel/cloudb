@@ -6,8 +6,6 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
-using Deveel.Data.Net.Client;
-
 namespace Deveel.Data.Net {
 	public class TcpServiceConnector : IServiceConnector {
 		public TcpServiceConnector(string password) {
@@ -19,8 +17,6 @@ namespace Deveel.Data.Net {
 			backgroundThread.Name = "TCP::PurgeConnections";
 			backgroundThread.IsBackground = true;
 			backgroundThread.Start();
-
-			connected = true;
 		}
 
 		private readonly Dictionary<TcpServiceAddress, TcpConnection> connections;
@@ -28,24 +24,9 @@ namespace Deveel.Data.Net {
 
 		private readonly Thread backgroundThread;
 		private bool purgeThreadStopped;
-		private IMessageSerializer messageSerializer;
-		private bool connected;
 
 		public string Password {
 			get { return password; }
-		}
-
-		public bool IsConnected {
-			get { return connected; }
-		}
-
-		public IMessageSerializer MessageSerializer {
-			get {
-				if (messageSerializer == null)
-					messageSerializer = new BinaryRpcMessageSerializer();
-				return messageSerializer;
-			}
-			set { messageSerializer = value; }
 		}
 
 		private void PurgeConnections() {
@@ -160,7 +141,6 @@ namespace Deveel.Data.Net {
 			lock (connections) {
 				purgeThreadStopped = true;
 				Monitor.PulseAll(connections);
-				connected = false;
 			}
 		}
 
@@ -187,7 +167,7 @@ namespace Deveel.Data.Net {
 			private readonly ServiceType serviceType;
 			private readonly TcpServiceConnector connector;
 
-			private Message DoProcess(Message messageStream, int tryCount) {
+			private MessageStream DoProcess(MessageStream messageStream, int tryCount) {
 				TcpConnection c = null;
 
 				try {
@@ -209,19 +189,12 @@ namespace Deveel.Data.Net {
 
 						BinaryWriter writer = new BinaryWriter(c.Stream, Encoding.Unicode);
 						writer.Write(code);
-						IMessageSerializer messageSerializer = connector.MessageSerializer;
-						messageSerializer.Serialize(messageStream, c.Stream);
+						BinaryMessageStreamSerializer serializer = new BinaryMessageStreamSerializer();
+						serializer.Serialize(messageStream, writer);
 						writer.Flush();
 
-						Message response;
-						if (messageStream is MessageStream) {
-							response = new MessageStream(MessageType.Response);
-						} else {
-							response = ((MessageRequest) messageStream).CreateResponse();
-						}
-						
-						messageSerializer.Deserialize(response, c.Stream);
-						return response;
+						BinaryReader reader = new BinaryReader(c.Stream, Encoding.Unicode);
+						return serializer.Deserialize(reader);
 					}
 				} catch (Exception e) {
 					// If this is a 'connection reset by peer' error, wipe the connection
@@ -234,28 +207,17 @@ namespace Deveel.Data.Net {
 						return DoProcess(messageStream, tryCount + 1);
 					}
 
-					MessageError error;
+					ServiceException error;
 					if (e is EndOfStreamException) {
-						error = new MessageError(new Exception("EOF (is net password correct?)", e));
+						error = new ServiceException(new Exception("EOF (is net password correct?)", e));
 					} else {
 						// Report this error as a msg_stream fault,
-						error = new MessageError(new Exception(e.Message, e));
+						error = new ServiceException(new Exception(e.Message, e));
 					}
 
-					if (messageStream is MessageStream) {
-						MessageStream responseStream = new MessageStream(MessageType.Response);
-						foreach(MessageRequest request in (MessageStream)messageStream) {
-							MessageResponse response = request.CreateResponse("E");
-							response.Arguments.Add(error);
-							responseStream.AddMessage(response);
-							break;
-						}
-						return responseStream;
-					} else {
-						MessageResponse outputStream = ((MessageRequest)messageStream).CreateResponse("E");
-						outputStream.Arguments.Add(error);
-						return outputStream;
-					}
+					MessageStream outputStream = new MessageStream(16);
+					outputStream.AddMessage("E", error);
+					return outputStream;
 				} finally {
 					if (c != null)
 						connector.ReleaseConnection(c);
@@ -264,8 +226,8 @@ namespace Deveel.Data.Net {
 
 			#region Implementation of IMessageProcessor
 
-			public Message ProcessMessage(Message message) {
-				return DoProcess(message, 0);
+			public MessageStream Process(MessageStream messageStream) {
+				return DoProcess(messageStream, 0);
 			}
 
 			#endregion

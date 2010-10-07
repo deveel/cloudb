@@ -30,7 +30,7 @@ namespace Deveel.Data.Net.Client {
 		private readonly IServiceAddress address;
 		private readonly IServiceAddress managerAddress;
 		private readonly IServiceConnector connector;
-		private IMessageSerializer messageSerializer;
+		private IActionSerializer actionSerializer;
 		private readonly Logger log;
 
 		private IPathClientAuthorize authorize;
@@ -64,13 +64,13 @@ namespace Deveel.Data.Net.Client {
 			get { return log; }
 		}
 
-		public virtual IMessageSerializer MessageSerializer {
+		public virtual IActionSerializer ActionSerializer {
 			get {
-				if (messageSerializer == null)
-					messageSerializer = new BinaryRpcMessageSerializer();
-				return messageSerializer;
+				if (actionSerializer == null)
+					actionSerializer = new BinaryActionSerializer();
+				return actionSerializer;
 			}
-			set { messageSerializer = value; }
+			set { actionSerializer = value; }
 		}
 
 		public virtual IPathClientAuthorize Authorize {
@@ -107,8 +107,8 @@ namespace Deveel.Data.Net.Client {
 				Type[] types = assemblies[i].GetTypes();
 				for (int j = 0; j < types.Length; j++) {
 					Type type = types[j];
-					if (type != typeof(IMessageRequestHandler) &&
-					    typeof(IMessageRequestHandler).IsAssignableFrom(type) &&
+					if (type != typeof(IRequestHandler) &&
+					    typeof(IRequestHandler).IsAssignableFrom(type) &&
 					    !type.IsAbstract) {
 						HandleAttribute handle = Attribute.GetCustomAttribute(type, typeof(HandleAttribute)) as HandleAttribute;
 						if (handle == null)
@@ -157,14 +157,14 @@ namespace Deveel.Data.Net.Client {
 		protected virtual void OnInit() {
 		}
 
-		private MessageRequest GetMethodRequest(RequestType type, PathTransaction transaction, Stream requestStream) {
-			MessageRequest request = new ClientMessageRequest(Type, type, transaction.Transaction);
+		private ActionRequest GetMethodRequest(RequestType type, PathTransaction transaction, Stream requestStream) {
+			ActionRequest request = new ActionRequest(Type, type, transaction.Transaction);
 			if (requestStream != null)
-				MessageSerializer.Deserialize(request, requestStream);
+				ActionSerializer.DeserializeRequest(request, requestStream);
 			return request;
 		}
 
-		protected MessageResponse HandleRequest(RequestType type, string pathName, IDictionary<string, object> args, Stream requestStream) {
+		protected ActionResponse HandleRequest(RequestType type, string pathName, IDictionary<string, object> args, Stream requestStream) {
 			//TODO: allow having multiple handlers for the service ...
 			HandlerContainer handler = GetMethodHandler(pathName);
 			if (handler == null)
@@ -182,17 +182,17 @@ namespace Deveel.Data.Net.Client {
 				transaction = CreateTransaction(pathName);
 			}
 
-			MessageRequest request = GetMethodRequest(type, ((PathTransaction) transaction), requestStream);
+			ActionRequest request = GetMethodRequest(type, ((PathTransaction) transaction), requestStream);
 			if (args != null) {
 				foreach(KeyValuePair<string, object> pair in args) {
 					request.Attributes.Add(pair.Key, pair.Value);
 				}
 			}
 			request.Seal();
-			return (MessageResponse) handler.Handler.ProcessMessage(request);
+			return handler.Handler.HandleRequest(request);
 		}
 		
-		protected MessageResponse HandleRequest(RequestType type, string pathName, Stream requestStream) {
+		protected ActionResponse HandleRequest(RequestType type, string pathName, Stream requestStream) {
 			return HandleRequest(type, pathName, null, requestStream);
 		}
 
@@ -232,7 +232,7 @@ namespace Deveel.Data.Net.Client {
 			private readonly PathClientService service;
 			private readonly string pathTypeName;
 			private readonly Type handlerType;
-			private IMessageRequestHandler handler;
+			private IRequestHandler handler;
 			private readonly Dictionary<string, IPathContext> contexts;
 
 			private int connId = -1;
@@ -249,10 +249,10 @@ namespace Deveel.Data.Net.Client {
 				get { return pathTypeName; }
 			}
 
-			public IMessageRequestHandler Handler {
+			public IRequestHandler Handler {
 				get {
 					if (handler == null)
-						handler = Activator.CreateInstance(handlerType, true) as IMessageRequestHandler;
+						handler = Activator.CreateInstance(handlerType, true) as IRequestHandler;
 					return handler;
 				}
 			}

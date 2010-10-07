@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 
-using Deveel.Data.Net.Client;
-
 namespace Deveel.Data.Net {
 	public sealed partial class NetworkProfile {
 		public void AddPath(IServiceAddress root, string pathName, string pathType) {
@@ -19,11 +17,11 @@ namespace Deveel.Data.Net {
 				throw new NetworkAdminException("No manager server found");
 
 			// Check with the root server that the class instantiates,
-			MessageRequest request = new MessageRequest("checkPathType");
-			request.Arguments.Add(pathType);
+			MessageStream outputStream = new MessageStream(12);
+			outputStream.AddMessage("checkPathType", pathType);
 
-			Message m = Command(root, ServiceType.Root, request);
-			if (m.HasError)
+			Message m = Command(root, ServiceType.Root, outputStream);
+			if (m.IsError)
 				throw new NetworkAdminException("Type '" + pathType + "' doesn't instantiate on the root");
 
 			IServiceAddress managerServer = man.Address;
@@ -35,29 +33,21 @@ namespace Deveel.Data.Net {
 			client.Disconnect();
 
 			// Perform the command,
-			MessageStream requestStream = new MessageStream(MessageType.Request);
-			request = new MessageRequest("addPath");
-			request.Arguments.Add(pathName);
-			request.Arguments.Add(pathType);
-			request.Arguments.Add(dataAddress);
-			requestStream.AddMessage(request);
-			
-			request = new MessageRequest("initPath");
-			request.Arguments.Add(pathName);
-			requestStream.AddMessage(request);
+			outputStream = new MessageStream(12);
+			outputStream.AddMessage("addPath", pathName, pathType, dataAddress);
+			outputStream.AddMessage("initPath", pathName);
 
-			m = Command(root, ServiceType.Root, requestStream);
-			if (m.HasError)
-				throw new NetworkAdminException(m.ErrorMessage);
+			Message message = Command(root, ServiceType.Root, outputStream);
+			if (message.IsError)
+				throw new NetworkAdminException(message.ErrorMessage);
 
 			// Tell the manager server about this path,
-			request = new MessageRequest("addPathRootMapping");
-			request.Arguments.Add(pathName);
-			request.Arguments.Add(root);
+			outputStream = new MessageStream(7);
+			outputStream.AddMessage("addPathRootMapping", pathName, root);
 
-			m = Command(managerServer, ServiceType.Manager, request);
-			if (m.HasError)
-				throw new NetworkAdminException(m.ErrorMessage);
+			message = Command(managerServer, ServiceType.Manager, outputStream);
+			if (message.IsError)
+				throw new NetworkAdminException(message.ErrorMessage);
 		}
 
 		public void RemovePath(IServiceAddress root, string path_name) {
@@ -75,19 +65,19 @@ namespace Deveel.Data.Net {
 			IServiceAddress manager_server = man.Address;
 
 			// Perform the command,
-			MessageRequest msg_out = new MessageRequest("removePath");
-			msg_out.Arguments.Add(path_name);
+			MessageStream msg_out = new MessageStream(7);
+			msg_out.AddMessage("removePath", path_name);
 
 			Message m = Command(root, ServiceType.Root, msg_out);
-			if (m.HasError)
+			if (m.IsError)
 				throw new NetworkAdminException(m.ErrorMessage);
 
 			// Tell the manager server to remove this path association,
-			msg_out = new MessageRequest("removePathRootMapping");
-			msg_out.Arguments.Add(path_name);
+			msg_out = new MessageStream(7);
+			msg_out.AddMessage(new Message("removePathRootMapping", new object[] { path_name }));
 
 			m = Command(manager_server, ServiceType.Manager, msg_out);
-			if (m.HasError)
+			if (m.IsError)
 				throw new NetworkAdminException(m.ErrorMessage);
 		}
 
@@ -101,15 +91,15 @@ namespace Deveel.Data.Net {
 				throw new NetworkAdminException("Machine '" + root + "' is not a root");
 
 			// Perform the command,
-			MessageRequest msg_out = new MessageRequest("getPathStats");
-			msg_out.Arguments.Add(pathName);
+			MessageStream msg_out = new MessageStream(7);
+			msg_out.AddMessage(new Message("getPathStats", new object[] { pathName }));
 
 			Message m = Command(root, ServiceType.Root, msg_out);
-			if (m.HasError)
+			if (m.IsError)
 				throw new NetworkAdminException(m.ErrorMessage);
 
 			// Return the stats string for this path
-			return m.Arguments[0].ToString();
+			return (string)m[0];
 		}
 
 		public PathProfile[] GetPathsFromRoot(IServiceAddress root) {
@@ -118,13 +108,15 @@ namespace Deveel.Data.Net {
 			// Check machine is in the schema,
 			MachineProfile machine_p = CheckMachineInNetwork(root);
 
-			MessageRequest msg_out = new MessageRequest("pathReport");
+			MessageStream msg_out = new MessageStream(7);
+			msg_out.AddMessage(new Message("pathReport"));
+
 			Message m = Command(root, ServiceType.Root, msg_out);
-			if (m.HasError)
+			if (m.IsError)
 				throw new NetworkAdminException(m.ErrorMessage);
 
-			string[] paths = (string[])m.Arguments[0].Value;
-			string[] funs = (string[])m.Arguments[1].Value;
+			string[] paths = (string[])m[0];
+			string[] funs = (string[])m[1];
 
 			PathProfile[] list = new PathProfile[paths.Length];
 			for (int i = 0; i < paths.Length; ++i) {

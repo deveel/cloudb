@@ -78,6 +78,7 @@
     <Compile Include="Deveel.Data.Net\FakeServiceConnector.cs" />
     <Compile Include="Deveel.Data.Net\FakeNetworkTest.cs" />
     <Compile Include="Deveel.Data.Net\TcpNetworkTest.cs" />
+    <Compile Include="Deveel.Data.Net\XmlMessageStreamSerializerTest.cs" />
     <Compile Include="Deveel.Data\BasePathTest.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LoggerTest.cs" />
     <Compile Include="Deveel.Data\ConfigSourceTest.cs" />

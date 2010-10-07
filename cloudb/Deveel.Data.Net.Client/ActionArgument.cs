@@ -2,28 +2,28 @@
 using System.Globalization;
 
 namespace Deveel.Data.Net.Client {
-	public sealed class MessageArgument : ICloneable, IConvertible, IAttributesHandler {
+	public sealed class ActionArgument : ICloneable, IConvertible, IAttributesHandler {
 		private readonly string name;
 		private object value;
 		private bool readOnly;
-		private MessageArguments children;
-		private MessageAttributes attributes;
+		private ActionArguments children;
+		private ActionAttributes attributes;
 		private string idKey;
 		private string format;
 
-		internal MessageArgument(string name, object value, bool readOnly) {
+		internal ActionArgument(string name, object value, bool readOnly) {
 			this.name = name;
 			this.value = value;
 			this.readOnly = readOnly;
-			children = new MessageArguments(readOnly);
-			attributes = new MessageAttributes(this);
+			children = new ActionArguments(readOnly);
+			attributes = new ActionAttributes(this);
 		}
 
-		public MessageArgument(string name, object value)
+		public ActionArgument(string name, object value)
 			: this(name, value, false) {
 		}
 
-		public MessageArgument(string name)
+		public ActionArgument(string name)
 			: this(name, null) {
 		}
 
@@ -62,11 +62,11 @@ namespace Deveel.Data.Net.Client {
 			}
 		}
 
-		public MessageArguments Children {
+		public ActionArguments Children {
 			get { return children; }
 		}
 
-		public MessageAttributes Attributes {
+		public ActionAttributes Attributes {
 			get { return attributes; }
 		}
 
@@ -89,9 +89,9 @@ namespace Deveel.Data.Net.Client {
 			if (newValue is ICloneable)
 				newValue = ((ICloneable) newValue).Clone();
 
-			MessageArgument arg = new MessageArgument(Name, newValue, readOnly);
-			arg.children = (MessageArguments) children.Clone();
-			arg.attributes = (MessageAttributes) attributes.Clone();
+			ActionArgument arg = new ActionArgument(Name, newValue, readOnly);
+			arg.children = (ActionArguments) children.Clone();
+			arg.attributes = (ActionAttributes) attributes.Clone();
 			return arg;
 		}
 
