@@ -6,6 +6,6 @@ namespace Deveel.Data.Net.Client {
 
 		bool CanHandleClientType(string clientType);
 
-		MessageResponse HandleRequest(MessageRequest request);
+		MessageResponse HandleRequest(ClientMessageRequest request);
 	}
 }

@@ -182,7 +182,7 @@ namespace Deveel.Data.Net.Client {
 				transaction = CreateTransaction(pathName);
 			}
 
-			MessageRequest request = GetMethodRequest(type, ((PathTransaction) transaction), requestStream);
+			ClientMessageRequest request = GetMethodRequest(type, ((PathTransaction) transaction), requestStream);
 			if (args != null) {
 				foreach(KeyValuePair<string, object> pair in args) {
 					request.Attributes.Add(pair.Key, pair.Value);
