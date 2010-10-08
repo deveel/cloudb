@@ -2,6 +2,7 @@
 using System.ComponentModel;
 
 using Deveel.Data.Diagnostics;
+using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
 	public abstract class Service : Component, IService {

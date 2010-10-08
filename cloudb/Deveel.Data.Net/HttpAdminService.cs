@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 
 using Deveel.Data.Diagnostics;
+using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
 	public sealed class HttpAdminService : AdminService {
@@ -24,7 +25,7 @@ namespace Deveel.Data.Net {
 		public IMessageSerializer Serializer {
 			get { 
 				if (serializer == null)
-					serializer = new XmlMessageStreamSerializer();
+					serializer = new XmlRpcMessageSerializer();
 				return serializer;
 			}
 			set { serializer = value; }
@@ -38,7 +39,7 @@ namespace Deveel.Data.Net {
 						// The socket to run the service,
 						context = listener.GetContext();						
 						// Make sure this ip address is allowed,
-						IPAddress ipAddress = ((IPEndPoint)context.Request.RemoteEndPoint).Address;
+						IPAddress ipAddress = context.Request.RemoteEndPoint.Address;
 
 						Logger.Info("Connection opened with HTTP client " + ipAddress);
 
@@ -110,10 +111,10 @@ namespace Deveel.Data.Net {
 				this.service = service;
 			}
 
-			private static MessageStream NoServiceError() {
-				MessageStream msg_out = new MessageStream(16);
-				msg_out.AddErrorMessage(new ServiceException(new Exception("The service requested is not being run on the instance")));
-				return msg_out;
+			private static Message NoServiceError(RequestMessage request) {
+				ResponseMessage response = request.CreateResponse();
+				response.Arguments.Add(new MessageError(new Exception("The service requested is not being run on the instance")));
+				return response;
 			}
 
 			public void Work(object state) {
@@ -142,40 +143,40 @@ namespace Deveel.Data.Net {
 
 						// Read the message stream object
 						IMessageSerializer serializer = service.Serializer;
-						MessageStream message_stream = serializer.Deserialize(context.Request.InputStream);
+						RequestMessage requestMessage = (RequestMessage) serializer.Deserialize(context.Request.InputStream, MessageType.Request);
 
-						MessageStream message_out;
+						Message message_out;
 
 						// For analytics
 						DateTime benchmark_start = DateTime.Now;
 
 						// Destined for the administration module,
 						if (serviceType == ServiceType.Admin) {
-							message_out = service.Processor.Process(message_stream);
+							message_out = service.Processor.Process(requestMessage);
 						}
 							// For a block service in this machine
 						else if (serviceType == ServiceType.Block) {
 							if (service.Block == null) {
-								message_out = NoServiceError();
+								message_out = NoServiceError(requestMessage);
 							} else {
-								message_out = service.Block.Processor.Process(message_stream);
+								message_out = service.Block.Processor.Process(requestMessage);
 							}
 
 						}
 							// For a manager service in this machine
 						else if (serviceType == ServiceType.Manager) {
 							if (service.Manager == null) {
-								message_out = NoServiceError();
+								message_out = NoServiceError(requestMessage);
 							} else {
-								message_out = service.Manager.Processor.Process(message_stream);
+								message_out = service.Manager.Processor.Process(requestMessage);
 							}
 						}
 							// For a root service in this machine
 						else if (serviceType == ServiceType.Root) {
 							if (service.Root == null) {
-								message_out = NoServiceError();
+								message_out = NoServiceError(requestMessage);
 							} else {
-								message_out = service.Root.Processor.Process(message_stream);
+								message_out = service.Root.Processor.Process(requestMessage);
 							}
 						} else {
 							throw new InvalidOperationException("Invalid destination service.");

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 
+using Deveel.Data.Net.Client;
 using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
@@ -466,121 +467,125 @@ namespace Deveel.Data.Net {
 		#endregion
 		
 		#region RootServerProcessor
-		
+
 		class RootServerMessageProcessor : IMessageProcessor {
 			public RootServerMessageProcessor(RootService service) {
 				this.service = service;
 			}
-			
-			private readonly RootService service;			
-			
-			public MessageStream Process(MessageStream messageStream) {
-				// The reply message,
-				MessageStream responseStream = new MessageStream(32);
 
-				// The messages input the stream,
-				foreach (Message m in messageStream) {
-					try {
-						service.CheckErrorState();
-						
-						string messageName = m.Name;
-						switch(messageName) {
-							case "publishPath": {
-								service.PublishPath((string)m[0], (DataAddress)m[1]);
-								responseStream.AddMessage("R", 1);
+			private readonly RootService service;
+
+			public ResponseMessage Process(RequestMessage request) {
+				ResponseMessage response;
+				if (RequestMessageStream.TryProcess(this, request, out response))
+					return response;
+
+				// The reply message,
+
+				response = request.CreateResponse();
+
+				try {
+					service.CheckErrorState();
+
+					switch (request.Name) {
+						case "publishPath": {
+							string pathName = request.Arguments[0].ToString();
+							DataAddress rootNode = (DataAddress) request.Arguments[1].Value;
+								service.PublishPath(pathName, rootNode);
+								response.Arguments.Add(1L);
 								break;
 							}
-							case "getSnapshot": {
-								string path = (string)m[0];
+						case "getSnapshot": {
+								string path = request.Arguments[0].ToString();
 								DataAddress address = service.GetSnapshot(path);
-								responseStream.AddMessage("R", address);
+								response.Arguments.Add(address);
 								break;
 							}
-							case "getSnapshots": {
-								string path = (string)m[0];
-								DateTime start = DateTime.FromBinary((long)m[1]);
-								DateTime end = DateTime.FromBinary((long)m[2]);
+						case "getSnapshots": {
+								string path = request.Arguments[0].ToString();
+								DateTime start = DateTime.FromBinary(request.Arguments[1].ToInt64());
+								DateTime end = DateTime.FromBinary(request.Arguments[2].ToInt64());
 								DataAddress[] addresses = service.GetSnapshots(path, start, end);
-								responseStream.AddMessage("R", addresses);
+								response.Arguments.Add(addresses);
 								break;
 							}
-							case "getCurrentTime": {
-								responseStream.AddMessage("R", DateTime.Now.ToUniversalTime().ToBinary());
-								break;	
+						case "getCurrentTime": {
+								response.Arguments.Add(DateTime.Now.ToUniversalTime().ToBinary());
+								break;
 							}
-							case "addPath": {
-								string pathName = (string) m[0];
-								string pathTypeName = (string)m[1];
-								DataAddress rootNode = (DataAddress)m[2];
+						case "addPath": {
+								string pathName = request.Arguments[0].ToString();
+								string pathTypeName = request.Arguments[1].ToString();
+								DataAddress rootNode = (DataAddress)request.Arguments[2].Value;
 								service.AddPath(pathName, pathTypeName, rootNode);
-								responseStream.AddMessage("R", 1);
+								response.Arguments.Add(1L);
 								break;
 							}
-							case "removePath": {
-								string pathName = (string)m[0];
+						case "removePath": {
+								string pathName = request.Arguments[0].ToString();
 								service.RemovePath(pathName);
-								responseStream.AddMessage("R", 1);
-								break;	
+								response.Arguments.Add(1L);
+								break;
 							}
-							case "getPathType": {
-								string pathName = (string)m[0];
+						case "getPathType": {
+								string pathName = request.Arguments[0].ToString();
 								string pathType = service.GetPathType(pathName);
-								responseStream.AddMessage("R", pathType);
+								response.Arguments.Add(pathType);
 								break;
 							}
-							case "checkPathType": {
-								string pathType = (string)m[0];
+						case "checkPathType": {
+								string pathType = request.Arguments[0].ToString();
 								service.CheckPathType(pathType);
-								responseStream.AddMessage("R", 1);
-								break;	
+								response.Arguments.Add(1L);
+								break;
 							}
-							case "initPath": {
-								string pathName = (string) m[0];
+						case "initPath": {
+								string pathName = request.Arguments[0].ToString();
 								service.InitPath(pathName);
-								responseStream.AddMessage("R", 1);
-								break;	
+								response.Arguments.Add(1L);
+								break;
 							}
-							case "commit": {
-								string pathName = (string) m[0];
-								DataAddress proposal = (DataAddress)m[1];
+						case "commit": {
+								string pathName = request.Arguments[0].ToString();
+								DataAddress proposal = (DataAddress)request.Arguments[1].Value;
 								DataAddress rootNode = service.Commit(pathName, proposal);
-								responseStream.AddMessage("R", rootNode);
+								response.Arguments.Add(rootNode);
 								break;
 							}
-							case "bindWithManager": {
-								IServiceAddress manager = (IServiceAddress)m[0];
+						case "bindWithManager": {
+								IServiceAddress manager = (IServiceAddress)request.Arguments[0].Value;
 								service.BindWithManager(manager);
-								responseStream.AddMessage("R", 1);
+								response.Arguments.Add(1L);
 								break;
 							}
-							case "unbindWithManager": {
-								IServiceAddress manager = (IServiceAddress)m[0];
+						case "unbindWithManager": {
+								IServiceAddress manager = (IServiceAddress)request.Arguments[0].Value;
 								service.UnbindWithManager(manager);
-								responseStream.AddMessage("R", 1);
+								response.Arguments.Add(1L);
 								break;
 							}
-							case "pathReport": {
+						case "pathReport": {
 								string[] pathNames, pathTypes;
 								service.PathReport(out pathNames, out pathTypes);
-								responseStream.AddMessage("R", pathNames, pathTypes);
+							response.Arguments.Add(pathNames);
+							response.Arguments.Add(pathTypes);
 								break;
 							}
-							default:
-								throw new ApplicationException("Unknown message received: " + messageName);
-						}
-					} catch (OutOfMemoryException e) {
-						//TODO: ERROR log ...
-						service.SetErrorState(e);
-						throw e;
-					} catch (Exception e) {
-						//TODO: ERROR log ...
-						responseStream.AddErrorMessage(new ServiceException(e));
+						default:
+							throw new ApplicationException("Unknown message received: " + request.Name);
 					}
+				} catch (OutOfMemoryException e) {
+					//TODO: ERROR log ...
+					service.SetErrorState(e);
+					throw e;
+				} catch (Exception e) {
+					//TODO: ERROR log ...
+					response.Arguments.Add(new MessageError(e));
 				}
 
-				return responseStream;
+				return response;
 			}
-		} 
+		}
 
 		#endregion
 		

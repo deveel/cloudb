@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 
 using Deveel.Data.Diagnostics;
+using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
 	public sealed partial class NetworkProfile {
@@ -18,30 +19,24 @@ namespace Deveel.Data.Net {
 
 					// Request a report from the administration role on the machine,
 					IMessageProcessor mp = network_connector.Connect(server, ServiceType.Admin);
-					MessageStream msg_out = new MessageStream(16);
-					msg_out.AddMessage(new Message("report"));
-					MessageStream msg_in = mp.Process(msg_out);
-					Message last_m = null;
+					RequestMessage request = new RequestMessage("report");
+					ResponseMessage response = mp.Process(request);
 
-					foreach (Message m in msg_in) {
-						last_m = m;
-					}
-
-					if (last_m.IsError) {
-						machine_profile.ErrorState = last_m.ErrorMessage;
+					if (response.HasError) {
+						machine_profile.ErrorState = response.ErrorMessage;
 					} else {
 						// Get the message replies,
-						string b = (string)last_m[0];
+						string b = response.Arguments[0].ToString();
 						bool is_block = !b.Equals("block=no");
-						String m = (String)last_m[1];
+						String m = response.Arguments[1].ToString();
 						bool is_manager = !m.Equals("manager=no");
-						string r = (string)last_m[2];
+						string r = response.Arguments[2].ToString();
 						bool is_root = !r.Equals("root=no");
 
-						long used_mem = (long)last_m[3];
-						long total_mem = (long)last_m[4];
-						long used_disk = (long)last_m[5];
-						long total_disk = (long)last_m[6];
+						long used_mem = response.Arguments[3].ToInt64();
+						long total_mem = response.Arguments[4].ToInt64();
+						long used_disk = response.Arguments[5].ToInt64();
+						long total_disk = response.Arguments[6].ToInt64();
 
 						ServiceType type = new ServiceType();
 						if (is_block)
@@ -69,10 +64,10 @@ namespace Deveel.Data.Net {
 		}
 
 		private void ChangeRole(MachineProfile machine, string status, String role_type) {
-			MessageStream msg_out = new MessageStream(7);
-			msg_out.AddMessage(status, role_type);
-			Message m = Command(machine.Address, ServiceType.Admin, msg_out);
-			if (m.IsError)
+			RequestMessage msg_out = new RequestMessage(status);
+			msg_out.Arguments.Add(role_type);
+			ResponseMessage m = Command(machine.Address, ServiceType.Admin, msg_out);
+			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 
 			// Update the network profile,
@@ -85,16 +80,10 @@ namespace Deveel.Data.Net {
 		public bool IsValidNode(IServiceAddress machine) {
 			// Request a report from the administration role on the machine,
 			IMessageProcessor mp = network_connector.Connect(machine, ServiceType.Admin);
-			MessageStream msg_out = new MessageStream(16);
-			msg_out.AddMessage(new Message("report"));
-			MessageStream msg_in = mp.Process(msg_out);
-			Message last_m = null;
+			RequestMessage request = new RequestMessage("report");
+			ResponseMessage response = mp.Process(request);
 
-			foreach (Message m in msg_in) {
-				last_m = m;
-			}
-
-			if (last_m.IsError)
+			if (response.HasError)
 				// Not a valid node,
 				// Should we break this error down to smaller questions. Such as, is the
 				// password incorrect, etc?
@@ -138,13 +127,12 @@ namespace Deveel.Data.Net {
 		}
 
 		public AnalyticsRecord[] GetAnalyticsStats(IServiceAddress server) {
-			MessageStream msg_out = new MessageStream(7);
-			msg_out.AddMessage(new Message("reportStats"));
-			Message m = Command(server, ServiceType.Admin, msg_out);
-			if (m.IsError)
+			RequestMessage request = new RequestMessage("reportStats");
+			ResponseMessage m = Command(server, ServiceType.Admin, request);
+			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 
-			long[] stats = (long[])m[0];
+			long[] stats = (long[])m.Arguments[0].Value;
 			int sz = stats.Length;
 
 			List<AnalyticsRecord> records = new List<AnalyticsRecord>(sz / 4);

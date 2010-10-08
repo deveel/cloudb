@@ -5,6 +5,6 @@ namespace Deveel.Data.Net.Client {
 	public interface IMessageSerializer {
 		void Serialize(Message message, Stream output);
 
-		void Deserialize(Message message, Stream input);
+		Message Deserialize(Stream input, MessageType messageType);
 	}
 }

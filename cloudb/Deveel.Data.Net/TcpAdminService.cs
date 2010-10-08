@@ -6,11 +6,14 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
+using Deveel.Data.Net.Client;
+
 namespace Deveel.Data.Net {
 	public class TcpAdminService : AdminService {
 		private bool polling;
 		private TcpListener listener;
 		private List<TcpConnection> connections;
+		private IMessageSerializer serializer;
 
 		public TcpAdminService(IAdminServiceDelegator delegator, IPAddress address, int port, string password)
 			: this(delegator, new TcpServiceAddress(address, port),  password) {
@@ -23,7 +26,16 @@ namespace Deveel.Data.Net {
 		public TcpAdminService(IAdminServiceDelegator delegator, TcpServiceAddress address, string password)
 			: base(address, new TcpServiceConnector(password), delegator) {
 		}
-		
+
+		public IMessageSerializer MessageSerializer {
+			get {
+				if (serializer == null)
+					serializer = new BinaryRpcMessageSerializer();
+				return serializer;
+			}
+			set { serializer = value; }
+		}
+
 		private void Poll() {
 			try {				
 				//TODO: INFO log ...
@@ -124,10 +136,10 @@ namespace Deveel.Data.Net {
 				random = new Random();
 			}
 
-			private static MessageStream NoServiceError() {
-				MessageStream msg_out = new MessageStream(16);
-				msg_out.AddErrorMessage(new ServiceException(new Exception("The service requested is not being run on the instance")));
-				return msg_out;
+			private static ResponseMessage NoServiceError(RequestMessage request) {
+				ResponseMessage response = request.CreateResponse();
+				response.Arguments.Add(new MessageError(new Exception("The service requested is not being run on the instance")));
+				return response;
 			}
 
 			public void Close() {
@@ -179,10 +191,10 @@ namespace Deveel.Data.Net {
 							return;
 
 						// Read the message stream object
-						BinaryMessageStreamSerializer serializer = new BinaryMessageStreamSerializer();
-						MessageStream message_stream = serializer.Deserialize(reader);
+						IMessageSerializer serializer = service.MessageSerializer;
+						RequestMessage message_stream = (RequestMessage) serializer.Deserialize(reader.BaseStream, MessageType.Response);
 
-						MessageStream message_out;
+						Message message_out;
 
 						// For analytics
 						DateTime benchmark_start = DateTime.Now;
@@ -194,7 +206,7 @@ namespace Deveel.Data.Net {
 							// For a block service in this machine
 						else if (destination == 'b') {
 							if (service.Block == null) {
-								message_out = NoServiceError();
+								message_out = NoServiceError(message_stream);
 							} else {
 								message_out = service.Block.Processor.Process(message_stream);
 							}
@@ -203,7 +215,7 @@ namespace Deveel.Data.Net {
 							// For a manager service in this machine
 						else if (destination == 'm') {
 							if (service.Manager == null) {
-								message_out = NoServiceError();
+								message_out = NoServiceError(message_stream);
 							} else {
 								message_out = service.Manager.Processor.Process(message_stream);
 							}
@@ -211,7 +223,7 @@ namespace Deveel.Data.Net {
 							// For a root service in this machine
 						else if (destination == 'r') {
 							if (service.Root == null) {
-								message_out = NoServiceError();
+								message_out = NoServiceError(message_stream);
 							} else {
 								message_out = service.Root.Processor.Process(message_stream);
 							}
@@ -225,7 +237,7 @@ namespace Deveel.Data.Net {
 						service.Analytics.AddEvent(benchmark_end, time_took);
 
 						// Write and flush the output message,
-						serializer.Serialize(message_out, writer);
+						serializer.Serialize(message_out, writer.BaseStream);
 						writer.Flush();
 
 					} // while (true)

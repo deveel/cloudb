@@ -273,8 +273,14 @@ namespace Deveel.Data.Net.Client {
 			}
 		}
 
-		protected override void Deserialize(Message message, BinaryReader reader) {
-			message.Name = reader.ReadString();
+		protected override Message Deserialize(BinaryReader reader, MessageType messageType) {
+			Message message;
+			string messageName = reader.ReadString();
+			if (messageType == MessageType.Request) {
+				message = new RequestMessage(messageName);
+			} else {
+				message = new ResponseMessage(messageName);
+			}
 
 			int sz = reader.ReadInt32();
 			for (int i = 0; i < sz; i++)
@@ -283,6 +289,8 @@ namespace Deveel.Data.Net.Client {
 			int v = reader.ReadInt32();
 			if (v != 8)
 				throw new FormatException();
+			
+			return message;
 		}
 
 		protected override void Serialize(Message message, BinaryWriter writer) {

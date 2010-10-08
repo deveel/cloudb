@@ -40,16 +40,16 @@ namespace Deveel.Data.Net.Client {
 
 		protected abstract void Serialize(Message message, TextWriter writer);
 
-		public void Deserialize(Message message, Stream input) {
+		public Message Deserialize(Stream input, MessageType messageType) {
 			if (input == null)
 				throw new ArgumentNullException("input");
 			if (!input.CanRead)
 				throw new ArgumentException("The input stream is not readable.");
 
-			Deserialize(message, new StreamReader(input, ContentEncoding));
+			return Deserialize(new StreamReader(input, ContentEncoding), messageType);
 		}
 
-		protected abstract void Deserialize(Message message, TextReader reader);
+		protected abstract Message Deserialize(TextReader reader, MessageType messageType);
 
 		string ITextMessageSerializer.ContentEncoding {
 			get { return ContentEncoding.BodyName; }

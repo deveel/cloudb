@@ -4,6 +4,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
+using Deveel.Data.Net.Client;
+
 namespace Deveel.Data.Net {
 	public class TcpProxyServiceConnector : IServiceConnector {
 		public TcpProxyServiceConnector(IPAddress proxyAddress, int proxyPort, string password) {
@@ -35,7 +37,7 @@ namespace Deveel.Data.Net {
 		public IMessageSerializer Serializer {
 			get {
 				if (serializer == null)
-					serializer = new BinaryMessageStreamSerializer();
+					serializer = new BinaryRpcMessageSerializer();
 				return serializer;
 			}
 			set { serializer = value; }
@@ -114,7 +116,7 @@ namespace Deveel.Data.Net {
 
 			#region Implementation of IMessageProcessor
 
-			public MessageStream Process(MessageStream messageStream) {
+			public ResponseMessage Process(RequestMessage messageStream) {
 				try {
 					lock (connector.proxy_lock) {
 						IMessageSerializer serializer = connector.Serializer;
@@ -137,7 +139,8 @@ namespace Deveel.Data.Net {
 						serializer.Serialize(messageStream, connector.pout.BaseStream);
 						connector.pout.Flush();
 
-						return serializer.Deserialize(connector.pin.BaseStream);
+						ResponseMessage baseResponse = (ResponseMessage) serializer.Deserialize(connector.pin.BaseStream, MessageType.Response);
+						return new ResponseMessage(messageStream, baseResponse);
 					}
 				} catch (IOException e) {
 					// Probably caused because the proxy closed the connection when a

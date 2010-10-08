@@ -157,14 +157,21 @@ namespace Deveel.Data.Net.Client {
 		protected virtual void OnInit() {
 		}
 
-		private ClientMessageRequest GetMethodRequest(RequestType type, PathTransaction transaction, Stream requestStream) {
-			ClientMessageRequest request = new ClientMessageRequest(Type, type, transaction.Transaction);
-			if (requestStream != null)
-				MessageSerializer.Deserialize(request, requestStream);
+		private ClientRequestMessage GetMethodRequest(RequestType type, PathTransaction transaction, Stream requestStream) {
+			ClientRequestMessage request = new ClientRequestMessage(Type, type, transaction.Transaction);
+			if (requestStream != null) {
+				Message streamedRequest = MessageSerializer.Deserialize(requestStream, MessageType.Request);
+				foreach(KeyValuePair<string, object> attribute in streamedRequest.Attributes) {
+					request.Attributes.Add(attribute.Key, attribute.Value);
+				}
+				foreach(MessageArgument argument in streamedRequest.Arguments) {
+					request.Arguments.Add(argument);
+				}
+			}
 			return request;
 		}
 
-		protected MessageResponse HandleRequest(RequestType type, string pathName, IDictionary<string, object> args, Stream requestStream) {
+		protected ResponseMessage HandleRequest(RequestType type, string pathName, IDictionary<string, object> args, Stream requestStream) {
 			//TODO: allow having multiple handlers for the service ...
 			HandlerContainer handler = GetMethodHandler(pathName);
 			if (handler == null)
@@ -182,7 +189,7 @@ namespace Deveel.Data.Net.Client {
 				transaction = CreateTransaction(pathName);
 			}
 
-			ClientMessageRequest request = GetMethodRequest(type, ((PathTransaction) transaction), requestStream);
+			ClientRequestMessage request = GetMethodRequest(type, ((PathTransaction) transaction), requestStream);
 			if (args != null) {
 				foreach(KeyValuePair<string, object> pair in args) {
 					request.Attributes.Add(pair.Key, pair.Value);
@@ -192,7 +199,7 @@ namespace Deveel.Data.Net.Client {
 			return handler.Handler.HandleRequest(request);
 		}
 		
-		protected MessageResponse HandleRequest(RequestType type, string pathName, Stream requestStream) {
+		protected ResponseMessage HandleRequest(RequestType type, string pathName, Stream requestStream) {
 			return HandleRequest(type, pathName, null, requestStream);
 		}
 

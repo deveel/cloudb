@@ -6,6 +6,8 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
+using Deveel.Data.Net.Client;
+
 namespace Deveel.Data.Net {
 	public class TcpServiceConnector : IServiceConnector {
 		public TcpServiceConnector(string password) {
@@ -167,7 +169,7 @@ namespace Deveel.Data.Net {
 			private readonly ServiceType serviceType;
 			private readonly TcpServiceConnector connector;
 
-			private MessageStream DoProcess(MessageStream messageStream, int tryCount) {
+			private ResponseMessage DoProcess(RequestMessage messageStream, int tryCount) {
 				TcpConnection c = null;
 
 				try {
@@ -189,12 +191,13 @@ namespace Deveel.Data.Net {
 
 						BinaryWriter writer = new BinaryWriter(c.Stream, Encoding.Unicode);
 						writer.Write(code);
-						BinaryMessageStreamSerializer serializer = new BinaryMessageStreamSerializer();
-						serializer.Serialize(messageStream, writer);
+
+						IMessageSerializer serializer = new BinaryRpcMessageSerializer();
+						serializer.Serialize(messageStream, c.Stream);
 						writer.Flush();
 
-						BinaryReader reader = new BinaryReader(c.Stream, Encoding.Unicode);
-						return serializer.Deserialize(reader);
+						ResponseMessage response = (ResponseMessage) serializer.Deserialize(c.Stream, MessageType.Response);
+						return new ResponseMessage(messageStream, response);
 					}
 				} catch (Exception e) {
 					// If this is a 'connection reset by peer' error, wipe the connection
@@ -215,9 +218,17 @@ namespace Deveel.Data.Net {
 						error = new ServiceException(new Exception(e.Message, e));
 					}
 
-					MessageStream outputStream = new MessageStream(16);
-					outputStream.AddMessage("E", error);
-					return outputStream;
+					ResponseMessage responseMessage;
+					if (messageStream is RequestMessageStream) {
+						responseMessage = new ResponseMessageStream();
+						ResponseMessage inner = new ResponseMessage();
+						inner.Arguments.Add(error);
+						((ResponseMessageStream)responseMessage).AddMessage(inner);
+					} else {
+						responseMessage = messageStream.CreateResponse();
+					}
+
+					return responseMessage;
 				} finally {
 					if (c != null)
 						connector.ReleaseConnection(c);
@@ -226,7 +237,7 @@ namespace Deveel.Data.Net {
 
 			#region Implementation of IMessageProcessor
 
-			public MessageStream Process(MessageStream messageStream) {
+			public ResponseMessage Process(RequestMessage messageStream) {
 				return DoProcess(messageStream, 0);
 			}
 

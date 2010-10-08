@@ -6,14 +6,14 @@ using Deveel.Data.Net.Client;
 namespace Deveel.Data {
 	[Handle(typeof(BasePath))]
 	public sealed class BasePathRequestHandler : IRequestHandler {
-		private static MessageResponse HandleRestRequest(ClientMessageRequest request) {
+		private static ResponseMessage HandleRestRequest(ClientRequestMessage request) {
 			if (!request.HasResourceId)
 				throw new ArgumentException("The request must specify the table name.");
 
 			DbTransaction transaction = (DbTransaction)request.Transaction;
 			string tableName = (string)request.ResourceId;
 
-			MessageResponse response = null;
+			ResponseMessage response = null;
 
 			try {
 				if (!transaction.TableExists(tableName)) {
@@ -148,14 +148,14 @@ namespace Deveel.Data {
 			return String.Compare(clientType, "rest", true) == 0;
 		}
 
-		public MessageResponse HandleRequest(ClientMessageRequest request) {
+		public ResponseMessage HandleRequest(ClientRequestMessage request) {
 			if (request.IsRestClient)
 				return HandleRestRequest(request);
 
 			throw new InvalidOperationException();
 		}
 
-		private static DbRow BuildDbRow(DbTable table, ClientMessageRequest request) {
+		private static DbRow BuildDbRow(DbTable table, ClientRequestMessage request) {
 			long rowid = -1;
 			if (request.HasItemId)
 				rowid = Convert.ToInt64(request.ItemId);

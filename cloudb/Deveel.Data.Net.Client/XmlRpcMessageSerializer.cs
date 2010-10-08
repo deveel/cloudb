@@ -15,7 +15,7 @@ namespace Deveel.Data.Net.Client {
 		public XmlRpcMessageSerializer() {
 		}
 
-		protected override void Deserialize(Message message, XmlReader reader) {
+		protected override Message Deserialize(XmlReader reader, MessageType messageType) {
 			throw new NotImplementedException();
 		}
 

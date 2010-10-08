@@ -1,12 +1,12 @@
 ﻿using System;
 
 namespace Deveel.Data.Net.Client {
-	public sealed class ClientMessageRequest : MessageRequest {
+	public sealed class ClientRequestMessage : RequestMessage {
 		private readonly string clientType;
 		private readonly RequestType type;
 		private readonly IPathTransaction transaction;
 
-		internal ClientMessageRequest(string clientType, RequestType type, IPathTransaction transaction) {
+		internal ClientRequestMessage(string clientType, RequestType type, IPathTransaction transaction) {
 			this.clientType = clientType;
 			this.type = type;
 			this.transaction = transaction;
@@ -32,8 +32,8 @@ namespace Deveel.Data.Net.Client {
 			get { return transaction; }
 		}
 
-		internal override MessageRequest CreateClone() {
-			return new ClientMessageRequest(clientType, type, transaction);
+		internal override RequestMessage CreateClone() {
+			return new ClientRequestMessage(clientType, type, transaction);
 		}
 	}
 }

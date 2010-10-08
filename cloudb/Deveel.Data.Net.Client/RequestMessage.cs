@@ -1,21 +1,21 @@
 ﻿using System;
 
 namespace Deveel.Data.Net.Client {
-	public class MessageRequest : Message, ICloneable {
-		private MessageResponse response;
+	public class RequestMessage : Message, ICloneable {
+		private ResponseMessage response;
 
 		public const string ResourceIdName = "resource-id";
 		public const string ItemIdName = "item-id";
 
-		public MessageRequest(string name)
+		public RequestMessage(string name)
 			: base(name) {
 		}
 
-		public MessageRequest()
+		public RequestMessage()
 			: this(null) {
 		}
 
-		public override MessageType Type {
+		public override MessageType MessageType {
 			get { return MessageType.Request; }
 		}
 
@@ -41,29 +41,35 @@ namespace Deveel.Data.Net.Client {
 			get { return response != null; }
 		}
 
-		public MessageResponse Response {
+		public ResponseMessage Response {
 			get { return response; }
 		}
 
-		internal virtual MessageRequest CreateClone() {
-			return new MessageRequest();
+		internal void OnResponseMessageCreated(ResponseMessage message) {
+			if (response != null)
+				throw new InvalidOperationException("A response for this request was already created.");
+
+			response = message;
+		}
+
+		internal virtual RequestMessage CreateClone() {
+			return new RequestMessage();
 		}
 
 		public virtual object Clone() {
-			MessageRequest request = CreateClone();
+			RequestMessage request = CreateClone();
 			request.Name = Name;
 			request.arguments = (MessageArguments) Arguments.Clone();
 			request.attributes = (MessageAttributes)Attributes.Clone();
 			return request;
 		}
 
-		public MessageResponse CreateResponse() {
-			return CreateResponse(Name);
+		public ResponseMessage CreateResponse() {
+			return CreateResponse(null);
 		}
 
-		public MessageResponse CreateResponse(string responseName) {
-			response = new MessageResponse(responseName, this);
-			return response;
+		public ResponseMessage CreateResponse(string responseName) {
+			return new ResponseMessage(responseName, this);
 		}
 	}
 }

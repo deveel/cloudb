@@ -246,8 +246,9 @@ namespace Deveel.Data.Net.Client {
 			return argument;
 		}
 
-		protected override void Deserialize(Message message, XmlReader reader) {
-			string requestName = null;
+		protected override Message Deserialize(XmlReader reader, MessageType messageType) {
+			Message message = null;
+			
 			while (reader.Read()) {
 				XmlNodeType nodeType = reader.NodeType;
 				//TODO: should we take the 'encoding' attribute?
@@ -260,46 +261,79 @@ namespace Deveel.Data.Net.Client {
 
 				if (nodeType == XmlNodeType.Element) {
 					string elementName = reader.LocalName;
-					if (requestName == null) {
-						requestName = elementName;
+					if (message == null) {
+						if (messageType == MessageType.Request)
+							message = new RequestMessage(elementName);
+						else
+							message = new ResponseMessage(elementName);
+						
 						continue;
 					}
 
 					MessageArgument argument = ReadArgument(reader);
 					message.Arguments.Add(argument);
 				} else if (nodeType == XmlNodeType.Attribute) {
+					if (message == null)
+						throw new FormatException("Attribute '" + reader.LocalName + "' found at the wrong moment.");
+					
 					message.Attributes.Add(reader.LocalName, reader.Value);
 				} else if (nodeType == XmlNodeType.EndElement) {
 					break;
 				}
 			}
+			
+			if (message == null)
+				throw new FormatException("Invalid format.");
+			
+			return message;
 		}
 
-		protected override void Serialize(Message response, XmlWriter writer) {
-			writer.WriteStartDocument(true);
+		protected override void Serialize(Message message, XmlWriter writer) {
+			bool inStream = message is IMessageStream;
 			
-			if (response is MessageStream)
-				throw new NotImplementedException("not yet implemented");
+			if (inStream) {
+				writer.WriteStartDocument(true);
+				IMessageStream stream = (IMessageStream)message;
+				writer.WriteStartElement("messageStream");
+				foreach(Message streamedMessage in stream) {
+					Serialize(streamedMessage, writer);
+				}
+				writer.WriteEndElement();
+				writer.WriteEndDocument();
+				return;
+			}
+			
+			if (!inStream)
+				writer.WriteStartDocument(true);
+			
+			if (message.HasName && message.Name == "messageStream")
+				throw new FormatException("The root element name 'messageStream' is reserved.");
 
-			string rootElement = "message";
-			if (response.HasName)
-				rootElement = response.Name;
+			string rootElement = message.Name;
+			if (message.HasName) {
+				if (message.MessageType == MessageType.Request)
+					rootElement = "request";
+				else
+					rootElement = "response";
+			}
 
 			writer.WriteStartElement(rootElement);
-			if (response.Attributes.Count > 0) {
-				foreach(KeyValuePair<string, object> attribute in response.Attributes) {
+			if (message.Attributes.Count > 0) {
+				foreach(KeyValuePair<string, object> attribute in message.Attributes) {
 					writer.WriteStartAttribute(attribute.Key);
 					writer.WriteValue(attribute.Value);
 					writer.WriteEndAttribute();
 				}
 			}
 
-			foreach(MessageArgument argument in response.Arguments) {
+			foreach(MessageArgument argument in message.Arguments) {
 				WriteArgument(writer, argument, true);
 			}
 
 			writer.WriteEndElement();
-			writer.WriteEndDocument();
+			
+			if (!inStream)
+				writer.WriteEndDocument();
 		}
 
 		private static string GetValueType(Type type) {

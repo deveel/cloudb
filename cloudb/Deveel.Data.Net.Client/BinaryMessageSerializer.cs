@@ -27,8 +27,8 @@ namespace Deveel.Data.Net.Client {
 		public void Serialize(Message message, Stream output) {
 			BinaryWriter writer = new BinaryWriter(output, Encoding);
 
-			if (message is MessageStream) {
-				MessageStream messageStream = (MessageStream) message;
+			if (message is IMessageStream) {
+				IMessageStream messageStream = (IMessageStream) message;
 
 				writer.Write(2);
 				int sz = messageStream.MessageCount;
@@ -45,37 +45,34 @@ namespace Deveel.Data.Net.Client {
 
 		protected abstract void Serialize(Message message, BinaryWriter writer);
 
-		public void Deserialize(Message message, Stream input) {
+		public Message Deserialize(Stream input, MessageType messageType) {
 			if (!input.CanRead)
 				throw new ArgumentException("The inpuit stream cannot be read.");
 
 			BinaryReader reader = new BinaryReader(input, Encoding);
 			int type = reader.ReadInt32();
-			if (type == 1) {
-				Deserialize(message, reader);
-			} else if (type == 2) {
-				if (!(message is MessageStream))
-					throw new ArgumentException();
-
-				MessageStream stream = (MessageStream) message;
-
-				Message msg;
-				if (stream.Type == MessageType.Request) {
-					msg = new MessageRequest();
-				} else {
-					msg = new MessageResponse(null, null);
-				}
+			if (type == 1)
+				return Deserialize(reader, messageType);
+			
+			if (type == 2) {
+				IMessageStream stream;
+				if (messageType == MessageType.Request)
+					stream = new RequestMessageStream();
+				else
+					stream = new ResponseMessageStream();
 
 				int sz = reader.ReadInt32();
 				for (int i = 0; i < sz; i++) {
-					Deserialize(msg, reader);
+					stream.AddMessage(Deserialize(reader, messageType));
 				}
-			} else {
-				throw new InvalidOperationException();
+				
+				return stream as Message;
 			}
+			
+			throw new FormatException("Unrecognized format.");
 		}
 
-		protected abstract void Deserialize(Message message, BinaryReader input);
+		protected abstract Message Deserialize(BinaryReader input, MessageType messageType);
 
 	}
 }

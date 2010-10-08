@@ -2,14 +2,16 @@
 using System.IO;
 using System.Text;
 
+using Deveel.Data.Net.Client;
+
 using NUnit.Framework;
 
 namespace Deveel.Data.Net {
 	[TestFixture]
-	public class XmlMessageStreamSerializerTest {
-		private string Serialize(MessageStream messageStream) {
+	public class XmlRpcMessageSerializerTest {
+		private string Serialize(Message messageStream) {
 			MemoryStream outputStream = new MemoryStream();
-			XmlMessageStreamSerializer messageSerializer = new XmlMessageStreamSerializer();
+			XmlRpcMessageSerializer messageSerializer = new XmlRpcMessageSerializer();
 			messageSerializer.Serialize(messageStream, outputStream);
 			outputStream.Position = 0;
 			StreamReader reader = new StreamReader(outputStream);
@@ -21,19 +23,17 @@ namespace Deveel.Data.Net {
 			return sb.ToString();
 		}
 		
-		private MessageStream Deserialize(string s) {
+		private Message Deserialize(string s, MessageType messageType) {
 			byte[] bytes = Encoding.UTF8.GetBytes(s);
 			MemoryStream inputStream = new MemoryStream(bytes);
-			XmlMessageStreamSerializer messageSerializer = new XmlMessageStreamSerializer();
-			return messageSerializer.Deserialize(inputStream);
+			XmlRpcMessageSerializer messageSerializer = new XmlRpcMessageSerializer();
+			return messageSerializer.Deserialize(inputStream, messageType);
 		}
 		
 		[Test]
 		public void Test1_SimpleSerialize() {
-			MessageStream messageStream = new MessageStream(16);
-			messageStream.StartMessage("test");
-			messageStream.AddMessageArgument("simple");
-			messageStream.CloseMessage();
+			RequestMessage messageStream = new RequestMessage("test");
+			messageStream.Arguments.Add("simple");
 			
 			string result = Serialize(messageStream);
 			Console.Out.WriteLine("Result:");
@@ -50,7 +50,7 @@ namespace Deveel.Data.Net {
 			sb.Append("</message>");
 			sb.Append("</stream>");
 			
-			MessageStream result = Deserialize(sb.ToString());
+			Message result = Deserialize(sb.ToString(), MessageType.Response);
 		}
 	}
 }

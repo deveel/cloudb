@@ -3,7 +3,7 @@ using System.IO;
 
 namespace Deveel.Data.Net.Client {
 	public sealed class JsonRestMessageSerializer : JsonMessageSerializer, IMessageStreamSupport {
-		protected override void Deserialize(Message message, TextReader reader) {
+		protected override Message Deserialize(TextReader reader, MessageType messageType) {
 			throw new NotImplementedException();
 		}
 		
