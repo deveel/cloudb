@@ -23,6 +23,7 @@ namespace Deveel.Data.Net {
 
 		private readonly Dictionary<TcpServiceAddress, TcpConnection> connections;
 		private readonly string password;
+		private IMessageSerializer serializer;
 
 		private readonly Thread backgroundThread;
 		private bool purgeThreadStopped;
@@ -30,6 +31,16 @@ namespace Deveel.Data.Net {
 		public string Password {
 			get { return password; }
 		}
+		
+		public IMessageSerializer MessageSerializer {
+			get {
+				if (serializer == null)
+					serializer = new BinaryRpcMessageSerializer();
+				return serializer;
+			}
+			set { serializer = value; }
+		}
+
 
 		private void PurgeConnections() {
 			try {

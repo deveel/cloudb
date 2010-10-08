@@ -4,7 +4,7 @@ using System.IO;
 using System.Text;
 
 namespace Deveel.Data.Net.Client {
-	public sealed class BinaryRpcMessageSerializer : BinaryMessageSerializer {
+	public sealed class BinaryRpcMessageSerializer : BinaryMessageSerializer, IMessageStreamSupport {
 		private static readonly Dictionary<byte, Type> typeCodes;
 
 		public BinaryRpcMessageSerializer(Encoding encoding)

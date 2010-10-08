@@ -80,8 +80,10 @@
     <Compile Include="Deveel.Data.Net.Client\IPathClientAuthorize.cs" />
     <Compile Include="Deveel.Data.Net.Client\IMessageStreamSupport.cs" />
     <Compile Include="Deveel.Data.Net.Client\ITextMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Client\IXmlRpcTypeResolver.cs" />
     <Compile Include="Deveel.Data.Net.Client\JsonMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Client\JsonRestMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Client\JsonRpcMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Client\Message.cs" />
     <Compile Include="Deveel.Data.Net.Client\MessageArgument.cs" />
     <Compile Include="Deveel.Data.Net.Client\MessageArguments.cs" />
@@ -96,6 +98,7 @@
     <Compile Include="Deveel.Data.Net.Client\PathClientAuthorizeDelegate.cs" />
     <Compile Include="Deveel.Data.Net.Client\ResponseMessageStream.cs" />
     <Compile Include="Deveel.Data.Net.Client\RestFormat.cs" />
+    <Compile Include="Deveel.Data.Net.Client\TextMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Client\XmlRpcMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net\AdminService.cs">
       <SubType>Component</SubType>
@@ -119,7 +122,7 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Deveel.Data.Net.Client\XmlRestMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net.Client\XmlActionSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Client\XmlMessageSerializer.cs" />
     <Compile Include="Deveel.Data\IPathContext.cs" />
     <Compile Include="Deveel.Data\IPathTransaction.cs" />
     <Compile Include="Deveel.Data.Net.Client\PathClientService.cs">

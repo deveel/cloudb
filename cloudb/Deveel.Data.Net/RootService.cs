@@ -13,7 +13,6 @@ namespace Deveel.Data.Net {
 		}		
 		
 		private IServiceAddress managerAddress;
-		private ErrorStateException errorState;
 		private readonly IServiceConnector connector;
 		private readonly Dictionary<string, PathAccess> pathCache;
 		

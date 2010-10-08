@@ -34,7 +34,7 @@ namespace Deveel.Data.Net {
 			get { return proxyAddress; }
 		}
 		
-		public IMessageSerializer Serializer {
+		public IMessageSerializer MessageSerializer {
 			get {
 				if (serializer == null)
 					serializer = new BinaryRpcMessageSerializer();
@@ -119,7 +119,7 @@ namespace Deveel.Data.Net {
 			public ResponseMessage Process(RequestMessage messageStream) {
 				try {
 					lock (connector.proxy_lock) {
-						IMessageSerializer serializer = connector.Serializer;
+						IMessageSerializer serializer = connector.MessageSerializer;
 
 						char code = '\0';
 						if (serviceType == ServiceType.Admin)

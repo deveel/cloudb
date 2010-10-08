@@ -20,7 +20,7 @@ namespace Deveel.Data.Net {
 		private string password;
 		private IMessageSerializer serializer;
 		
-		public IMessageSerializer Serializer {
+		public IMessageSerializer MessageSerializer {
 			get { 
 				if (serializer == null)
 					serializer = new XmlRpcMessageSerializer();
@@ -67,7 +67,7 @@ namespace Deveel.Data.Net {
 							request.Credentials = new NetworkCredential(connector.userName, connector.password);
 						request.Method = "POST";
 						Stream output = request.GetRequestStream();
-						connector.Serializer.Serialize(messageStream, output);
+						connector.MessageSerializer.Serialize(messageStream, output);
 						output.Flush();
 						output.Close();
 						
@@ -76,7 +76,7 @@ namespace Deveel.Data.Net {
 							throw new InvalidOperationException();
 
 						Stream input = response.GetResponseStream();
-						ResponseMessage baseResponse = (ResponseMessage) connector.Serializer.Deserialize(input, MessageType.Response);
+						ResponseMessage baseResponse = (ResponseMessage) connector.MessageSerializer.Deserialize(input, MessageType.Response);
 						return new ResponseMessage(messageStream, baseResponse);
 					}
 				} catch (Exception e) {

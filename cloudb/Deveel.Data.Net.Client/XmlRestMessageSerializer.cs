@@ -6,7 +6,7 @@ using System.Text;
 using System.Xml;
 
 namespace Deveel.Data.Net.Client {
-	public sealed class XmlRestMessageSerializer : XmlMessageSerializer, IMessageStreamSupport {
+	public sealed class XmlRestMessageSerializer : XmlMessageSerializer {
 		public XmlRestMessageSerializer(string encoding)
 			: base(encoding) {
 		}
@@ -246,11 +246,13 @@ namespace Deveel.Data.Net.Client {
 			return argument;
 		}
 
-		protected override Message Deserialize(XmlReader reader, MessageType messageType) {
+		protected override Message Deserialize(TextReader reader, MessageType messageType) {
+			XmlTextReader xmlReader = new XmlTextReader(reader);
+			
 			Message message = null;
 			
-			while (reader.Read()) {
-				XmlNodeType nodeType = reader.NodeType;
+			while (xmlReader.Read()) {
+				XmlNodeType nodeType = xmlReader.NodeType;
 				//TODO: should we take the 'encoding' attribute?
 				if (nodeType == XmlNodeType.XmlDeclaration)
 					continue;
@@ -260,7 +262,7 @@ namespace Deveel.Data.Net.Client {
 					continue;
 
 				if (nodeType == XmlNodeType.Element) {
-					string elementName = reader.LocalName;
+					string elementName = xmlReader.LocalName;
 					if (message == null) {
 						if (messageType == MessageType.Request)
 							message = new RequestMessage(elementName);
@@ -270,13 +272,13 @@ namespace Deveel.Data.Net.Client {
 						continue;
 					}
 
-					MessageArgument argument = ReadArgument(reader);
+					MessageArgument argument = ReadArgument(xmlReader);
 					message.Arguments.Add(argument);
 				} else if (nodeType == XmlNodeType.Attribute) {
 					if (message == null)
-						throw new FormatException("Attribute '" + reader.LocalName + "' found at the wrong moment.");
+						throw new FormatException("Attribute '" + xmlReader.LocalName + "' found at the wrong moment.");
 					
-					message.Attributes.Add(reader.LocalName, reader.Value);
+					message.Attributes.Add(xmlReader.LocalName, xmlReader.Value);
 				} else if (nodeType == XmlNodeType.EndElement) {
 					break;
 				}
@@ -288,23 +290,10 @@ namespace Deveel.Data.Net.Client {
 			return message;
 		}
 
-		protected override void Serialize(Message message, XmlWriter writer) {
-			bool inStream = message is IMessageStream;
+		protected override void Serialize(Message message, TextWriter writer) {
+			XmlTextWriter xmlWriter = new XmlTextWriter(writer);
 			
-			if (inStream) {
-				writer.WriteStartDocument(true);
-				IMessageStream stream = (IMessageStream)message;
-				writer.WriteStartElement("messageStream");
-				foreach(Message streamedMessage in stream) {
-					Serialize(streamedMessage, writer);
-				}
-				writer.WriteEndElement();
-				writer.WriteEndDocument();
-				return;
-			}
-			
-			if (!inStream)
-				writer.WriteStartDocument(true);
+			xmlWriter.WriteStartDocument(true);
 			
 			if (message.HasName && message.Name == "messageStream")
 				throw new FormatException("The root element name 'messageStream' is reserved.");
@@ -317,23 +306,21 @@ namespace Deveel.Data.Net.Client {
 					rootElement = "response";
 			}
 
-			writer.WriteStartElement(rootElement);
+			xmlWriter.WriteStartElement(rootElement);
 			if (message.Attributes.Count > 0) {
 				foreach(KeyValuePair<string, object> attribute in message.Attributes) {
-					writer.WriteStartAttribute(attribute.Key);
-					writer.WriteValue(attribute.Value);
-					writer.WriteEndAttribute();
+					xmlWriter.WriteStartAttribute(attribute.Key);
+					xmlWriter.WriteValue(attribute.Value);
+					xmlWriter.WriteEndAttribute();
 				}
 			}
 
 			foreach(MessageArgument argument in message.Arguments) {
-				WriteArgument(writer, argument, true);
+				WriteArgument(xmlWriter, argument, true);
 			}
 
-			writer.WriteEndElement();
-			
-			if (!inStream)
-				writer.WriteEndDocument();
+			xmlWriter.WriteEndElement();
+			xmlWriter.WriteEndDocument();
 		}
 
 		private static string GetValueType(Type type) {

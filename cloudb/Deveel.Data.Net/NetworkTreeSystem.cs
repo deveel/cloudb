@@ -14,13 +14,16 @@ using Deveel.Data.Util;
 namespace Deveel.Data.Net {
 	internal class NetworkTreeSystem : ITreeSystem {
 		internal NetworkTreeSystem(IServiceConnector connector, IServiceAddress managerAddress, INetworkCache networkCache) {
+			if (!(connector.MessageSerializer is IMessageStreamSupport))
+				throw new ArgumentException("The message serializer specified by the connector is not valid (must be RPC).");
+			
 			this.connector = connector;
 			this.managerAddress = managerAddress;
 			this.networkCache = networkCache;
 			failures = new Dictionary<IServiceAddress, DateTime>();
 			pathToRoot = new Dictionary<string, IServiceAddress>();
 			
-			logger = LogManager.GetLogger("network");
+			logger = LogManager.NetworkLogger;
 		}
 
 		private readonly IServiceConnector connector;
