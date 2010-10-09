@@ -6,13 +6,13 @@ using System.Text;
 using Deveel.Data.Store;
 
 namespace Deveel.Data {
-	public sealed class Properties {
+	public sealed class StringDictionary {
 		private readonly StringCollection collection;
 
 		private static readonly PropertyComparer DefaultPropertyComparer = new PropertyComparer();
 		private static readonly KeyComparer DefaultKeyComparer = new KeyComparer();
 
-		public Properties(DataFile file) {
+		public StringDictionary(DataFile file) {
 			collection = new StringCollection(file, DefaultPropertyComparer);
 		}
 

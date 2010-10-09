@@ -1,8 +1,6 @@
 ﻿using System;
 
-using Deveel.Data.Net;
-
-namespace Deveel.Data {
+namespace Deveel.Data.Net.Client {
 	public interface IPathContext : IDisposable {
 		string PathName { get; }
 		

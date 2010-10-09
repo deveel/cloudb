@@ -123,8 +123,8 @@
     </Compile>
     <Compile Include="Deveel.Data.Net.Client\XmlRestMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Client\XmlMessageSerializer.cs" />
-    <Compile Include="Deveel.Data\IPathContext.cs" />
-    <Compile Include="Deveel.Data\IPathTransaction.cs" />
+    <Compile Include="Deveel.Data.Net.Client\IPathContext.cs" />
+    <Compile Include="Deveel.Data.Net\IPathTransaction.cs" />
     <Compile Include="Deveel.Data.Net.Client\PathClientService.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -156,8 +156,8 @@
     <Compile Include="Deveel.Data\IInteractiveEnumerator.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Deveel.Data\IPathConnection.cs" />
-    <Compile Include="Deveel.Data\IPath.cs" />
+    <Compile Include="Deveel.Data.Net\IPathConnection.cs" />
+    <Compile Include="Deveel.Data.Net\IPath.cs" />
     <Compile Include="Deveel.Data.Net\INetworkCache.cs" />
     <Compile Include="Deveel.Data.Net\IService.cs" />
     <Compile Include="Deveel.Data.Net\IServiceAddress.cs" />
@@ -259,7 +259,7 @@
     <Compile Include="Deveel.Data\Key.cs" />
     <Compile Include="Deveel.Data\KeyBase.cs" />
     <Compile Include="Deveel.Data.Caching\MemoryCache.cs" />
-    <Compile Include="Deveel.Data\Properties.cs" />
+    <Compile Include="Deveel.Data\StringDictionary.cs" />
     <Compile Include="Deveel.Data\SparseLeafNode.cs" />
     <Compile Include="Deveel.Data\StoreTreeSystem.cs" />
     <Compile Include="Deveel.Data\StringCollection.cs" />
