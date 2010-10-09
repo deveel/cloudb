@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Deveel.Data.Store {
+namespace Deveel.Data {
 	/// <summary>
 	/// Defines the mechanism for managing a tree-based storage system.
 	/// </summary>

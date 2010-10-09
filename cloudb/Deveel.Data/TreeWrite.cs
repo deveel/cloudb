@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 
-namespace Deveel.Data.Store {
+namespace Deveel.Data {
 	public sealed class TreeWrite {
 		private readonly List<ITreeNode> leafNodes = new List<ITreeNode>();
 		private readonly List<ITreeNode> branchNodes = new List<ITreeNode>();

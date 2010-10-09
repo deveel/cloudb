@@ -49,9 +49,9 @@ namespace Deveel.Data {
 		private DbTransaction CreateTransaction(DataAddress root) {
 			// Turn it into a transaction object,
 			ITransaction transaction = client.CreateTransaction(root);
-			// Check the path is a valid SDBTransaction format,
+			// Check the path is a valid DbTransaction format,
 			CheckPath(transaction);
-			// Wrap it around an SDBTransaction object, and return it
+			// Wrap it around an DbTransaction object, and return it
 			return new DbTransaction(this, root, transaction);
 		}
 

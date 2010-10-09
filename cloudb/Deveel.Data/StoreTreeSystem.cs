@@ -5,8 +5,9 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 
 using Deveel.Data.Caching;
+using Deveel.Data.Store;
 
-namespace Deveel.Data.Store {
+namespace Deveel.Data {
 	/// <summary>
 	/// An implementation of <see cref="ITreeSystem"/> that is wrapped
 	/// on a <see cref="IStore"/>.
@@ -31,8 +32,8 @@ namespace Deveel.Data.Store {
 		private const short BranchType = 0x022EB;
 
 		public StoreTreeSystem(IStore store, int maxBranchSize,
-									   int maxLeafByteSize, long nodeMaxCacheMemory,
-									   long branchCacheMemory) {
+		                       int maxLeafByteSize, long nodeMaxCacheMemory,
+		                       long branchCacheMemory) {
 			this.maxBranchSize = maxBranchSize;
 			this.maxLeafByteSize = maxLeafByteSize;
 			this.store = store;
@@ -455,9 +456,9 @@ namespace Deveel.Data.Store {
 			// Create a branch,
 			TreeBranch rootBranch = nodeHeap.CreateBranch(null, MaxBranchSize);
 			rootBranch.Set(refs[0], 4,
-						   Key.Tail.GetEncoded(1),
-						   Key.Tail.GetEncoded(2),
-						   refs[1], 4);
+			               Key.Tail.GetEncoded(1),
+			               Key.Tail.GetEncoded(2),
+			               refs[1], 4);
 
 			treeWrite = new TreeWrite();
 			treeWrite.NodeWrite(rootBranch);
@@ -908,7 +909,7 @@ namespace Deveel.Data.Store {
 			public override bool Equals(object ob) {
 				VersionInfo dest_v = (VersionInfo)ob;
 				return (dest_v.versionId == versionId &&
-						dest_v.rootNodeId == rootNodeId);
+				        dest_v.rootNodeId == rootNodeId);
 			}
 
 			public override int GetHashCode() {

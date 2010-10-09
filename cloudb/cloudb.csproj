@@ -242,7 +242,7 @@
     <Compile Include="Deveel.Data.Store\ScatteringStoreDataAccessor.cs" />
     <Compile Include="Deveel.Data.Store\StreamFile.cs" />
     <Compile Include="Deveel.Data\FileSystemDatabase.cs" />
-    <Compile Include="Deveel.Data.Store\TreeWrite.cs" />
+    <Compile Include="Deveel.Data\TreeWrite.cs" />
     <Compile Include="Deveel.Data.Util\ByteBuffer.cs" />
     <Compile Include="Deveel.Data.Util\CollectionsUtil.cs" />
     <Compile Include="Deveel.Data.Util\IInputStream.cs" />
