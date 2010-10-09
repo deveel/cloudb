@@ -15,8 +15,14 @@ namespace Deveel.Data.Net {
 		}
 
 		private readonly ProcessCallback callback;
+		private IMessageSerializer serializer;
 
 		public void Dispose() {
+		}
+
+		public IMessageSerializer MessageSerializer {
+			get { return serializer; }
+			set { serializer = value; }
 		}
 
 		public void Close() {

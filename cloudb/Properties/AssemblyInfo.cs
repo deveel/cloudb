@@ -37,3 +37,5 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyFileVersion("0.9.5.0")]
 
 [assembly: CLSCompliant(true)]
+
+[assembly: InternalsVisibleTo("cloudb-nunit")]

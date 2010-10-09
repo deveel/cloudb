@@ -21,7 +21,7 @@ namespace Deveel.Data.Net.Client {
 		}
 
 		public MessageError(Exception exception)
-			: this(exception.GetType().Namespace + "." + exception.GetType().Namespace, exception.Message, exception.StackTrace) {
+			: this(exception.Source, exception.Message, exception.StackTrace) {
 		}
 
 		public string StackTrace {

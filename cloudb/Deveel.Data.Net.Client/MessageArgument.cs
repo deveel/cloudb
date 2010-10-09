@@ -27,6 +27,10 @@ namespace Deveel.Data.Net.Client {
 			: this(name, null) {
 		}
 
+		public MessageArgument()
+			: this(null) {
+		}
+
 		public string Name {
 			get { return name; }
 		}
