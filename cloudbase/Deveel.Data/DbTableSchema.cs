@@ -96,7 +96,7 @@ namespace Deveel.Data {
 			get {
 				if (cachedColumns == null) {
 					// Return the column list
-					Properties p = table.TableProperties;
+					StringDictionary p = table.TableDictionary;
 					string column_list = p.GetValue("columns", "");
 					string[] columnArray;
 					if (!column_list.Equals("")) {
@@ -120,7 +120,7 @@ namespace Deveel.Data {
 			get {
 				if (cachedIndexes == null) {
 					// Return the column list
-					Properties p = table.TableProperties;
+					StringDictionary p = table.TableDictionary;
 					string columns = p.GetValue("index_columns", "");
 					string[] colArray;
 					if (!columns.Equals("")) {
@@ -145,7 +145,7 @@ namespace Deveel.Data {
 			
 			long columnId;
 			if (!columnIdCache.TryGetValue(columnName, out columnId)) {
-				Properties p = table.TableProperties;
+				StringDictionary p = table.TableDictionary;
 				columnId = p.GetValue(columnName + ".id", -1);
 				if (columnId == -1)
 					throw new ApplicationException("Column '" + columnName + "' not found");
@@ -162,7 +162,7 @@ namespace Deveel.Data {
 			
 			// Generate a column id
 			long columnid = table.UniqueId();
-			Properties p = table.TableProperties;
+			StringDictionary p = table.TableDictionary;
 			
 			// Add to the column list,
 			string columns = p.GetValue("columns", String.Empty);
@@ -181,7 +181,7 @@ namespace Deveel.Data {
 		  public void RemoveColumn(string columnName) {
 			CheckColumnName(columnName);
 			
-			Properties p = table.TableProperties;
+			StringDictionary p = table.TableDictionary;
 			
 			// Add to the column list,
 			string column_list = p.GetValue("columns", String.Empty);
@@ -214,7 +214,7 @@ namespace Deveel.Data {
 		public void AddIndex(string columnName, string locale) {
 			CheckColumnName(columnName);
 			
-			Properties p = table.TableProperties;
+			StringDictionary p = table.TableDictionary;
 			
 			// Check the column name exists,
 			long columnid = p.GetValue(columnName + ".id", -1);
@@ -251,7 +251,7 @@ namespace Deveel.Data {
 		}
 		
 		internal IIndexedObjectComparer<string> GetIndexComparerForColumn(string columnName, long columnid) {
-			Properties p = table.TableProperties;
+			StringDictionary p = table.TableDictionary;
 			string localeStr = p.GetValue(columnName + "collator", null);
 			if (localeStr == null) {
 				return new LexiStringComparer(table, columnid);
@@ -269,7 +269,7 @@ namespace Deveel.Data {
 		public void RemoveIndex(string columnName) {
 			CheckColumnName(columnName);
 			
-			Properties p = table.TableProperties;
+			StringDictionary p = table.TableDictionary;
 			
 			// Check the column name index property,
 			bool is_indexed = p.GetValue(columnName + ".index", false);
@@ -304,7 +304,7 @@ namespace Deveel.Data {
 		
 		  public bool IsColumnIndexed(string columnName) {
 			CheckColumnName(columnName);
-			Properties p = table.TableProperties;
+			StringDictionary p = table.TableDictionary;
 			return p.GetValue(columnName + ".index", false);
 		}
 		

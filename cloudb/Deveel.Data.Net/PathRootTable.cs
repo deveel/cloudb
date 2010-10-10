@@ -5,13 +5,13 @@ using Deveel.Data.Store;
 namespace Deveel.Data.Net {
 	class PathRootTable {
 		public PathRootTable(DataFile data) {
-			properties = new Properties(data);
+			dictionary = new StringDictionary(data);
 		}
 
-		private readonly Properties properties;
+		private readonly StringDictionary dictionary;
 
 		public ISortedCollection<string> Keys {
-			get { return properties.Keys; }
+			get { return dictionary.Keys; }
 		}
 
 		public void Set(String path, IServiceAddress rootAddress) {
@@ -19,11 +19,11 @@ namespace Deveel.Data.Net {
 			if (rootAddress != null)
 				rootAddrStr = rootAddress.ToString();
 
-			properties.SetValue(path, rootAddrStr);
+			dictionary.SetValue(path, rootAddrStr);
 		}
 
 		public IServiceAddress Get(string path) {
-			string rootServerStr = properties.GetValue(path);
+			string rootServerStr = dictionary.GetValue(path);
 			if (rootServerStr == null)
 				return null;
 

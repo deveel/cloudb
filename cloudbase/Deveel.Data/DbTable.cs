@@ -62,8 +62,8 @@ namespace Deveel.Data {
 			get { return new SortedIndex(GetFile(AddLogKey)); }
 		}
 		
-		internal Properties TableProperties {
-			get { return new Properties(propFile); }
+		internal StringDictionary TableDictionary {
+			get { return new StringDictionary(propFile); }
 		}
 		
 		public DbTableSchema Schema {
@@ -140,7 +140,7 @@ namespace Deveel.Data {
 
 		internal long UniqueId() {
 			if (idSeq == -1) {
-				Properties p = TableProperties;
+				StringDictionary p = TableDictionary;
 				long v = p.GetValue("k", 16);
 				idSeq = v;
 			}
@@ -272,7 +272,7 @@ namespace Deveel.Data {
 			
 			// Set the id gen key
 			if (idSeq != -1)
-				TableProperties.SetValue("k", idSeq);
+				TableDictionary.SetValue("k", idSeq);
 		}
 		
 		private Key GetRowIdKey(long rowid) {
@@ -481,7 +481,7 @@ namespace Deveel.Data {
 		
 		public DbIndex GetIndex(string columnName) {
 			schema.CheckColumnName(columnName);
-			Properties p = TableProperties;
+			StringDictionary p = TableDictionary;
 			long columnId = p.GetValue(columnName + ".id", -1);
 			if (columnId == -1)
 				throw new ApplicationException("Column '" + columnName + "' not found");

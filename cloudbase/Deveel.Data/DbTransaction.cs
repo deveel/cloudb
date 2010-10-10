@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 
 using Deveel.Data.Net;
+using Deveel.Data.Net.Client;
 using Deveel.Data.Store;
 
 namespace Deveel.Data {

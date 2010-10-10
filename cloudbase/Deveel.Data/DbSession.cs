@@ -2,6 +2,7 @@
 using System.IO;
 
 using Deveel.Data.Net;
+using Deveel.Data.Net.Client;
 using Deveel.Data.Store;
 
 namespace Deveel.Data {
@@ -32,7 +33,7 @@ namespace Deveel.Data {
 			if (!checkDone) {
 				lock(this) {
 					DataFile df = transaction.GetFile(DbTransaction.MagicKey, FileAccess.Read);
-					Properties magic_set = new Properties(df);
+					StringDictionary magic_set = new StringDictionary(df);
 					string type = magic_set.GetValue("type");
 					string version = magic_set.GetValue("version");
 

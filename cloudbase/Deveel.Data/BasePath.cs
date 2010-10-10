@@ -15,7 +15,7 @@ namespace Deveel.Data {
 			ITransaction transaction = connection.CreateTransaction(current_root);
 			// Initialize the magic property set, etc
 			DataFile df = transaction.GetFile(DbTransaction.MagicKey, FileAccess.ReadWrite);
-			Properties magicSet = new Properties(df);
+			StringDictionary magicSet = new StringDictionary(df);
 			magicSet.SetValue("type", "BasePath");
 			magicSet.SetValue("version", "1.0");
 			// Flush and publish the change

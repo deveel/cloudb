@@ -41,7 +41,7 @@ namespace Deveel.Data {
 
 		private long UniqueId() {
 			DataFile df = GetFile(metaKey);
-			Properties pset = new Properties(df);
+			StringDictionary pset = new StringDictionary(df);
 			long v = pset.GetValue("v", 16);
 			pset.SetValue("v", v + 1);
 			return v;
@@ -59,7 +59,7 @@ namespace Deveel.Data {
 		}
 
 		public Key GetFileKey(string name) {
-			Properties pset = new Properties(GetFile(propertiesKey));
+			StringDictionary pset = new StringDictionary(GetFile(propertiesKey));
 			long id = pset.GetValue(name, -1);
 			return id == -1 ? null : GetKey(id);
 		}
@@ -67,7 +67,7 @@ namespace Deveel.Data {
 		public Key CreateFile(string fileName) {
 			++version;
 
-			Properties pset = new Properties(GetFile(propertiesKey));
+			StringDictionary pset = new StringDictionary(GetFile(propertiesKey));
 			// Assert the item isn't already stored,
 			if (pset.GetValue(fileName, -1L) != -1L)
 				throw new ApplicationException("Item already exists: " + fileName);
@@ -94,7 +94,7 @@ namespace Deveel.Data {
 		public Key DeleteFile(string name) {
 			++version;
 
-			Properties pset = new Properties(GetFile(propertiesKey));
+			StringDictionary pset = new StringDictionary(GetFile(propertiesKey));
 			long id = pset.GetValue(name, -1);
 			// Assert the item is stored,
 			if (id == -1)
@@ -124,7 +124,7 @@ namespace Deveel.Data {
 		}
 		
 		public DataFile GetFile(string name) {
-			Properties pset = new Properties(GetFile(propertiesKey));
+			StringDictionary pset = new StringDictionary(GetFile(propertiesKey));
 			long id = pset.GetValue(name, -1);
 			if (id == -1)
 				throw new ApplicationException("File not found: " + name);
@@ -155,7 +155,7 @@ namespace Deveel.Data {
 		public void CopyTo(string name, Directory dest) {
 			++dest.version;
 
-			Properties pset = new Properties(GetFile(propertiesKey));
+			StringDictionary pset = new StringDictionary(GetFile(propertiesKey));
 			long id = pset.GetValue(name, -1);
 			// Assert the item is stored,
 			if (id == -1)
