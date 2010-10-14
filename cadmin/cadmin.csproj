@@ -31,16 +31,25 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Deveel.CommandLine, Version=0.5.1.6336, Culture=neutral, PublicKeyToken=1f344e75a1973f38, processorArchitecture=MSIL">
+    <Reference Include="deveel-cli, Version=1.0.3939.39851, Culture=neutral, processorArchitecture=x86">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\libs\Deveel.CommandLine.dll</HintPath>
+      <HintPath>..\libs\deveel-cli.dll</HintPath>
+    </Reference>
+    <Reference Include="deveelrl, Version=1.2.0.37360, Culture=neutral, PublicKeyToken=9fbac9d9ab2b152f, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\libs\deveelrl.dll</HintPath>
+    </Reference>
+    <Reference Include="shellapp, Version=0.7.4.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\libs\shellapp.dll</HintPath>
     </Reference>
     <Reference Include="System" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Deveel.Data.Net\AboutCommand.cs" />
     <Compile Include="Deveel.Data.Net\CloudAdmin.cs" />
+    <Compile Include="Deveel.Data.Net\ConnectCommand.cs" />
+    <Compile Include="Deveel.Data.Net\NetworkContext.cs" />
     <Compile Include="Deveel.Data.Net\StartRoleCommand.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

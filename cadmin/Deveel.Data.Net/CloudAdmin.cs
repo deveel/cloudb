@@ -1,64 +1,72 @@
 ﻿using System;
 using System.IO;
 
-using Deveel.Commands;
 using Deveel.Configuration;
-using Deveel.Shell;
+using Deveel.Console;
 
 namespace Deveel.Data.Net {
-	[Option("netconfig", true, "Either a path or URL of the location of the network " +
-							  "configuration file (default: network.conf).", IsRequired = true)]
-	[Option("netpassword", true, "The challenge password used in all connection handshaking " +
-							  "throughout the Mckoi network. All machines must have the " +
-							  "same net password.", IsRequired = false)]
 	public sealed class CloudAdmin : ShellApplication {
-
-		protected override string Prompt {
-			get { return "CloudB> "; }
+		protected override Options CreateOptions() {
+			Options options = new Options();
+			Option option = new Option("netconfig", true, "Either a path or URL of the location of the network " +
+			                                              "configuration file (default: network.conf).");
+			option.IsRequired = true;
+			options.AddOption(option);
+			return options;
 		}
 
-		protected override string About {
-			get {
-				StringWriter writer = new StringWriter();
-				writer.WriteLine("---------------------------------------------------------------------------");
-				writer.WriteLine(" {ApplicationName} {Version} {Copyright}");
-				writer.WriteLine();
-				writer.WriteLine(" CloudB Admin is provided AS IS and comes with ABSOLUTELY NO WARRANTY");
-				writer.WriteLine(" This is free software, and you are welcome to redistribute it under the");
-				writer.WriteLine(" conditions of the {License}");
-				writer.WriteLine("---------------------------------------------------------------------------");
-				return writer.ToString();
-			}
+		internal void SetNetworkContext(NetworkContext context) {
+			SetActiveContext(context);
 		}
 
-		protected override string License {
-			get { return "Lesser GNU Public License <http://www.gnu.org/licenses/lgpl.txt>"; }
-		}
-
-		protected override bool Init(CommandLine commandLine) {
-			if (!base.Init(commandLine))
-				return false;
-
-			Readline.WordBreakCharacters = new char[] { ' ' };
-			return true;
-		}
-
-		protected override LineExecutionResultCode ExecuteLine(string line) {
-			try {
-				Execute(CurrentContext, line);
-				return LineExecutionResultCode.Executed;
-			} catch(Exception) {
-				return LineExecutionResultCode.Empty;
-			}
-		}
 
 		[STAThread]
 		static void Main(string[] args) {
+			CloudAdmin admin = new CloudAdmin();
+
+			Options options = admin.CreateOptions();
+			ICommandLineParser parser = new GnuParser(options);
+			CommandLine commandLine = null;
+
 			try {
-				int exitCode = Run(typeof(CloudAdmin), args);
-				Environment.Exit(exitCode);
-			} catch (Exception) {
+				commandLine = parser.Parse(args);
+			} catch(Exception e) {
+				System.Console.Error.WriteLine("Error while parsing arguments: {0}", e.Message);
 				Environment.Exit(1);
+			}
+
+			string networkConf = commandLine.GetOptionValue("netconfig", "network.conf");
+			string networkPass = commandLine.GetOptionValue("netpassword");
+
+			bool failed = false;
+
+			// Check arguments that can be null,
+			if (networkConf == null) {
+				System.Console.Error.WriteLine("Error, no network configuration file/url given.");
+				failed = true;
+			}
+			if (networkPass == null) {
+				System.Console.Error.WriteLine("Error, no network password given.");
+				failed = true;
+			}
+
+			if (failed) {
+				HelpFormatter formatter = new HelpFormatter();
+				formatter.Width = System.Console.WindowWidth;
+				formatter.CommandLineSyntax = "cadmin";
+				formatter.Options = options;
+				formatter.PrintHelp(System.Console.Out, true);
+				Environment.Exit(0);
+			}
+
+			admin.HandleCommandLine(commandLine);
+
+			try {
+				NetworkProfile networkProfile = new NetworkProfile();
+				admin.SetActiveContext(new NetworkContext());
+				admin.Run();
+			} catch(Exception) {
+				admin.Shutdown();
 			}
 		}
 	}
