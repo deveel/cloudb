@@ -5,6 +5,7 @@ using System.Net.Sockets;
 
 using Deveel.Configuration;
 using Deveel.Data.Diagnostics;
+using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
 	public static class MachineNode {
@@ -37,7 +38,7 @@ namespace Deveel.Data.Net {
 			if (String.IsNullOrEmpty(storage) &&
 			   	netConfigSource != null) {
 				storage = netConfigSource.GetString("storage", "file");
-				return GetDelegator(storage, null);
+				return GetDelegator(storage, netConfigSource);
 			}
 			
 			return null;
@@ -59,7 +60,7 @@ namespace Deveel.Data.Net {
 			StringWriter wout = new StringWriter();
 			Options options = GetOptions();
 
-			CommandLine commandLine;
+			CommandLine commandLine = null;
 
 			bool failed = false;
 
@@ -103,6 +104,8 @@ namespace Deveel.Data.Net {
 				return 1;
 			}
 
+			TcpAdminService service = null;
+			
 			try {
 				// Get the node configuration file,
 				ConfigSource nodeConfigSource = new ConfigSource();
@@ -116,7 +119,7 @@ namespace Deveel.Data.Net {
 					netConfigSource = new NetworkConfigSource(stream);
 				}
 
-				string password = netConfigSource.GetString("network_password", null);
+				string password = nodeConfigSource.GetString("network_password", null);
 				if (password == null) {
 					Console.Out.WriteLine("Error: couldn't determine the network password.");
 					return 1;
@@ -152,20 +155,24 @@ namespace Deveel.Data.Net {
 					Console.Out.WriteLine("Error: couldn't parse port argument: " + port_arg);
 					return 1;
 				}
-
-				if (hostArg != null)
-					hostArg = hostArg + " ";
 				
 				string storage = commandLine.GetOptionValue("storage", null);
 				IAdminServiceDelegator delegator = GetDelegator(storage, netConfigSource);
 				
-				Console.Out.WriteLine("Machine Node, " + (hostArg != null ? hostArg : "") + "port: " + port_arg);
-				TcpAdminService inst = new TcpAdminService(delegator, host, port, password);
-				inst.Config = netConfigSource;
-				inst.Init();
+				Console.Out.WriteLine("Machine Node, " + host + " : " + port);
+				service = new TcpAdminService(delegator, host, port, password);
+				service.Config = netConfigSource;
+				service.Init();
+				
+				while(service.IsListening)
+					continue;
+				
 			} catch(Exception e) {
 				Console.Out.WriteLine(e.Message);
 				Console.Out.WriteLine(e.StackTrace);
+			} finally {
+				if (service != null)
+					service.Dispose();
 			}
 
 			return 0;

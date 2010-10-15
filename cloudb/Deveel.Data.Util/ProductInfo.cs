@@ -20,7 +20,7 @@ namespace Deveel.Data.Util {
 	/// <summary>
 	/// Provides information about the current product.
 	/// </summary>
-	internal sealed class ProductInfo {
+	public sealed class ProductInfo {
 		private ProductInfo() {
 		}
 
@@ -37,7 +37,7 @@ namespace Deveel.Data.Util {
 		public static ProductInfo Current {
 			get {
 				if (current == null)
-					current = GetProductInfo(typeof(IDatabase).Assembly);
+					current = GetProductInfo(Assembly.GetCallingAssembly());
 				return current;
 			}
 		}
@@ -60,6 +60,10 @@ namespace Deveel.Data.Util {
 
 		public string Description {
 			get { return description; }
+		}
+		
+		public static ProductInfo GetProductInfo(Type type) {
+			return GetProductInfo(type.Assembly);
 		}
 
 		private static ProductInfo GetProductInfo(Assembly assembly) {

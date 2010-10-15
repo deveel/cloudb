@@ -35,6 +35,10 @@ namespace Deveel.Data.Net {
 			}
 			set { serializer = value; }
 		}
+		
+		public bool IsListening {
+			get { return polling; }
+		}
 
 		private void Poll() {
 			try {				

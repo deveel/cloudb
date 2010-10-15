@@ -50,7 +50,6 @@
     <Compile Include="Deveel.Data.Net\CloudAdmin.cs" />
     <Compile Include="Deveel.Data.Net\ConnectCommand.cs" />
     <Compile Include="Deveel.Data.Net\NetworkContext.cs" />
-    <Compile Include="Deveel.Data.Net\StartRoleCommand.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

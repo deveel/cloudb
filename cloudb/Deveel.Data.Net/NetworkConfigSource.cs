@@ -134,6 +134,17 @@ namespace Deveel.Data.Net {
 			}
 		}
 		
+		public void AddNetworkNode(string address) {
+			if (String.IsNullOrEmpty(address))
+				throw new ArgumentNullException("address");
+			
+			IServiceAddress serviceAddress = ServiceAddresses.ParseString(address);
+			if (serviceAddress == null)
+				throw new ArgumentException("The address '" + address + "' is not supported.");
+			
+			AddNetworkNode(address);
+		}
+		
 		public void AddAllowedIp(string address) {
 			lock(stateLock) {
 				string[] addresses;

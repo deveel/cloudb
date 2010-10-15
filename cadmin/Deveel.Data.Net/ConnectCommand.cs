@@ -8,38 +8,53 @@ using Deveel.Data.Net.Client;
 namespace Deveel.Data.Net {
 	internal class ConnectCommand : Command {
 		public override CommandResultCode Execute(IExecutionContext context, CommandArguments args) {
-			//TODO:
+			if (!args.MoveNext())
+				return CommandResultCode.SyntaxError;
+			
+			string arg = args.Current;
+			int index = arg.LastIndexOf('.');
+			if (index != -1 && arg.Substring(index) == ".conf") {
+				NetworkConfigSource configSource = new NetworkConfigSource(arg);
+			} else {
+				
+			}
+			
 			return CommandResultCode.ExecutionFailed;
 		}
 
 		public override void RegisterOptions(Options options) {
+			OptionGroup group = new OptionGroup();
+			Option option = new Option("netconfig", true, "Either a path or URL of the location of the network " +
+			                                              "configuration file (default: 'network.conf').");
+			group.AddOption(option);
+			option = new Option("address", true, "The address to a node of the network (typically a manager).");
+			option.ArgumentCount = Option.UnlimitedValues;
+			group.AddOption(option);
+			options.AddOptionGroup(group);
+			
 			options.AddOption("protocol", true, "Specifies the connection protocol ('http' or 'tcp').");
-			options.AddOption("host", true, "The address to the network manager host.");
-			options.AddOption("port", true, "Inidicates the port of the manager service on the host.");
 			options.AddOption("format", true, "Format used to serialize messages to/from the manager " +
 			                                  "service ('xml', 'json' or 'binary')");
-			options.AddOption("netpassword", true, "The challenge password used in all connection handshaking " +
-			                                       "throughout the network. All machines must have the " +
-			                                       "same net password.");
-			options.AddOption("user", true, "");
-			options.AddOption("password", true, "");
+			options.AddOption("password", true, "The challenge password used in all connection handshaking " +
+			                                    "throughout the network.");
+			options.AddOption("user", true, "The name of the user to authenticate in a HTTP connection.");
 		}
 
 		public override bool HandleCommandLine(CommandLine commandLine) {
 			string protocol = commandLine.GetOptionValue("protocol", "tcp");
 			string host = commandLine.GetOptionValue("host", null);
-			string portArg = commandLine.GetOptionValue("port", null);
 			string format = commandLine.GetOptionValue("format", "binary");
+			
+			string netConfig = commandLine.GetOptionValue("netconfig", null);
+			string[] addresses = commandLine.GetOptionValues("address");
 
-			NetworkContext context;
-
-			if (String.IsNullOrEmpty(host) &&
-				String.IsNullOrEmpty(portArg))
+			if (String.IsNullOrEmpty(netConfig) &&
+			    (addresses == null || addresses.Length == 0))
 				return false;
 
 			IServiceConnector connector;
 			if (protocol.Equals("tcp", StringComparison.InvariantCultureIgnoreCase)) {
-				string netPassword = commandLine.GetOptionValue("netpassword");
+				string netPassword = commandLine.GetOptionValue("password");
 				if (String.IsNullOrEmpty(netPassword))
 					throw new ArgumentException("Netwrok password required for TCP/IP protocol.");
 
@@ -69,6 +84,17 @@ namespace Deveel.Data.Net {
 
 			connector.MessageSerializer = serializer;
 			NetworkProfile networkProfile = new NetworkProfile(connector);
+			if (String.IsNullOrEmpty(netConfig)) {
+				NetworkConfigSource configSource = new NetworkConfigSource();
+				for(int i = 0; i < addresses.Length; i++) {
+					configSource.AddNetworkNode(addresses[i]);
+				}
+				networkProfile.Configuration = configSource;
+			} else {
+				NetworkConfigSource configSource = new NetworkConfigSource(netConfig);
+				networkProfile.Configuration = configSource;
+			}
+			
 			((CloudAdmin)Application).SetNetworkContext(new NetworkContext(networkProfile));
 			return true;
 		}

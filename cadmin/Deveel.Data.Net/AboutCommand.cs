@@ -1,21 +1,21 @@
 ﻿using System;
 using System.IO;
-
 using Deveel.Console;
 using Deveel.Console.Commands;
+using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
 	internal class AboutCommand : Command {
 		public override CommandResultCode Execute(IExecutionContext context, CommandArguments args) {
 			if (!args.MoveNext()) {
-				//TODO:
+				ProductInfo product = ProductInfo.Current;
 				StringWriter writer = new StringWriter();
 				writer.WriteLine("---------------------------------------------------------------------------");
-				writer.WriteLine(" {0} {1} {2}");
+				writer.WriteLine(" {0} {1} {2}", product.Title, product.Version, product.Copyright);
 				writer.WriteLine();
 				writer.WriteLine(" CloudB Admin is provided AS IS and comes with ABSOLUTELY NO WARRANTY");
 				writer.WriteLine(" This is free software, and you are welcome to redistribute it under the");
-				writer.WriteLine(" conditions of the {License}");
+				writer.WriteLine(" conditions of the Lesser GNU Public License.");
 				writer.WriteLine("---------------------------------------------------------------------------");
 				Out.Write(writer.ToString());
 				return CommandResultCode.Success;
