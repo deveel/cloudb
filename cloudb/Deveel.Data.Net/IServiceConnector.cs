@@ -4,7 +4,7 @@ using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
 	public interface IServiceConnector : IDisposable {
-		IMessageSerializer MessageSerializer { get; }
+		IMessageSerializer MessageSerializer { get; set; }
 		
 		
 		void Close();
