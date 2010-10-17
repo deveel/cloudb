@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 using Deveel.Configuration;
 using Deveel.Console;
@@ -11,27 +12,127 @@ namespace Deveel.Data.Net {
 			if (!args.MoveNext())
 				return CommandResultCode.SyntaxError;
 			
-			string arg = args.Current;
-			int index = arg.LastIndexOf('.');
-			if (index != -1 && arg.Substring(index) == ".conf") {
-				NetworkConfigSource configSource = new NetworkConfigSource(arg);
-			} else {
-				
+			if (args.Current != "to")
+				return CommandResultCode.SyntaxError;
+
+			if (!args.MoveNext())
+				return CommandResultCode.SyntaxError;
+
+			string address = args.Current;
+
+			NetworkConfigSource configSource = new NetworkConfigSource();
+
+			try {
+				configSource.AddNetworkNode(address);
+			} catch(Exception e) {
+				Error.WriteLine("The address '" + address + "' is invalid: " + e.Message);
+				return CommandResultCode.ExecutionFailed;
 			}
+
+			string protocol = "tcp";
+			string credentials = String.Empty;
+			string format = "binary";
+
+			if (args.MoveNext()) {
+				if (args.Current == "identified") {
+					if (!args.MoveNext())
+						return CommandResultCode.SyntaxError;
+					if (args.Current != "by")
+						return CommandResultCode.SyntaxError;
+					if (!args.MoveNext())
+						return CommandResultCode.SyntaxError;
+
+					credentials = args.Current;
+
+					if (args.MoveNext()) {
+						if (args.Current != "on")
+							return CommandResultCode.SyntaxError;
+
+						protocol = args.Current;
+
+						if (args.MoveNext()) {
+							if (args.Current != "with")
+								return CommandResultCode.SyntaxError;
+
+							format = args.Current;
+						}
+					}
+				} else if (args.Current == "on") {
+					if (!args.MoveNext())
+						return CommandResultCode.SyntaxError;
+
+					protocol = args.Current;
+
+					if (args.MoveNext()) {
+						if (args.Current != "with")
+							return CommandResultCode.SyntaxError;
+
+						format = args.Current;
+					}
+				} else if (args.Current == "with") {
+					if (!args.MoveNext())
+						return CommandResultCode.SyntaxError;
+
+					format = args.Current;
+				} else {
+					return CommandResultCode.SyntaxError;
+				}
+			}
+
+			//TODO: is password is null, ask ...
+			if (String.IsNullOrEmpty(credentials))
+				return CommandResultCode.SyntaxError;
+
+			IServiceConnector connector;
+			if (protocol == "tcp") {
+				connector = new TcpServiceConnector(credentials);
+			} else if (protocol == "http") {
+				string userName = credentials;
+				string password = null;
+				int index = credentials.IndexOf(':');
+				if (index != -1) {
+					password = credentials.Substring(index + 1);
+					userName = credentials.Substring(0, index);
+				}
+				connector = new HttpServiceConnector(userName, password);
+			} else {
+				return CommandResultCode.SyntaxError;
+			}
+
+			IMessageSerializer serializer;
+
+			if (format == "binary") {
+				serializer = new BinaryRpcMessageSerializer();
+			} else if (format == "xml") {
+				serializer = new XmlRpcMessageSerializer();
+			} else if (format == "json") {
+				serializer = new JsonRpcMessageSerializer();
+			} else {
+				return CommandResultCode.SyntaxError;
+			}
+
+			connector.MessageSerializer = serializer;
+
+			NetworkProfile networkProfile = new NetworkProfile(connector);
+			networkProfile.Configuration = configSource;
 			
-			return CommandResultCode.ExecutionFailed;
+			((CloudAdmin)Application).SetNetworkContext(new NetworkContext(networkProfile));
+			return CommandResultCode.Success;
+		}
+
+		public override IEnumerator<string> Complete(CommandDispatcher dispatcher, string partialCommand, string lastWord) {
+			List<string> list = new List<string>();
+			if (lastWord == "connect") {
+				list.Add("to");
+			} else if (lastWord == "identified") {
+				list.Add("by");
+			}
+
+			return list.GetEnumerator();
 		}
 
 		public override void RegisterOptions(Options options) {
-			OptionGroup group = new OptionGroup();
-			Option option = new Option("netconfig", true, "Either a path or URL of the location of the network " +
-			                                              "configuration file (default: 'network.conf').");
-			group.AddOption(option);
-			option = new Option("address", true, "The address to a node of the network (typically a manager).");
-			option.ArgumentCount = Option.UnlimitedValues;
-			group.AddOption(option);
-			options.AddOptionGroup(group);
-			
+			options.AddOption("address", true, "The address to a node of the network (typically a manager).");			
 			options.AddOption("protocol", true, "Specifies the connection protocol ('http' or 'tcp').");
 			options.AddOption("format", true, "Format used to serialize messages to/from the manager " +
 			                                  "service ('xml', 'json' or 'binary')");
@@ -42,14 +143,10 @@ namespace Deveel.Data.Net {
 
 		public override bool HandleCommandLine(CommandLine commandLine) {
 			string protocol = commandLine.GetOptionValue("protocol", "tcp");
-			string host = commandLine.GetOptionValue("host", null);
+			string address = commandLine.GetOptionValue("address", null);
 			string format = commandLine.GetOptionValue("format", "binary");
-			
-			string netConfig = commandLine.GetOptionValue("netconfig", null);
-			string[] addresses = commandLine.GetOptionValues("address");
 
-			if (String.IsNullOrEmpty(netConfig) &&
-			    (addresses == null || addresses.Length == 0))
+			if (String.IsNullOrEmpty(address))
 				return false;
 
 			IServiceConnector connector;
@@ -84,18 +181,12 @@ namespace Deveel.Data.Net {
 
 			connector.MessageSerializer = serializer;
 			NetworkProfile networkProfile = new NetworkProfile(connector);
-			if (String.IsNullOrEmpty(netConfig)) {
-				NetworkConfigSource configSource = new NetworkConfigSource();
-				for(int i = 0; i < addresses.Length; i++) {
-					configSource.AddNetworkNode(addresses[i]);
-				}
-				networkProfile.Configuration = configSource;
-			} else {
-				NetworkConfigSource configSource = new NetworkConfigSource(netConfig);
-				networkProfile.Configuration = configSource;
-			}
-			
-			((CloudAdmin)Application).SetNetworkContext(new NetworkContext(networkProfile));
+
+			NetworkConfigSource configSource = new NetworkConfigSource();
+			configSource.AddNetworkNode(address);
+			networkProfile.Configuration = configSource;
+
+			((CloudAdmin) Application).SetNetworkContext(new NetworkContext(networkProfile));
 			return true;
 		}
 

@@ -1,0 +1,51 @@
+﻿<?xml version="1.0"?>
+<project default="all">
+	<include buildfile="../cloudb.build" />	
+	
+	<property name="project.name" value="cloudb" />
+	<property name="project.file" value="cloudb.dll" />
+	<property name="project.version" value="1.0.0" />
+	
+	<target name="all">
+		<echo message="Building default target " />
+	</target>
+	
+	<!-- ================================= 
+		target: build              
+	================================= -->
+	<target name="build" description="Builds the project into binary library">
+		<csc target="library" output="${build.output}/${project.file}">
+			<sources>
+				<include name="Properties/AssemblyInfo.cs" />
+				<include name="ComponentAce.Compression.Libs.zlib/*.cs"/>
+				<include name="Deveel.Data/*.cs" />
+				<include name="Deveel.Data.Caching/*.cs" />
+				<include name="Deveel.Data.Diagnostics/*.cs" />
+				<include name="Deveel.Data.Net/*.cs" />	
+				<include name="Deveel.Data.Net.Client/*.cs" />
+				<include name="Deveel.Data.Store/*.cs" />
+				<include name="Deveel.Data.Util/*.cs" />
+				<include name="Deveel.Json/*.cs" />
+			</sources>
+			<references>
+				<include name="System.dll" />
+			</references>
+		</csc>
+	</target>
+	
+	<target name="clean">
+		<delete>
+			<fileset basedir="${build.output}">
+				<include name="${project.file}" />
+			</fileset>
+		</delete>
+	</target>	
+	
+	<!-- ================================= 
+		target: tar              
+	================================= -->
+	<target name="tar" depends="build" description="description">
+		
+	</target>
+	
+</project>

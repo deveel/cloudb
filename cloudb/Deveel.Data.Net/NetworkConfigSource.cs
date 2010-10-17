@@ -142,7 +142,7 @@ namespace Deveel.Data.Net {
 			if (serviceAddress == null)
 				throw new ArgumentException("The address '" + address + "' is not supported.");
 			
-			AddNetworkNode(address);
+			AddNetworkNode(serviceAddress);
 		}
 		
 		public void AddAllowedIp(string address) {
