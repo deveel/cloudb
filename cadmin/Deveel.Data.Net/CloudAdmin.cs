@@ -12,6 +12,12 @@ namespace Deveel.Data.Net {
 
 		protected override void RegisterCommands() {
 			Commands.Register(typeof(ConnectCommand));
+			Commands.Register(typeof(DisconnectCommand));
+			Commands.Register(typeof(ShowCommand));
+			Commands.Register(typeof(RefreshCommand));
+			
+			Commands.Register(typeof(InitializeCommand));
+			Commands.Register(typeof(DisposeCommand));
 		}
 
 		[STAThread]

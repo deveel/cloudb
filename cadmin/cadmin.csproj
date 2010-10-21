@@ -49,7 +49,12 @@
     <Compile Include="Deveel.Data.Net\AboutCommand.cs" />
     <Compile Include="Deveel.Data.Net\CloudAdmin.cs" />
     <Compile Include="Deveel.Data.Net\ConnectCommand.cs" />
+    <Compile Include="Deveel.Data.Net\DisconnectCommand.cs" />
+    <Compile Include="Deveel.Data.Net\DisposeCommand.cs" />
+    <Compile Include="Deveel.Data.Net\InitializeCommand.cs" />
     <Compile Include="Deveel.Data.Net\NetworkContext.cs" />
+    <Compile Include="Deveel.Data.Net\RefreshCommand.cs" />
+    <Compile Include="Deveel.Data.Net\ShowCommand.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -9,6 +9,12 @@ using Deveel.Data.Net.Client;
 namespace Deveel.Data.Net {
 	internal class ConnectCommand : Command {
 		public override CommandResultCode Execute(IExecutionContext context, CommandArguments args) {
+			if (Application.ActiveContext != null && Application.ActiveContext.IsIsolated) {
+				Error.WriteLine("a context is already opened: try to disconnect first");
+				Error.WriteLine();
+				return CommandResultCode.ExecutionFailed;
+			}
+			
 			if (!args.MoveNext())
 				return CommandResultCode.SyntaxError;
 			
@@ -79,12 +85,14 @@ namespace Deveel.Data.Net {
 				}
 			}
 
-			//TODO: is password is null, ask ...
-			if (String.IsNullOrEmpty(credentials))
-				return CommandResultCode.SyntaxError;
-
 			IServiceConnector connector;
 			if (protocol == "tcp") {
+				if (String.IsNullOrEmpty(credentials)) {
+					while(String.IsNullOrEmpty(credentials = Readline.ReadPassword("password: "))) {
+						Error.WriteLine("please provide a valid password...");
+					}
+					Out.WriteLine();
+				}
 				connector = new TcpServiceConnector(credentials);
 			} else if (protocol == "http") {
 				string userName = credentials;
@@ -94,6 +102,15 @@ namespace Deveel.Data.Net {
 					password = credentials.Substring(index + 1);
 					userName = credentials.Substring(0, index);
 				}
+				
+				if (String.IsNullOrEmpty(password)) {
+					while(String.IsNullOrEmpty(password = Readline.ReadPassword("password: "))) {
+						Error.WriteLine("please provide a valid password...");
+					}
+					
+					Out.WriteLine();
+				}
+				
 				connector = new HttpServiceConnector(userName, password);
 			} else {
 				return CommandResultCode.SyntaxError;
@@ -116,7 +133,13 @@ namespace Deveel.Data.Net {
 			NetworkProfile networkProfile = new NetworkProfile(connector);
 			networkProfile.Configuration = configSource;
 			
+			//TODO: test the connection is correct ...
+			
 			((CloudAdmin)Application).SetNetworkContext(new NetworkContext(networkProfile));
+			
+			Out.WriteLine("connected successfully to {0}" , address);
+			Out.WriteLine();
+			
 			return CommandResultCode.Success;
 		}
 
