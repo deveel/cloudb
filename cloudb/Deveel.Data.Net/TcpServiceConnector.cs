@@ -101,7 +101,7 @@ namespace Deveel.Data.Net {
 				// If there isn't, establish a connection,
 				if (!connections.TryGetValue(address, out c)) {
 					IPEndPoint endPoint = address.ToEndPoint();
-					Socket socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.IP);
+					Socket socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 #if DEBUG
 					socket.ReceiveTimeout = Int32.MaxValue;
 #else
@@ -237,6 +237,7 @@ namespace Deveel.Data.Net {
 						((ResponseMessageStream)responseMessage).AddMessage(inner);
 					} else {
 						responseMessage = messageStream.CreateResponse();
+						responseMessage.Arguments.Add(error);
 					}
 
 					return responseMessage;

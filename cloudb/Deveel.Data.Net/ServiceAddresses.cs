@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 
 namespace Deveel.Data.Net {
-	internal static class ServiceAddresses {
+	public static class ServiceAddresses {
 		private static readonly object scanLock = new object();
 		private static readonly Dictionary<Type, IServiceAddressHandler> handlers = new Dictionary<Type, IServiceAddressHandler>();
 		private static bool scanned;

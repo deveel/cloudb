@@ -294,7 +294,15 @@ namespace Deveel.Data.Net.Client {
 		}
 
 		protected override void Serialize(Message message, BinaryWriter writer) {
-			writer.Write(message.Name);
+			string messageName = message.Name;
+			if (String.IsNullOrEmpty(messageName)) {
+				if (message is RequestMessage)
+					throw new ArgumentException("A request message must have a name.");
+				
+				messageName = ((ResponseMessage)message).Request.Name;
+			}
+			
+			writer.Write(messageName);
 
 			int sz = message.Arguments.Count;
 			writer.Write(sz);

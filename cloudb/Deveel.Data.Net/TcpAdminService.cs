@@ -196,40 +196,40 @@ namespace Deveel.Data.Net {
 
 						// Read the message stream object
 						IMessageSerializer serializer = service.MessageSerializer;
-						RequestMessage message_stream = (RequestMessage) serializer.Deserialize(reader.BaseStream, MessageType.Response);
+						RequestMessage requestMessage = (RequestMessage) serializer.Deserialize(reader.BaseStream, MessageType.Request);
 
-						Message message_out;
+						ResponseMessage responseMessage;
 
 						// For analytics
 						DateTime benchmark_start = DateTime.Now;
 
 						// Destined for the administration module,
 						if (destination == 'a') {
-							message_out = service.Processor.Process(message_stream);
+							responseMessage = service.Processor.Process(requestMessage);
 						}
 							// For a block service in this machine
 						else if (destination == 'b') {
 							if (service.Block == null) {
-								message_out = NoServiceError(message_stream);
+								responseMessage = NoServiceError(requestMessage);
 							} else {
-								message_out = service.Block.Processor.Process(message_stream);
+								responseMessage = service.Block.Processor.Process(requestMessage);
 							}
 
 						}
 							// For a manager service in this machine
 						else if (destination == 'm') {
 							if (service.Manager == null) {
-								message_out = NoServiceError(message_stream);
+								responseMessage = NoServiceError(requestMessage);
 							} else {
-								message_out = service.Manager.Processor.Process(message_stream);
+								responseMessage = service.Manager.Processor.Process(requestMessage);
 							}
 						}
 							// For a root service in this machine
 						else if (destination == 'r') {
 							if (service.Root == null) {
-								message_out = NoServiceError(message_stream);
+								responseMessage = NoServiceError(requestMessage);
 							} else {
-								message_out = service.Root.Processor.Process(message_stream);
+								responseMessage = service.Root.Processor.Process(requestMessage);
 							}
 						} else {
 							throw new IOException("Unknown destination: " + destination);
@@ -241,7 +241,7 @@ namespace Deveel.Data.Net {
 						service.Analytics.AddEvent(benchmark_end, time_took);
 
 						// Write and flush the output message,
-						serializer.Serialize(message_out, writer.BaseStream);
+						serializer.Serialize(responseMessage, writer.BaseStream);
 						writer.Flush();
 
 					} // while (true)
