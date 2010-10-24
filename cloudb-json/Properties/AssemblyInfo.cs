@@ -1,17 +1,16 @@
-﻿using System;
-using System.Reflection;
+﻿using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("cloudb")]
-[assembly: AssemblyDescription("CloudB Framework Library")]
+[assembly: AssemblyTitle("cloudb-json")]
+[assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Deveel")]
-[assembly: AssemblyProduct("cloudb")]
-[assembly: AssemblyCopyright("Copyright © Deveel 2010")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("cloudb-json")]
+[assembly: AssemblyCopyright("Copyright ©  2010")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -21,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("34f09be5-3a6b-42a9-b1e9-eab71eaef78e")]
+[assembly: Guid("e544128a-f943-41df-873f-74a776383664")]
 
 // Version information for an assembly consists of the following four values:
 //
@@ -33,10 +32,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("0.9.5.0")]
-[assembly: AssemblyFileVersion("0.9.5.0")]
-
-[assembly: CLSCompliant(true)]
-
-[assembly: InternalsVisibleTo("cloudb-nunit")]
-[assembly: InternalsVisibleTo("cloudb-json")]
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]

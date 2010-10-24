@@ -5,11 +5,11 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProductVersion>9.0.30729</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{565F703F-AE85-4414-96D6-663BF78613C2}</ProjectGuid>
-    <OutputType>Exe</OutputType>
+    <ProjectGuid>{55B63423-D06B-4B26-A668-32E07EBE7234}</ProjectGuid>
+    <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Deveel.Data</RootNamespace>
-    <AssemblyName>cadmin</AssemblyName>
+    <RootNamespace>cloudb_json</RootNamespace>
+    <AssemblyName>cloudb-json</AssemblyName>
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -31,30 +31,19 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="deveel-cli, Version=1.0.3939.39851, Culture=neutral, processorArchitecture=x86">
+    <Reference Include="Newtonsoft.Json.Net20, Version=3.5.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\libs\deveel-cli.dll</HintPath>
-    </Reference>
-    <Reference Include="deveelrl, Version=1.2.0.37360, Culture=neutral, PublicKeyToken=9fbac9d9ab2b152f, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\libs\deveelrl.dll</HintPath>
-    </Reference>
-    <Reference Include="shellapp, Version=0.7.4.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\libs\shellapp.dll</HintPath>
+      <HintPath>..\libs\Newtonsoft.Json.Net20.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Deveel.Data.Net\AboutCommand.cs" />
-    <Compile Include="Deveel.Data.Net\CloudAdmin.cs" />
-    <Compile Include="Deveel.Data.Net\ConnectCommand.cs" />
-    <Compile Include="Deveel.Data.Net\DisconnectCommand.cs" />
-    <Compile Include="Deveel.Data.Net\DisposeCommand.cs" />
-    <Compile Include="Deveel.Data.Net\InitializeCommand.cs" />
-    <Compile Include="Deveel.Data.Net\NetworkContext.cs" />
-    <Compile Include="Deveel.Data.Net\RefreshCommand.cs" />
-    <Compile Include="Deveel.Data.Net\ShowCommand.cs" />
+    <Compile Include="Deveel.Data.Net.Client\JsonRestMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Client\IJsonRpcTypeResolver.cs" />
+    <Compile Include="Deveel.Data.Net.Client\JsonMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Client\JsonRpcMessageSerializer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

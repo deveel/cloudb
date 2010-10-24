@@ -2,6 +2,8 @@
 using System.IO;
 using System.Text;
 
+using Newtonsoft.Json;
+
 namespace Deveel.Data.Net.Client {
 	public abstract class JsonMessageSerializer : ITextMessageSerializer {
 		private Encoding encoding;
@@ -33,12 +35,12 @@ namespace Deveel.Data.Net.Client {
 			if (!output.CanWrite)
 				throw new ArgumentException("The output stream is not writeable.");
 
-			StreamWriter writer = new StreamWriter(output, ContentEncoding);
+			JsonTextWriter writer = new JsonTextWriter(new StreamWriter(output, ContentEncoding));
 			Serialize(message, writer);
 			writer.Flush();
 		}
 
-		protected abstract void Serialize(Message message, TextWriter writer);
+		protected abstract void Serialize(Message message, JsonTextWriter writer);
 
 		public Message Deserialize(Stream input, MessageType messageType) {
 			if (input == null)
@@ -46,10 +48,10 @@ namespace Deveel.Data.Net.Client {
 			if (!input.CanRead)
 				throw new ArgumentException("The input stream is not readable.");
 
-			return Deserialize(new StreamReader(input, ContentEncoding), messageType);
+			return Deserialize(new JsonTextReader(new StreamReader(input, ContentEncoding)), messageType);
 		}
 
-		protected abstract Message Deserialize(TextReader reader, MessageType messageType);
+		protected abstract Message Deserialize(JsonTextReader reader, MessageType messageType);
 
 		string ITextMessageSerializer.ContentEncoding {
 			get { return ContentEncoding.BodyName; }

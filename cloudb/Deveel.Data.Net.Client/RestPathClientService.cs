@@ -23,31 +23,18 @@ namespace Deveel.Data.Net.Client {
 		public override IMessageSerializer MessageSerializer {
 			get { return base.MessageSerializer; }
 			set {
-				if (!(value is XmlRestMessageSerializer) &&
-					!(value is JsonRestMessageSerializer))
-					throw new ArgumentException("Format not supported.");
+				if (value == null)
+					throw new ArgumentNullException("value");
+				if (!(value is IRestMessageSerializer))
+					throw new ArgumentException("The given serializer is not REST compatible.");
 
-				if (value is XmlRestMessageSerializer)
-					format = RestFormat.Xml;
-				else if (value is JsonRestMessageSerializer)
-					format = RestFormat.Json;
-
+				format = ((IRestMessageSerializer) value).Format;
 				base.MessageSerializer = value;
 			}
 		}
 
 		public RestFormat Format {
 			get { return format; }
-			set {
-				if (value != format) {
-					if (value == RestFormat.Xml)
-						base.MessageSerializer = new XmlRestMessageSerializer();
-					else if (value == RestFormat.Json)
-						base.MessageSerializer = new JsonRestMessageSerializer();
-				}
-
-				format = value;
-			}
 		}
 
 		private void Poll() {

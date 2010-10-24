@@ -8,6 +8,20 @@ using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
 	internal class ConnectCommand : Command {
+		private const string JsonSerializerTypeName = "Deveel.Data.Net.Client.JsonRpcMessageSerializer, cloudb-json";
+
+		private static readonly IMessageSerializer JsonRpcMessageSerializer;
+
+		static ConnectCommand() {
+			Type jsonSerializerType = Type.GetType(JsonSerializerTypeName, false, true);
+			if (jsonSerializerType != null) {
+				try {
+					JsonRpcMessageSerializer = (IMessageSerializer) Activator.CreateInstance(jsonSerializerType, true);
+				} catch {
+				}
+			}
+		}
+
 		public override CommandResultCode Execute(IExecutionContext context, CommandArguments args) {
 			if (Application.ActiveContext != null && Application.ActiveContext.IsIsolated) {
 				Error.WriteLine("a context is already opened: try to disconnect first");
@@ -123,7 +137,12 @@ namespace Deveel.Data.Net {
 			} else if (format == "xml") {
 				serializer = new XmlRpcMessageSerializer();
 			} else if (format == "json") {
-				serializer = new JsonRpcMessageSerializer();
+				if (JsonRpcMessageSerializer == null) {
+					Error.WriteLine("JSON serializer was not installed.");
+					Error.WriteLine();
+					return CommandResultCode.ExecutionFailed;
+				}
+				serializer = JsonRpcMessageSerializer;
 			} else {
 				return CommandResultCode.SyntaxError;
 			}
@@ -144,24 +163,52 @@ namespace Deveel.Data.Net {
 		}
 
 		public override IEnumerator<string> Complete(CommandDispatcher dispatcher, string partialCommand, string lastWord) {
-			List<string> list = new List<string>();
-			if (lastWord == "connect") {
-				list.Add("to");
-			} else if (lastWord == "identified") {
-				list.Add("by");
+			string[] sp = partialCommand.Trim().Split(' ');
+
+			IEnumerator<string> complete = null;
+
+			if (sp.Length >= 1) {
+				List<string> list = new List<string>();
+
+				string s = sp[sp.Length - 1].ToLower();
+				if (s == "connect") {
+					list.Add("to");
+				} else if (s == "identified") {
+					list.Add("by");
+				} else if (s == "to") {
+					//TODO: load the saved addresses ...
+				} else if (s == "on") {
+					list.Add("http");
+					list.Add("tcp");
+				} else if (s == "with") {
+					list.Add("xml");
+					list.Add("json");
+					list.Add("binary");
+				} else if (sp.Length == 3 && sp[1] == "to") {
+					list.Add("with");
+					list.Add("on");
+				} else if (s == "http" || s == "tcp") {
+					list.Add("with");
+					list.Add("identified");
+				} else if (s == "xml" || s == "json" || s == "binary") {
+					list.Add("on");
+					list.Add("identified");
+				}
+
+				complete = new Collections.SortedMatchEnumerator(lastWord, list, StringComparer.InvariantCultureIgnoreCase);
 			}
 
-			return list.GetEnumerator();
+			return complete;
 		}
 
 		public override void RegisterOptions(Options options) {
-			options.AddOption("address", true, "The address to a node of the network (typically a manager).");			
-			options.AddOption("protocol", true, "Specifies the connection protocol ('http' or 'tcp').");
-			options.AddOption("format", true, "Format used to serialize messages to/from the manager " +
+			options.AddOption("h", "address", true, "The address to a node of the network (typically a manager).");			
+			options.AddOption("x", "protocol", true, "Specifies the connection protocol ('http' or 'tcp').");
+			options.AddOption("f", "format", true, "Format used to serialize messages to/from the manager " +
 			                                  "service ('xml', 'json' or 'binary')");
-			options.AddOption("password", true, "The challenge password used in all connection handshaking " +
+			options.AddOption("p", "password", true, "The challenge password used in all connection handshaking " +
 			                                    "throughout the network.");
-			options.AddOption("user", true, "The name of the user to authenticate in a HTTP connection.");
+			options.AddOption("u", "user", true, "The name of the user to authenticate in a HTTP connection.");
 		}
 
 		public override bool HandleCommandLine(CommandLine commandLine) {
@@ -197,7 +244,9 @@ namespace Deveel.Data.Net {
 			} else if (format.Equals("binary", StringComparison.InvariantCultureIgnoreCase)) {
 				serializer = new BinaryRpcMessageSerializer();
 			} else if (format.Equals("json", StringComparison.InvariantCultureIgnoreCase)) {
-				serializer = new JsonRpcMessageSerializer();
+				if (JsonRpcMessageSerializer == null)
+					throw new ApplicationException("The JSON serializer was not installed.");
+				serializer = JsonRpcMessageSerializer;
 			} else {
 				throw new ArgumentException("Invalid message format.");
 			}

@@ -68,10 +68,10 @@
   <ItemGroup>
     <Compile Include="Deveel.Data.Diagnostics\SimpleConsoleLogger.cs" />
     <Compile Include="Deveel.Data.Net\FakeAdminService.cs">
-      <SubType>Component</SubType>
     </Compile>
     <Compile Include="Deveel.Data.Net\HttpMessageFormat.cs" />
     <Compile Include="Deveel.Data.Net\HttpNetworkTest.cs" />
+    <Compile Include="Deveel.Data.Net\JsonRpcMessageSerializerTest.cs" />
     <Compile Include="Deveel.Data.Net\NetworkStoreType.cs" />
     <Compile Include="Deveel.Data.Net\FakeServiceAddress.cs" />
     <Compile Include="Deveel.Data.Net\FakeServiceAddressHandler.cs" />
@@ -86,6 +86,10 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\cloudb-json\cloudb-json.csproj">
+      <Project>{55B63423-D06B-4B26-A668-32E07EBE7234}</Project>
+      <Name>cloudb-json</Name>
+    </ProjectReference>
     <ProjectReference Include="..\cloudbase\cloudbase.csproj">
       <Project>{A2099A92-DA13-4440-B2F9-7890750E0E70}</Project>
       <Name>cloudbase</Name>

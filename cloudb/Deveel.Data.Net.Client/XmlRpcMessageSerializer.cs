@@ -827,6 +827,7 @@ namespace Deveel.Data.Net.Client {
 					writer.WriteEndElement();
 				} else if (elementName == "serviceAddress") {
 					IServiceAddress address = (IServiceAddress)value;
+					serializer.WriteValue(address.ToString(), null, writer);
 				} else if (elementName == "singleNodeSet" ||
 				           elementName == "compressedNodeSet") {
 					NodeSet nodeSet = (NodeSet)value;
@@ -854,8 +855,7 @@ namespace Deveel.Data.Net.Client {
 				throw new FormatException();
 			}
 			
-			public object ReadValue(XmlReader reader, Type type)
-			{
+			public object ReadValue(XmlReader reader, Type type) {
 				throw new NotImplementedException();
 			}
 		}

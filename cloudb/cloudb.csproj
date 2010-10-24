@@ -79,11 +79,9 @@
     <Compile Include="Deveel.Data.Net.Client\IMessageStream.cs" />
     <Compile Include="Deveel.Data.Net.Client\IPathClientAuthorize.cs" />
     <Compile Include="Deveel.Data.Net.Client\IMessageStreamSupport.cs" />
+    <Compile Include="Deveel.Data.Net.Client\IRestMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Client\ITextMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Client\IXmlRpcTypeResolver.cs" />
-    <Compile Include="Deveel.Data.Net.Client\JsonMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net.Client\JsonRestMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net.Client\JsonRpcMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Client\Message.cs" />
     <Compile Include="Deveel.Data.Net.Client\MessageArgument.cs" />
     <Compile Include="Deveel.Data.Net.Client\MessageArguments.cs" />
@@ -275,11 +273,6 @@
     <Compile Include="Deveel.Data\TreeSystemTransaction.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Deveel.Json\JSONArray.cs" />
-    <Compile Include="Deveel.Json\JSONException.cs" />
-    <Compile Include="Deveel.Json\JSONObject.cs" />
-    <Compile Include="Deveel.Json\JSONReader.cs" />
-    <Compile Include="Deveel.Json\JSONSyntaxException.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <None Include="Deveel.Data.Net\ChangeLog" />
   </ItemGroup>
