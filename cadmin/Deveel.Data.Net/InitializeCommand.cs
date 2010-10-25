@@ -44,7 +44,7 @@ namespace Deveel.Data.Net {
 			if (!role.Equals("manager") && current_manager == null) {
 				Error.WriteLine("Error: Can not assign block or root role when no manager is available on the network.");
 				return CommandResultCode.ExecutionFailed;
-			} else if (current_manager != null) {
+			} else if (role.Equals("manager") && current_manager != null) {
 				Out.WriteLine("Error: Can not assign manager because manager role already assigned.");
 				return CommandResultCode.ExecutionFailed;
 			}
@@ -75,7 +75,7 @@ namespace Deveel.Data.Net {
 				context.Network.StartService(address, ServiceType.Manager);
 			} else if (role.Equals("root")) {
 				context.Network.StartService(address, ServiceType.Root);
-				context.Network.RegisterBlock(address);
+				context.Network.RegisterRoot(address);
 			} else {
 				Error.WriteLine("Unknown role " + role);
 				return CommandResultCode.SyntaxError;
@@ -103,6 +103,9 @@ namespace Deveel.Data.Net {
 				return CommandResultCode.SyntaxError;
 			
 			if (args.Current != "on")
+				return CommandResultCode.SyntaxError;
+			
+			if (!args.MoveNext())
 				return CommandResultCode.SyntaxError;
 			
 			string address = args.Current;

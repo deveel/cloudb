@@ -37,31 +37,31 @@ namespace Deveel.Data.Net {
 			// 1. The manager can not be relieved until all block and root servers have
 			//    been.
 
-			MachineProfile current_manager = context.Network.ManagerServer;
-			MachineProfile[] current_roots = context.Network.RootServers;
-			MachineProfile[] current_blocks = context.Network.BlockServers;
+			MachineProfile currentManager = context.Network.ManagerServer;
+			MachineProfile[] currentRoots = context.Network.RootServers;
+			MachineProfile[] currentBlocks = context.Network.BlockServers;
 			if (role.Equals("manager")) {
-				if (current_roots.Length > 0 ||
-					current_blocks.Length > 0) {
+				if (currentRoots.Length > 0 ||
+					currentBlocks.Length > 0) {
 					Error.WriteLine("Error: Can not relieve manager role when there are existing block and root assignments.");
 					return CommandResultCode.ExecutionFailed;
 				}
 			}
 
 			// Check that the machine is performing the role,
-			bool is_performing = false;
+			bool isPerforming = false;
 			if (role.Equals("block")) {
-				is_performing = p.IsBlock;
+				isPerforming = p.IsBlock;
 			} else if (role.Equals("manager")) {
-				is_performing = p.IsManager;
+				isPerforming = p.IsManager;
 			} else if (role.Equals("root")) {
-				is_performing = p.IsRoot;
+				isPerforming = p.IsRoot;
 			} else {
 				Error.WriteLine("Unknown role " + role);
 				return CommandResultCode.SyntaxError;
 			}
 
-			if (!is_performing) {
+			if (!isPerforming) {
 				Error.WriteLine("Error: The machine is not assigned to the " + role + " role.");
 				return CommandResultCode.ExecutionFailed;
 			}

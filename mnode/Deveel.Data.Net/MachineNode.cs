@@ -2,6 +2,11 @@
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
+
+#if UNIX
+using Mono.Unix.Native;
+#endif
 
 using Deveel.Configuration;
 using Deveel.Data.Diagnostics;
@@ -9,6 +14,8 @@ using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
 	public static class MachineNode {
+		private static TcpAdminService service = null;
+				
 		private static Options GetOptions() {
 			Options options = new Options();
 			options.AddOption("nodeconfig", true, "The node configuration file (default: node.conf).");
@@ -43,9 +50,20 @@ namespace Deveel.Data.Net {
 			
 			return null;
 		}
+		
+		private static void SetEventHandlers() {
+#if WIN32
+			SetConsoleCtrlHandler(new HandlerRoutine(ConsoleCtrlCheck), true);
+#elif UNIX			
+			System.Threading.Thread signalThread = new System.Threading.Thread(CheckSignal);
+			signalThread.Start();
+#endif
+		}
 
 		[STAThread]
 		private static int Main(string[] args) {
+			SetEventHandlers();
+			
 			ProductInfo libInfo = ProductInfo.GetProductInfo(typeof(TcpAdminService));
 			ProductInfo nodeInfo = ProductInfo.GetProductInfo(typeof(MachineNode));
 
@@ -103,8 +121,6 @@ namespace Deveel.Data.Net {
 				Console.Out.WriteLine(wout.ToString());
 				return 1;
 			}
-
-			TcpAdminService service = null;
 			
 			try {
 				// Get the node configuration file,
@@ -177,5 +193,47 @@ namespace Deveel.Data.Net {
 
 			return 0;
 		}
+		
+#if WIN32
+		[DllImport("kernel32")]
+		private static extern bool SetConsoleCtrlHandler(HandlerRoutine Handler, bool Add);
+		
+		private delegate bool HandlerRoutine(CtrlTypes CtrlType);
+		
+		private enum CtrlTypes {
+			CTRL_C_EVENT = 0,
+			CTRL_BREAK_EVENT,
+			CTRL_CLOSE_EVENT,
+			CTRL_LOGOFF_EVENT = 5,
+			CTRL_SHUTDOWN_EVENT
+		}
+		
+		private static bool ConsoleCtrlCheck(CtrlTypes ctrlType) {
+			if (ctrlType == CtrlTypes.CTRL_C_EVENT ||
+			    ctrlType == CtrlTypes.CTRL_CLOSE_EVENT ||
+			   	ctrlType == CtrlTypes.CTRL_SHUTDOWN_EVENT) {
+				if (service != null) {
+					service.Dispose();
+					service = null;
+				}
+			}
+			return true;
+		}
+#elif UNIX
+		private static void CheckSignal() {
+			Mono.Unix.UnixSignal[] signals = new Mono.Unix.UnixSignal[] {
+				new Mono.Unix.UnixSignal(Mono.Unix.Native.Signum.SIGINT)
+			};
+			
+			int index = Mono.Unix.UnixSignal.WaitAny(signals);
+			Mono.Unix.Native.Signum signum = signals[index].Signum;
+			if (signum == Mono.Unix.Native.Signum.SIGINT) {
+				if (service != null) {
+					service.Dispose();
+					service = null;
+				}
+			}
+		}
+#endif
 	}
 }
