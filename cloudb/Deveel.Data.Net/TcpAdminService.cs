@@ -150,7 +150,7 @@ namespace Deveel.Data.Net {
 
 			public void Close() {
 				try {
-					if (socket != null)
+					if (socket != null && socket.Connected)
 						socket.Close();
 				} catch(Exception) {
 					service.Logger.Error("Cannot close the socket.");

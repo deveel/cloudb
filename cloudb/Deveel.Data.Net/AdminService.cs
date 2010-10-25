@@ -66,8 +66,8 @@ namespace Deveel.Data.Net {
 			InitService((ServiceType)Enum.Parse(typeof(ServiceType), serviceTypeName, true));
 		}
 
-		private void DisposeService(string  serviceTypeName) {
-			DisposeService((ServiceType)Enum.Parse(typeof(ServiceType), serviceTypeName, true));
+		private void StopService(string  serviceTypeName) {
+			StopService((ServiceType)Enum.Parse(typeof(ServiceType), serviceTypeName, true));
 		}
 		
 		protected bool IsAddressAllowed(string address) {
@@ -85,9 +85,9 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		protected void DisposeService(ServiceType service_type) {
+		protected void StopService(ServiceType serviceType) {
 			lock (serverManagerLock) {
-				delegator.DisposeService(service_type);
+				delegator.DisposeService(serviceType);
 			}
 		}
 
@@ -188,7 +188,7 @@ namespace Deveel.Data.Net {
 							// Stops a service,
 						else if (command.Equals("dispose")) {
 							string service_type = request.Arguments[0].ToString();
-							service.DisposeService(service_type);
+							service.StopService(service_type);
 						} else {
 							throw new Exception("Unknown command: " + command);
 						}

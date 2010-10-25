@@ -102,7 +102,7 @@ namespace Deveel.Data.Net {
 				File.Delete(Path.Combine(basePath, RootRunFile));
 			}
 
-			service.Dispose();
+			service.Stop();
 		}
 		
 		public void Dispose() {

@@ -39,15 +39,15 @@ namespace Deveel.Data.Net {
 		
 		public void DisposeService(ServiceType serviceType) {
 			if (serviceType == ServiceType.Manager && manager != null) {
-				manager.Dispose();
+				manager.Stop();
 				manager = null;
 			}
 			if (serviceType == ServiceType.Root && root != null) {
-				root.Dispose();
+				root.Stop();
 				root = null;
 			}
 			if (serviceType == ServiceType.Block && block != null) {
-				block.Dispose();
+				block.Stop();
 				block = null;
 			}
 		}
