@@ -29,6 +29,7 @@ namespace Deveel.Data.Net {
 			
 			ColumnDesign[] columns = new ColumnDesign[2];
 			columns[0] = new ColumnDesign("MRB");
+			columns[0].Width = 20;
 			columns[1] = new ColumnDesign("Address");
 			
 			TableRenderer table = new TableRenderer(columns, Out);
@@ -49,6 +50,7 @@ namespace Deveel.Data.Net {
 					ColumnValue[] row = new ColumnValue[2];
 					row[0] = new ColumnValue(mrb);
 					row[1] = new ColumnValue(p.Address.ToString());
+					table.AddRow(row);
 
 					managerCount += p.IsManager ? 1 : 0;
 					rootCount += p.IsRoot ? 1 : 0;

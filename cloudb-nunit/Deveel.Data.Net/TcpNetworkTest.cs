@@ -55,7 +55,7 @@ namespace Deveel.Data.Net {
 
 			adminService = new TcpAdminService(delegator, Local, NetworkPassword);
 			adminService.Config = netConfig;
-			adminService.Init();
+			adminService.Start();
 
 			networkProfile = new NetworkProfile(new TcpServiceConnector(NetworkPassword));
 			networkProfile.Configuration = netConfig;
@@ -65,13 +65,15 @@ namespace Deveel.Data.Net {
 
 		[TearDown]
 		public void TearDown() {
-			adminService.Dispose();
+			adminService.Stop();
 
-			if (storeType == NetworkStoreType.FileSystem &&
-			    Directory.Exists(path))
-				Directory.Delete(path, true);
-
-			SetupEvent.Set();
+			try {
+				if (storeType == NetworkStoreType.FileSystem && 
+					Directory.Exists(path))
+					Directory.Delete(path, true);
+			} finally {
+				SetupEvent.Set();
+			}
 		}
 
 		[Test]

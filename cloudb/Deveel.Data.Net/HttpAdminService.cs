@@ -4,7 +4,6 @@ using System.Net;
 using System.Text;
 using System.Threading;
 
-using Deveel.Data.Diagnostics;
 using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
@@ -64,8 +63,8 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		protected override void OnInit() {
-			base.OnInit();
+		protected override void OnStart() {
+			base.OnStart();
 			
 			Logger.Info("Starting node");
 			
@@ -89,17 +88,15 @@ namespace Deveel.Data.Net {
 			pollingThread.Start();
 		}
 		
-		protected override void OnDispose(bool disposing) {
-			if (disposing) {
-				polling = false;
-				
-				if (listener != null) {
-					listener.Stop();
-					listener = null;
-				}
+		protected override void OnStop() {
+			polling = false;
+
+			if (listener != null) {
+				listener.Stop();
+				listener = null;
 			}
-			
-			base.OnDispose(disposing);
+
+			base.OnStop();
 		}
 		
 		#region HttpConnection

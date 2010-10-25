@@ -34,7 +34,7 @@ namespace Deveel.Data.Net {
 			NetworkConfigSource config = new NetworkConfigSource();
 			Config(config);
 			adminService.Config = config;
-			adminService.Init();
+			adminService.Start();
 			networkProfile = new NetworkProfile(new FakeServiceConnector(adminService));
 			
 			NetworkConfigSource netConfig = new NetworkConfigSource();

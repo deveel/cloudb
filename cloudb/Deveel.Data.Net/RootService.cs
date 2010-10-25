@@ -390,14 +390,12 @@ namespace Deveel.Data.Net {
 		protected virtual void OnUnbindingWithManager(IServiceAddress managerAddress) {
 		}
 		
-		protected override void OnDispose(bool disposing) {
-			if (disposing) {
-				managerAddress = null;
-				
-				if (pathCache != null) {
-					foreach(KeyValuePair<string, PathAccess> path in pathCache) {
-						path.Value.AccessStream.Close();
-					}					
+		protected override void OnStop() {
+			managerAddress = null;
+
+			if (pathCache != null) {
+				foreach (KeyValuePair<string, PathAccess> path in pathCache) {
+					path.Value.AccessStream.Close();
 				}
 			}
 		}

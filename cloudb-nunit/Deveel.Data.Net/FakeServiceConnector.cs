@@ -21,7 +21,11 @@ namespace Deveel.Data.Net {
 		}
 
 		public IMessageSerializer MessageSerializer {
-			get { return serializer; }
+			get {
+				if (serializer == null)
+					serializer = new BinaryRpcMessageSerializer();
+				return serializer;
+			}
 			set { serializer = value; }
 		}
 

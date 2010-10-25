@@ -9,20 +9,18 @@ namespace Deveel.Data.Net {
 			: base(connector, address) {
 		}
 
-		protected override void OnInit() {
+		protected override void OnStart() {
 			database = new MemoryDatabase(1024);
 			database.Start();
 
 			SetBlockDatabase(database);
 		}
 
-		protected override void OnDispose(bool disposing) {
-			base.OnDispose(disposing);
+		protected override void OnStop() {
+			base.OnStop();
 
-			if (disposing) {
-				database.Stop();
-				database = null;
-			}
+			database.Stop();
+			database = null;
 		}
 
 		protected override void PersistBlockServers(IList<BlockServerInfo> servers_list) {

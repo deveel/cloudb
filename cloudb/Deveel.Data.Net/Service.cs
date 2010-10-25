@@ -7,18 +7,12 @@ using Deveel.Data.Net.Client;
 namespace Deveel.Data.Net {
 	public abstract class Service : Component, IService {
 		private IMessageProcessor processor;
-		private Logger log;
+		private readonly Logger log;
 		private ErrorStateException errorState;
-
-		private bool disposed;
-		private bool initialized;
+		private ServiceState state;
 
 		protected Service() {
 			log = LogManager.NetworkLogger;
-		}
-
-		~Service() {
-			Dispose(false);
 		}
 
 		protected Logger Logger {
@@ -26,6 +20,10 @@ namespace Deveel.Data.Net {
 		}
 
 		public abstract ServiceType ServiceType { get; }
+
+		public ServiceState State {
+			get { return state; }
+		}
 
 		public IMessageProcessor Processor {
 			get {
@@ -42,35 +40,50 @@ namespace Deveel.Data.Net {
 
 		protected void SetErrorState(Exception e) {
 			errorState = new ErrorStateException(e);
+			state = ServiceState.Error;
 		}
 
 		protected abstract IMessageProcessor CreateProcessor();
 
-		protected virtual void OnDispose(bool disposing) {
-			if (disposing) {
-//				log.Dispose();
-//				log = null;
-			}
-		}
-
 		protected override void Dispose(bool disposing) {
-			if (!disposed) {
-				OnDispose(disposing);
-
-				disposed = true;
+			if (disposing) {
+				if(state != ServiceState.Stopped)
+					Stop();
 			}
+
+			base.Dispose(disposing);
 		}
 
-		protected virtual void OnInit() {
+		protected virtual void OnStart() {
 		}
 
-		public void Init() {
-			if (initialized)
+		protected virtual void OnStop() {
+		}
+
+		public void Start() {
+			if (state == ServiceState.Started)
 				throw new InvalidOperationException("The service is already initialized.");
 
-			OnInit();
+			try {
+				OnStart();
+				state = ServiceState.Started;
+			} catch(Exception e) {
+				Logger.Error(e);
+				SetErrorState(e);
+				throw;
+			}
+		}
 
-			initialized = true;
+		public void Stop() {
+			if (state != ServiceState.Stopped) {
+				try {
+					OnStop();
+					state = ServiceState.Stopped;
+				} catch(Exception e) {
+					Logger.Error(e);
+					SetErrorState(e);
+				}
+			}
 		}
 	}
 }

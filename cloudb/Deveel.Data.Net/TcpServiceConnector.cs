@@ -221,12 +221,12 @@ namespace Deveel.Data.Net {
 						return DoProcess(messageStream, tryCount + 1);
 					}
 
-					ServiceException error;
+					MessageError error;
 					if (e is EndOfStreamException) {
-						error = new ServiceException(new Exception("EOF (is net password correct?)", e));
+						error = new MessageError(new Exception("EOF (is net password correct?)", e));
 					} else {
 						// Report this error as a msg_stream fault,
-						error = new ServiceException(new Exception(e.Message, e));
+						error = new MessageError(new Exception(e.Message, e));
 					}
 
 					ResponseMessage responseMessage;

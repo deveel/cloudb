@@ -164,25 +164,23 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		protected override void OnDispose(bool disposing) {
-			if (disposing) {
-				lock (pathLock) {
-					CloseContainers();
-					blockContainerCache.Clear();
-					blocksPendingFlush.Clear();
-					blockContainerAccessList.Clear();
-				}
-
-				if (sendBlockTimer != null)
-					sendBlockTimer.Dispose();
-				if (blockFlushTimer != null)
-					blockFlushTimer.Dispose();
-
-				blockCount = 0;
-				lastBlockId = -1;
+		protected override void OnStop() {
+			lock (pathLock) {
+				CloseContainers();
+				blockContainerCache.Clear();
+				blocksPendingFlush.Clear();
+				blockContainerAccessList.Clear();
 			}
+
+			if (sendBlockTimer != null)
+				sendBlockTimer.Dispose();
+			if (blockFlushTimer != null)
+				blockFlushTimer.Dispose();
+
+			blockCount = 0;
+			lastBlockId = -1;
 		}
-		
+
 		protected void SetGuid(long value) {
 			serverGuid = value;
 		}
@@ -214,7 +212,7 @@ namespace Deveel.Data.Net {
 			return new BlockServerMessageProcessor(this);
 		}
 
-		protected override void OnInit() {
+		protected override void OnStart() {
 			// Read in all the blocks in and populate the map,
 			long[] blocks = ListBlocks();
 			long inLastBlockId = -1;

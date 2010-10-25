@@ -63,7 +63,7 @@ namespace Deveel.Data.Net {
 
 			adminService = new HttpAdminService(delegator, Local);
 			adminService.Config = netConfig;
-			adminService.Init();
+			adminService.Start();
 
 			networkProfile = new NetworkProfile(new HttpServiceConnector("foo", "foo"));
 			networkProfile.Configuration = netConfig;

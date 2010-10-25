@@ -11,7 +11,7 @@ namespace Deveel.Data.Net {
 		
 		private string basePath;
 		
-		protected override void OnInit() {
+		protected override void OnStart() {
 			try {
 				// Read the manager service address from the properties file,
 				Util.Properties p = new Util.Properties();

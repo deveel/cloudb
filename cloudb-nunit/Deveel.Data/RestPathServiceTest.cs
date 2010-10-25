@@ -176,7 +176,7 @@ namespace Deveel.Data.Net {
 
 			adminService = new TcpAdminService(delegator, Local, NetworkPassword);
 			adminService.Config = netConfig;
-			adminService.Init();
+			adminService.Start();
 
 			networkProfile = new NetworkProfile(new TcpServiceConnector(NetworkPassword));
 			networkProfile.Configuration = netConfig;

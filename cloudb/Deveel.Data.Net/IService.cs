@@ -8,6 +8,6 @@ namespace Deveel.Data.Net {
 		
 		IMessageProcessor Processor { get; }
 		
-		void Init();
+		void Start();
 	}
 }

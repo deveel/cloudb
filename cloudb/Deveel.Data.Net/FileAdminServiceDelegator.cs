@@ -28,19 +28,19 @@ namespace Deveel.Data.Net {
 				string check_file = Path.Combine(basePath, BlockRunFile);
 				if (File.Exists(check_file)) {
 					block = CreateService(adminService.Address, ServiceType.Block, adminService.Connector);
-					block.Init();
+					block.Start();
 				}
 				
 				check_file = Path.Combine(basePath, ManagerRunFile);
 				if (File.Exists(check_file)) {
 					manager = CreateService(adminService.Address, ServiceType.Manager, adminService.Connector);
-					manager.Init();
+					manager.Start();
 				}
 				
 				check_file = Path.Combine(basePath, RootRunFile);
 				if (File.Exists(check_file)) {
 					root = CreateService(adminService.Address, ServiceType.Root, adminService.Connector);
-					root.Init();
+					root.Start();
 				}
 			} catch (IOException e) {
 				logger.Error("IO Error on Init", e);

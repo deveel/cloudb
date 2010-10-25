@@ -18,7 +18,7 @@ namespace Deveel.Data.Net {
 			this.dbPath = dbPath;
 		}
 		
-		protected override void OnInit() {
+		protected override void OnStart() {
 			database = new FileSystemDatabase(dbPath);
 			database.Start();
 
@@ -95,13 +95,11 @@ namespace Deveel.Data.Net {
 			}
 		}
 		
-		protected override void OnDispose(bool disposing) {
-			base.OnDispose(disposing);
-			
-			if (disposing) {
-				database.Stop();
-				database = null;
-			}
+		protected override void OnStop() {
+			base.OnStop();
+
+			database.Stop();
+			database = null;
 		}
 	}
 }

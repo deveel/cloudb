@@ -132,7 +132,7 @@ namespace Deveel.Data.Net {
 			}
 		}
 		
-		protected override void OnInit() {
+		protected override void OnStart() {
 			// Open the guid file,
 			string guidFile = Path.Combine(path, "block_server_guid");
 			// If the guid file exists,
@@ -169,7 +169,7 @@ namespace Deveel.Data.Net {
 			
 			compressionThread.Start();
 
-			base.OnInit();
+			base.OnStart();
 		}
 		
 		protected override BlockContainer LoadBlock(long blockId) {
@@ -302,16 +302,14 @@ namespace Deveel.Data.Net {
 				}
 			}
 		}
-		
-		protected override void OnDispose(bool disposing) {
-			if (disposing) {
-				FinishCompress();
 
-				if (fileDeleteTimer != null)
-					fileDeleteTimer.Dispose();
-			}
-			
-			base.OnDispose(disposing);
+		protected override void OnStop() {
+			FinishCompress();
+
+			if (fileDeleteTimer != null)
+				fileDeleteTimer.Dispose();
+
+			base.OnStop();
 		}
 	}
 }

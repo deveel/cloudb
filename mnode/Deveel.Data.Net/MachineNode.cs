@@ -15,6 +15,10 @@ using Deveel.Data.Util;
 namespace Deveel.Data.Net {
 	public static class MachineNode {
 		private static TcpAdminService service = null;
+
+#if WIN32
+		private static HandlerRoutine ExitCallback;
+#endif
 				
 		private static Options GetOptions() {
 			Options options = new Options();
@@ -56,7 +60,8 @@ namespace Deveel.Data.Net {
 		
 		private static void SetEventHandlers() {
 #if WIN32
-			SetConsoleCtrlHandler(new HandlerRoutine(ConsoleCtrlCheck), true);
+			ExitCallback = new HandlerRoutine(ConsoleCtrlCheck);
+			SetConsoleCtrlHandler(ExitCallback, true);
 #elif UNIX			
 			System.Threading.Thread signalThread = new System.Threading.Thread(CheckSignal);
 			signalThread.Start();
@@ -181,7 +186,7 @@ namespace Deveel.Data.Net {
 				Console.Out.WriteLine("Machine Node, " + host + " : " + port);
 				service = new TcpAdminService(delegator, host, port, password);
 				service.Config = netConfigSource;
-				service.Init();
+				service.Start();
 				
 				while(service.IsListening)
 					continue;
@@ -202,6 +207,8 @@ namespace Deveel.Data.Net {
 		private static extern bool SetConsoleCtrlHandler(HandlerRoutine Handler, bool Add);
 		
 		private delegate bool HandlerRoutine(CtrlTypes CtrlType);
+
+		private static bool serviceDisposed;
 		
 		private enum CtrlTypes {
 			CTRL_C_EVENT = 0,
@@ -213,11 +220,13 @@ namespace Deveel.Data.Net {
 		
 		private static bool ConsoleCtrlCheck(CtrlTypes ctrlType) {
 			if (service != null) {
-				service.Dispose();
+				service.Stop();
 				service = null;
 			}
+
 			return true;
 		}
+
 #elif UNIX
 		private static void CheckSignal() {
 			Mono.Unix.UnixSignal[] signals = new Mono.Unix.UnixSignal[] {

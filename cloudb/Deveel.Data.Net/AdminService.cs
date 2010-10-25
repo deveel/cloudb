@@ -74,17 +74,14 @@ namespace Deveel.Data.Net {
 			return config != null && config.IsIpAllowed(address);
 		}
 
-		protected void InitService(ServiceType service_type) {
-			// This service as a ServiceAddress object,
-			// ServiceAddress this_service = new ServiceAddress(bind_interface, port);
-
+		protected void InitService(ServiceType serviceType) {
 			// Start the services,
 			lock (serverManagerLock) {
-				IService service = delegator.CreateService(address, service_type, connector);
+				IService service = delegator.CreateService(address, serviceType, connector);
 				if (service == null)
-					throw new Exception("Unable to create the service " + service_type);
+					throw new Exception("Unable to create the service " + serviceType);
 				
-				service.Init();
+				service.Start();
 			}
 		}
 
@@ -94,17 +91,14 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		protected override void OnDispose(bool disposing) {
-			if (disposing) {
-				if (configTimer != null) {
-					configTimer.Dispose();
-					configTimer = null;
-				}
-				
-				delegator.Dispose();
+		protected override void OnStop() {
+			if (configTimer != null) {
+				configTimer.Dispose();
+				configTimer = null;
 			}
-			
-			base.OnDispose(disposing);
+
+			if (delegator != null)
+				delegator.Dispose();
 		}
 
 		public override ServiceType ServiceType {
@@ -115,7 +109,7 @@ namespace Deveel.Data.Net {
 			return new AdminServerMessageProcessor(this);
 		}
 
-		protected override void OnInit() {
+		protected override void OnStart() {
 			lock(serverManagerLock) {
 				configTimer = new Timer(ConfigUpdate);
 				
@@ -209,7 +203,7 @@ namespace Deveel.Data.Net {
 					throw;
 				} catch (Exception e) {
 					service.Logger.Error("Error while processing.");
-					response.Arguments.Add(new ServiceException(e));
+					response.Arguments.Add(new MessageError(e));
 				}
 
 				return response;

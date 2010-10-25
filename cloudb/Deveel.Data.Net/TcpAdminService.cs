@@ -81,7 +81,9 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		protected override void OnInit() {
+		protected override void OnStart() {
+			base.OnStart();
+
 			TcpServiceAddress tcpAddress = (TcpServiceAddress) Address;
 			IPEndPoint endPoint = tcpAddress.ToEndPoint();
 			listener = new TcpListener(endPoint);
@@ -106,23 +108,23 @@ namespace Deveel.Data.Net {
 			thread.Start();
 		}
 
-		protected override void OnDispose(bool disposing) {
-			if (disposing) {
-				polling = false;
+		protected override void OnStop() {
+			polling = false;
 
-				if (connections != null && connections.Count > 0) {
-					for (int i = connections.Count - 1; i > 0; i--) {
-						TcpConnection c = connections[i];
-						c.Close();
-						connections.RemoveAt(i);
-					}
-				}
-
-				if (listener != null) {
-					listener.Stop();
-					listener = null;
+			if (connections != null && connections.Count > 0) {
+				for (int i = connections.Count - 1; i >= 0; i--) {
+					TcpConnection c = connections[i];
+					c.Close();
+					connections.RemoveAt(i);
 				}
 			}
+
+			if (listener != null) {
+				listener.Stop();
+				listener = null;
+			}
+
+			base.OnStop();
 		}
 
 		#region TcpConnection
@@ -147,10 +149,14 @@ namespace Deveel.Data.Net {
 			}
 
 			public void Close() {
-				open = false;
-
-				if (socket != null)
-					socket.Close();
+				try {
+					if (socket != null)
+						socket.Close();
+				} catch(Exception) {
+					service.Logger.Error("Cannot close the socket.");
+				} finally {
+					open = false;
+				}
 			}
 
 			public void Work(object state) {

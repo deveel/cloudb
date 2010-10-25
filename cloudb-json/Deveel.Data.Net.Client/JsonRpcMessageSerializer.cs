@@ -29,8 +29,24 @@ namespace Deveel.Data.Net.Client {
 			}
 		}
 
-		protected override void Serialize(Message message, JsonTextWriter writer) {
+		private void WriteRequest(RequestMessage request, JsonTextWriter writer) {
 			throw new NotImplementedException();
+		}
+
+		private void WriteResponse(ResponseMessage response, JsonTextWriter writer) {
+			throw new NotImplementedException();
+		}
+
+		protected override void Serialize(Message message, JsonTextWriter writer) {
+			writer.WriteStartObject();
+
+			if (message is RequestMessage) {
+				WriteRequest((RequestMessage) message, writer);
+			} else if (message is ResponseMessage) {
+				WriteResponse((ResponseMessage) message, writer);
+			}
+
+			writer.WriteEndObject();
 		}
 
 		protected override Message Deserialize(JsonTextReader reader, MessageType messageType) {
