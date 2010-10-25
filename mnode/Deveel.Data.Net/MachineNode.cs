@@ -23,29 +23,32 @@ namespace Deveel.Data.Net {
 			options.AddOption("host", true, "The interface address to bind the socket on the local machine " +
 							  "(optional - if not given binds to all interfaces)");
 			options.AddOption("port", true, "The port to bind the socket.");
+			/*
+			TODO:
 			options.AddOption("install", false, "Installs the node as a service in this machine");
 			options.AddOption("user", true, "The user name for the authorization credentials to install/uninstall " +
 			                 "the service.");
 			options.AddOption("pass", true, "The password credential used to authorize installation and " +
 			                 "uninstallation of the service in this machine.");
 			options.AddOption("uninstall", false, "Uninstalls a service for the node that was previously installed.");
+			*/
 			options.AddOption("storage", true, "The type of storage used to persist node information and data");
 			options.AddOption("protocol", true, "The connection protocol used by this node to listen connections");
 			return options;
 		}
 		
-		private static IAdminServiceDelegator GetDelegator(string storage, NetworkConfigSource netConfigSource) {
+		private static IAdminServiceDelegator GetDelegator(string storage, ConfigSource nodeConfigSource) {
 			if (storage == "file") {
-				string nodeDir = netConfigSource.GetString("node_directory", Environment.CurrentDirectory);
+				string nodeDir = nodeConfigSource.GetString("node_directory", Environment.CurrentDirectory);
 				return new FileAdminServiceDelegator(nodeDir);
 			}
 			if (storage == "memory")
 				return new MemoryAdminServiceDelegator();
 			
 			if (String.IsNullOrEmpty(storage) &&
-			   	netConfigSource != null) {
-				storage = netConfigSource.GetString("storage", "file");
-				return GetDelegator(storage, netConfigSource);
+			   	nodeConfigSource != null) {
+				storage = nodeConfigSource.GetString("storage", "file");
+				return GetDelegator(storage, nodeConfigSource);
 			}
 			
 			return null;
@@ -173,7 +176,7 @@ namespace Deveel.Data.Net {
 				}
 				
 				string storage = commandLine.GetOptionValue("storage", null);
-				IAdminServiceDelegator delegator = GetDelegator(storage, netConfigSource);
+				IAdminServiceDelegator delegator = GetDelegator(storage, nodeConfigSource);
 				
 				Console.Out.WriteLine("Machine Node, " + host + " : " + port);
 				service = new TcpAdminService(delegator, host, port, password);
@@ -209,13 +212,9 @@ namespace Deveel.Data.Net {
 		}
 		
 		private static bool ConsoleCtrlCheck(CtrlTypes ctrlType) {
-			if (ctrlType == CtrlTypes.CTRL_C_EVENT ||
-			    ctrlType == CtrlTypes.CTRL_CLOSE_EVENT ||
-			   	ctrlType == CtrlTypes.CTRL_SHUTDOWN_EVENT) {
-				if (service != null) {
-					service.Dispose();
-					service = null;
-				}
+			if (service != null) {
+				service.Dispose();
+				service = null;
 			}
 			return true;
 		}

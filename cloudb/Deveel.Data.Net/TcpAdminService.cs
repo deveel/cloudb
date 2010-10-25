@@ -110,8 +110,8 @@ namespace Deveel.Data.Net {
 			if (disposing) {
 				polling = false;
 
-				if (connections != null) {
-					for (int i = connections.Count - 1; i >= 0; i--) {
+				if (connections != null && connections.Count > 0) {
+					for (int i = connections.Count - 1; i > 0; i--) {
 						TcpConnection c = connections[i];
 						c.Close();
 						connections.RemoveAt(i);
