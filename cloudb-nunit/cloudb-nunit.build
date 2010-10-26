@@ -1,0 +1,14 @@
+﻿<?xml version="1.0"?>
+<project name="cloudb-nunit" default="build">	
+	<property name="project.name" value="cloudb" />
+	<property name="project.file" value="cloudb.dll" />
+	<property name="project.version" value="1.0.0" />
+	<property name="build.output" value="build" />
+	<property name="build.debug" value="false" />
+	<property name="build.define" value="" />
+	<property name="build.keyfile" value="cloudb-nunit.snk" />
+
+	<target name="build" description="Default build target">
+		<echo message="Running default build target." />
+	</target>
+</project>

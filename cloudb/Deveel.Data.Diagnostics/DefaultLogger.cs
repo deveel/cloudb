@@ -136,7 +136,7 @@ namespace Deveel.Data.Diagnostics {
 					return String.Format(format, entry.Level.Value);
 				}
 				case "thread": {
-					string threadName = (entry.Thread == null ? AppDomain.GetCurrentThreadId().ToString() : entry.Thread);
+					string threadName = (entry.Thread == null ? Thread.CurrentThread.ManagedThreadId.ToString() : entry.Thread);
 					return (format != null ? String.Format(format, threadName) : threadName);
 				}
 				default:

@@ -1,6 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
+# SharpDevelop 3.2.0.5777
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudb", "cloudb\cloudb.csproj", "{A18511ED-5BA6-4811-B44F-F730FAD84CE8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudb-nunit", "cloudb-nunit\cloudb-nunit.csproj", "{05D455D6-1EA4-4C27-A4F2-797A518FE00A}"

@@ -1,0 +1,25 @@
+﻿<?xml version="1.0"?>
+<project name="cloudbase" default="build">
+	<property name="project.name" value="cloudbase" />
+	<property name="project.file" value="${project.name}.dll" />
+	<property name="project.version" value="1.0.0" />
+	<property name="build.output" value="build" />
+	<property name="build.debug" value="false" />
+	<property name="build.define" value="" />
+	<property name="build.keyfile" value="cloudbase.snk" />
+	<property name="dist.path" value="dist" />
+
+	<target name="build" description="Default build target">
+		<echo message="building cloudb base to ${build.output}/${project.file}..." />
+		<csc target="library" output="${build.output}/${project.file}" debug="${build.debug}" define="${build.define}">
+			<sources>
+				<include name="Properties/AssemblyInfo.cs" />
+				<include name="Deveel.Data/*.cs" />
+			</sources>
+			<references>
+				<include name="System.dll" />
+				<include name="cloudb.dll" />
+			</references>
+		</csc>
+	</target>
+</project>

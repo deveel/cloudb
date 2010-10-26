@@ -1,0 +1,14 @@
+﻿<?xml version="1.0"?>
+<project name="cloudb" default="build">
+	<property name="solution.name" value="cloudb" />
+	<property name="solution.build.output" value="${project::get-base-directory()}/build" />
+	<property name="solution.dist.path" value="${project::get-base-directory()}/dist"/>
+	
+	<target name="build" description="Default build target">
+		<nant buildfile="cloudb/cloudb.build" target="build" inheritall="true">
+			<properties>
+				<property name="build.output" value="${solution.build.output}" readonly="true" verbose="false" />
+			</properties>
+		</nant>
+	</target>
+</project>
