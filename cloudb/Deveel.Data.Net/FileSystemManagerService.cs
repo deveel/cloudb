@@ -52,6 +52,15 @@ namespace Deveel.Data.Net {
 				}
 			}
 		}
+
+		protected override void OnStop() {
+			if (database != null) {
+				database.Stop();
+				database = null;
+			}
+
+			base.OnStop();
+		}
 		
 		protected override void PersistBlockServers(IList<BlockServerInfo> servers_list) {
 			try {
@@ -94,12 +103,14 @@ namespace Deveel.Data.Net {
 										   e.Message);
 			}
 		}
-		
-		protected override void OnStop() {
-			base.OnStop();
 
-			database.Stop();
-			database = null;
-		}
+		protected override void Dispose(bool disposing) {
+			if (disposing) {
+				database.Stop();
+				database = null;		
+			}
+
+			base.Dispose(disposing);
+		}		
 	}
 }

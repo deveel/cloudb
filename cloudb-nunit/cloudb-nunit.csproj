@@ -77,6 +77,7 @@
     <Compile Include="Deveel.Data.Net\FakeServiceAddressHandler.cs" />
     <Compile Include="Deveel.Data.Net\FakeServiceConnector.cs" />
     <Compile Include="Deveel.Data.Net\FakeNetworkTest.cs" />
+    <Compile Include="Deveel.Data.Net\NetworkTestBase.cs" />
     <Compile Include="Deveel.Data.Net\TcpNetworkTest.cs" />
     <Compile Include="Deveel.Data.Net\XmlRpcMessageSerializerTest.cs" />
     <Compile Include="Deveel.Data\BasePathTest.cs" />

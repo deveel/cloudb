@@ -9,22 +9,22 @@ namespace Deveel.Data.Net {
 		private Timer configTimer;
 		private readonly IServiceAddress address;
 		private readonly Analytics analytics;
-		private readonly IAdminServiceDelegator delegator;
+		private readonly IServiceFactory serviceFactory;
 		private IServiceConnector connector;
 		private readonly object serverManagerLock = new object();
 
-		public AdminService(IServiceAddress address, IServiceConnector connector, IAdminServiceDelegator delegator) {
-			if (delegator == null)
-				throw new ArgumentNullException("delegator");
-			
-			this.delegator = delegator;
+		private ManagerService manager;
+		private RootService root;
+		private BlockService block;
+
+		public AdminService(IServiceAddress address, IServiceConnector connector, IServiceFactory serviceFactory) {
+			if (serviceFactory == null) 
+				throw new ArgumentNullException("serviceFactory");
+
+			this.serviceFactory = serviceFactory;
 			this.address = address;
 			this.connector = connector;
 			analytics = new Analytics();
-		}
-
-		~AdminService() {
-			Dispose(false);
 		}
 		
 		public IServiceAddress Address {
@@ -37,15 +37,15 @@ namespace Deveel.Data.Net {
 		}
 		
 		protected ManagerService Manager {
-			get { return (ManagerService) delegator.GetService(ServiceType.Manager); }
+			get { return manager; }
 		}
 
 		protected RootService Root {
-			get { return (RootService) delegator.GetService(ServiceType.Root); }
+			get { return root; }
 		}
 
 		protected BlockService Block {
-			get { return (BlockService) delegator.GetService(ServiceType.Block); }
+			get { return block; }
 		}
 
 		protected Analytics Analytics {
@@ -62,11 +62,11 @@ namespace Deveel.Data.Net {
 				config.Reload();
 		}
 
-		private void InitService(string  serviceTypeName) {
-			InitService((ServiceType)Enum.Parse(typeof(ServiceType), serviceTypeName, true));
+		private void StartService(string serviceTypeName) {
+			StartService((ServiceType)Enum.Parse(typeof(ServiceType), serviceTypeName, true));
 		}
 
-		private void StopService(string  serviceTypeName) {
+		private void StopService(string serviceTypeName) {
 			StopService((ServiceType)Enum.Parse(typeof(ServiceType), serviceTypeName, true));
 		}
 		
@@ -74,20 +74,36 @@ namespace Deveel.Data.Net {
 			return config != null && config.IsIpAllowed(address);
 		}
 
-		protected void InitService(ServiceType serviceType) {
+		public void StartService(ServiceType serviceType) {
 			// Start the services,
 			lock (serverManagerLock) {
-				IService service = delegator.CreateService(address, serviceType, connector);
+				IService service = serviceFactory.CreateService(address, serviceType, connector);
 				if (service == null)
-					throw new Exception("Unable to create the service " + serviceType);
-				
+					throw new ApplicationException("Unable to create service of tyoe  " + serviceType);
+
 				service.Start();
+
+				if (serviceType == ServiceType.Manager)
+					manager = (ManagerService)service;
+				else if (serviceType == ServiceType.Root)
+					root = (RootService)service;
+				else if (serviceType == ServiceType.Block)
+					block = (BlockService) service;
 			}
 		}
 
-		protected void StopService(ServiceType serviceType) {
+		public void StopService(ServiceType serviceType) {
 			lock (serverManagerLock) {
-				delegator.DisposeService(serviceType);
+				if (serviceType == ServiceType.Manager && manager != null) {
+					manager.Stop();
+					manager = null;
+				} else if (serviceType == ServiceType.Root && root != null) {
+					root.Stop();
+					root = null;
+				} else if (serviceType == ServiceType.Block && block != null) {
+					block.Stop();
+					block = null;
+				}
 			}
 		}
 
@@ -97,8 +113,18 @@ namespace Deveel.Data.Net {
 				configTimer = null;
 			}
 
-			if (delegator != null)
-				delegator.Dispose();
+			if (manager != null) {
+				manager.Dispose();
+				manager = null;
+			}
+			if (root != null) {
+				root.Dispose();
+				root = null;
+			}
+			if (block != null) {
+				block.Dispose();
+				block = null;
+			}
 		}
 
 		public override ServiceType ServiceType {
@@ -120,8 +146,27 @@ namespace Deveel.Data.Net {
 				long second_mix = r.Next(1000);
 				configTimer.Change(50 * 1000, ((2 * 59) * 1000) + second_mix);
 				
-				delegator.Init(this);
+				serviceFactory.Init(this);
 			}
+		}
+
+		protected override void Dispose(bool disposing) {
+			if (disposing) {
+				if (manager != null) {
+					manager.Dispose();
+					manager = null;
+				}
+				if (root != null) {
+					root.Dispose();
+					root = null;
+				}
+				if (block != null) {
+					block.Dispose();
+					block = null;
+				}
+			}
+
+			base.Dispose(disposing);
 		}
 
 		#region AdminServerMessageProcessor
@@ -183,7 +228,7 @@ namespace Deveel.Data.Net {
 						// Starts a service,
 						if (command.Equals("init")) {
 							string service_type = request.Arguments[0].ToString();
-							service.InitService(service_type);
+							service.StartService(service_type);
 						}
 							// Stops a service,
 						else if (command.Equals("dispose")) {

@@ -6,8 +6,8 @@ namespace Deveel.Data.Net {
 		
 		IService GetService(ServiceType serviceType);
 		
-		IService CreateService(IServiceAddress address, ServiceType serviceType, IServiceConnector connector);
+		void StartService(IServiceAddress address, ServiceType serviceType, IServiceConnector connector);
 		
-		void DisposeService(ServiceType serviceType);
+		void StopService(ServiceType serviceType);
 	}
 }

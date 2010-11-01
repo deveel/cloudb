@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="3.5" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -51,8 +51,8 @@
     <Compile Include="Deveel.Data.Net\CloudAdmin.cs" />
     <Compile Include="Deveel.Data.Net\ConnectCommand.cs" />
     <Compile Include="Deveel.Data.Net\DisconnectCommand.cs" />
-    <Compile Include="Deveel.Data.Net\DisposeCommand.cs" />
-    <Compile Include="Deveel.Data.Net\InitializeCommand.cs" />
+    <Compile Include="Deveel.Data.Net\StopCommand.cs" />
+    <Compile Include="Deveel.Data.Net\StartCommand.cs" />
     <Compile Include="Deveel.Data.Net\MoveCommand.cs" />
     <Compile Include="Deveel.Data.Net\NetworkContext.cs" />
     <Compile Include="Deveel.Data.Net\RefreshCommand.cs" />

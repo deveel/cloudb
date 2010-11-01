@@ -44,10 +44,6 @@ namespace Deveel.Data.Net {
 			heartbeatThread.Start();
 		}
 
-		~ManagerService() {
-			Dispose(false);
-		}
-
 		public override ServiceType ServiceType {
 			get { return ServiceType.Manager; }
 		}

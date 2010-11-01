@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 #if UNIX
 using Mono.Unix.Native;
 #endif
+using System.Threading;
 
 using Deveel.Configuration;
 using Deveel.Data.Diagnostics;
@@ -19,6 +20,8 @@ namespace Deveel.Data.Net {
 #if WIN32
 		private static HandlerRoutine ExitCallback;
 #endif
+
+		private static AutoResetEvent waitHandle;
 				
 		private static Options GetOptions() {
 			Options options = new Options();
@@ -41,18 +44,18 @@ namespace Deveel.Data.Net {
 			return options;
 		}
 		
-		private static IAdminServiceDelegator GetDelegator(string storage, ConfigSource nodeConfigSource) {
+		private static IServiceFactory GetServiceFactory(string storage, ConfigSource nodeConfigSource) {
 			if (storage == "file") {
 				string nodeDir = nodeConfigSource.GetString("node_directory", Environment.CurrentDirectory);
-				return new FileAdminServiceDelegator(nodeDir);
+				return new FileSystemServiceFactory(nodeDir);
 			}
 			if (storage == "memory")
-				return new MemoryAdminServiceDelegator();
+				return new MemoryServiceFactory();
 			
 			if (String.IsNullOrEmpty(storage) &&
 			   	nodeConfigSource != null) {
 				storage = nodeConfigSource.GetString("storage", "file");
-				return GetDelegator(storage, nodeConfigSource);
+				return GetServiceFactory(storage, nodeConfigSource);
 			}
 			
 			return null;
@@ -181,16 +184,15 @@ namespace Deveel.Data.Net {
 				}
 				
 				string storage = commandLine.GetOptionValue("storage", null);
-				IAdminServiceDelegator delegator = GetDelegator(storage, nodeConfigSource);
+				IServiceFactory serviceFactory = GetServiceFactory(storage, nodeConfigSource);
 				
 				Console.Out.WriteLine("Machine Node, " + host + " : " + port);
-				service = new TcpAdminService(delegator, host, port, password);
+				service = new TcpAdminService(serviceFactory, host, port, password);
 				service.Config = netConfigSource;
 				service.Start();
-				
-				while(service.IsListening)
-					continue;
-				
+
+				waitHandle = new AutoResetEvent(false);
+				waitHandle.WaitOne();
 			} catch(Exception e) {
 				Console.Out.WriteLine(e.Message);
 				Console.Out.WriteLine(e.StackTrace);
@@ -219,9 +221,15 @@ namespace Deveel.Data.Net {
 		}
 		
 		private static bool ConsoleCtrlCheck(CtrlTypes ctrlType) {
-			if (service != null) {
-				service.Stop();
-				service = null;
+			try {
+				if (service != null) {
+					service.Stop();
+					service = null;
+					waitHandle.Set();
+				}
+			} catch(Exception e) {
+				Console.Error.WriteLine("An error occurred while closing: " + e.Message);
+				return false;
 			}
 
 			return true;

@@ -5,29 +5,21 @@ using Deveel.Console;
 using Deveel.Console.Commands;
 
 namespace Deveel.Data.Net {
-	class InitializeCommand : Command {
+	class StartCommand : Command {
 		public override string Name {
-			get { return "initialize"; }
+			get { return "start"; }
 		}
-		
-		public override string[] Aliases {
-			get { return new string[] { "start" }; }
-		}
-		
+				
 		public override string[] Synopsis {
-			get { return new string[] { "initialize manager on <address>", 
-					"initialize root on <address>",
-				"initialize block on <address>" } ; }
+			get { return new string[] { "start <manager|root|block> [on <service>]" } ; }
 		}
 		
 		public override bool RequiresContext {
 			get { return true; }
 		}
 		
-		private CommandResultCode StartRole(NetworkContext context, string role, string machine) {
-			IServiceAddress address = ServiceAddresses.ParseString(machine);
-			
-			Out.WriteLine("Starting role " + role + " on " + address.ToString());
+		private CommandResultCode StartRole(NetworkContext context, string role, IServiceAddress address) {			
+			Out.WriteLine("Starting role " + role + " on " + address);
 
 			MachineProfile p = context.Network.GetMachineProfile(address);
 			if (p == null) {
@@ -99,16 +91,32 @@ namespace Deveel.Data.Net {
 			
 			string role = args.Current;
 			
-			if (!args.MoveNext())
-				return CommandResultCode.SyntaxError;
+			IServiceAddress address = null;
+
+			if (args.MoveNext()) {
+				if (args.Current != "on")
+					return CommandResultCode.SyntaxError;
+
+				if (!args.MoveNext())
+					return CommandResultCode.SyntaxError;
+
+				try {
+					address = ServiceAddresses.ParseString(args.Current);
+				} catch(Exception) {
+					Error.WriteLine("The address specified is invalid.");
+					return CommandResultCode.ExecutionFailed;
+				}
+			} else {
+				IServiceAddress[] addresses = networkContext.Network.Configuration.NetworkNodes;
+				if (addresses != null && addresses.Length == 1)
+					address = addresses[0];
+			}
+
+			if (address == null) {
+				Error.WriteLine("unable to determine the address of the service to start.");
+				return CommandResultCode.ExecutionFailed;
+			}
 			
-			if (args.Current != "on")
-				return CommandResultCode.SyntaxError;
-			
-			if (!args.MoveNext())
-				return CommandResultCode.SyntaxError;
-			
-			string address = args.Current;
 			return StartRole(networkContext, role, address);
 		}
 	}

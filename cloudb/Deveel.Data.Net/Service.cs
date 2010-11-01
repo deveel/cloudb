@@ -11,6 +11,10 @@ namespace Deveel.Data.Net {
 		private ErrorStateException errorState;
 		private ServiceState state;
 
+		public event EventHandler Started;
+		public event EventHandler Stopped;
+		public event EventHandler Error;
+
 		protected Service() {
 			log = LogManager.NetworkLogger;
 		}
@@ -26,11 +30,7 @@ namespace Deveel.Data.Net {
 		}
 
 		public IMessageProcessor Processor {
-			get {
-				if (processor == null)
-					processor = CreateProcessor();
-				return processor;
-			}
+			get { return processor ?? (processor = CreateProcessor()); }
 		}
 
 		protected void CheckErrorState() {
@@ -41,18 +41,12 @@ namespace Deveel.Data.Net {
 		protected void SetErrorState(Exception e) {
 			errorState = new ErrorStateException(e);
 			state = ServiceState.Error;
+
+			if (Error != null)
+				Error(this, EventArgs.Empty);
 		}
 
 		protected abstract IMessageProcessor CreateProcessor();
-
-		protected override void Dispose(bool disposing) {
-			if (disposing) {
-				if(state != ServiceState.Stopped)
-					Stop();
-			}
-
-			base.Dispose(disposing);
-		}
 
 		protected virtual void OnStart() {
 		}
@@ -67,6 +61,9 @@ namespace Deveel.Data.Net {
 			try {
 				OnStart();
 				state = ServiceState.Started;
+
+				if (Started != null)
+					Started(this, EventArgs.Empty);
 			} catch(Exception e) {
 				Logger.Error(e);
 				SetErrorState(e);
@@ -79,6 +76,9 @@ namespace Deveel.Data.Net {
 				try {
 					OnStop();
 					state = ServiceState.Stopped;
+
+					if (Stopped != null)
+						Stopped(this, EventArgs.Empty);
 				} catch(Exception e) {
 					Logger.Error(e);
 					SetErrorState(e);

@@ -42,7 +42,7 @@ namespace Deveel.Data.Net {
 				throw new NetworkAdminException("Machine '" + address + "' is not assigned as a " + serviceType.ToString().ToLower() +
 												" role");
 
-			string messageName = serviceType == ServiceType.Block ? "deregisterBlockServer" : "deregisterRootServer";
+			string messageName = serviceType == ServiceType.Block ? "unregisterBlockServer" : "unregisterRootServer";
 			RequestMessage request = new RequestMessage(messageName);
 			request.Arguments.Add(address);
 

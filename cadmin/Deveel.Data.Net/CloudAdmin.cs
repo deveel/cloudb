@@ -16,8 +16,8 @@ namespace Deveel.Data.Net {
 			Commands.Register(typeof(ShowCommand));
 			Commands.Register(typeof(RefreshCommand));
 			
-			Commands.Register(typeof(InitializeCommand));
-			Commands.Register(typeof(DisposeCommand));
+			Commands.Register(typeof(StartCommand));
+			Commands.Register(typeof(StopCommand));
 			
 			Commands.Register(typeof(AddCommand));
 			Commands.Register(typeof(RemoveCommand));

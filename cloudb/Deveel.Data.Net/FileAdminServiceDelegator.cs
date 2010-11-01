@@ -10,7 +10,7 @@ namespace Deveel.Data.Net {
 		private IService manager;
 		private IService root;
 		private IService block;
-		private Logger logger;
+		private readonly Logger logger;
 
 		private const string BlockRunFile = "runblock";
 		private const string ManagerRunFile = "runmanager";
@@ -19,7 +19,7 @@ namespace Deveel.Data.Net {
 		public FileAdminServiceDelegator(string basePath) {
 			this.basePath = basePath;
 			
-			logger = LogManager.GetLogger("network");
+			logger = LogManager.NetworkLogger;
 		}
 		
 		public void Init(AdminService adminService) {
@@ -27,20 +27,17 @@ namespace Deveel.Data.Net {
 			try {
 				string check_file = Path.Combine(basePath, BlockRunFile);
 				if (File.Exists(check_file)) {
-					block = CreateService(adminService.Address, ServiceType.Block, adminService.Connector);
-					block.Start();
+					StartService(adminService.Address, ServiceType.Block, adminService.Connector);
 				}
 				
 				check_file = Path.Combine(basePath, ManagerRunFile);
 				if (File.Exists(check_file)) {
-					manager = CreateService(adminService.Address, ServiceType.Manager, adminService.Connector);
-					manager.Start();
+					StartService(adminService.Address, ServiceType.Manager, adminService.Connector);
 				}
 				
 				check_file = Path.Combine(basePath, RootRunFile);
 				if (File.Exists(check_file)) {
-					root = CreateService(adminService.Address, ServiceType.Root, adminService.Connector);
-					root.Start();
+					StartService(adminService.Address, ServiceType.Root, adminService.Connector);
 				}
 			} catch (IOException e) {
 				logger.Error("IO Error on Init", e);
@@ -59,14 +56,15 @@ namespace Deveel.Data.Net {
 			throw new ArgumentException();
 		}
 		
-		public IService CreateService(IServiceAddress address, ServiceType serviceType, IServiceConnector connector) {
+		public void StartService(IServiceAddress address, ServiceType serviceType, IServiceConnector connector) {
 			if (serviceType == ServiceType.Block) {
 				string npath = Path.Combine(basePath, "block");
 				if (!Directory.Exists(npath))
 					Directory.CreateDirectory(npath);
+
 				File.Create(Path.Combine(basePath, BlockRunFile));
 				block = new FileSystemBlockService(connector, npath);
-				return block;
+				block.Start();
 			} 
 			if (serviceType == ServiceType.Manager) {
 				string npath = Path.Combine(basePath, "manager");
@@ -74,7 +72,7 @@ namespace Deveel.Data.Net {
 					Directory.CreateDirectory(npath);
 				File.Create(Path.Combine(basePath, ManagerRunFile));
 				manager = new FileSystemManagerService(connector, basePath, npath, address);
-				return manager;
+				manager.Start();
 			} 
 			if (serviceType == ServiceType.Root) {
 				string npath = Path.Combine(basePath, "root");
@@ -82,27 +80,24 @@ namespace Deveel.Data.Net {
 					Directory.CreateDirectory(npath);
 				File.Create(Path.Combine(basePath, RootRunFile));
 				root =  new FileSystemRootService(connector, npath);
-				return root;
+				root.Start();
 			}
-
-			throw new ArgumentException();
 		}
 		
-		public void DisposeService(ServiceType serviceType) {
-			IService service = GetService(serviceType);
-			
-			if (service == null)
-				throw new InvalidOperationException();
-
-			if (serviceType == ServiceType.Block) {
-				File.Delete(Path.Combine(basePath, BlockRunFile));
-			} else if (serviceType == ServiceType.Manager) {
+		public void StopService(ServiceType serviceType) {
+			if (serviceType == ServiceType.Manager && manager != null) {
+				manager.Stop();
+				manager = null;
 				File.Delete(Path.Combine(basePath, ManagerRunFile));
-			} else if (serviceType == ServiceType.Root) {
+			} else if (serviceType == ServiceType.Root && root != null) {
+				root.Stop();
+				root = null;
 				File.Delete(Path.Combine(basePath, RootRunFile));
+			} else if (serviceType == ServiceType.Block && block != null) {
+				block.Stop();
+				block = null;
+				File.Delete(Path.Combine(basePath, BlockRunFile));
 			}
-
-			service.Stop();
 		}
 		
 		public void Dispose() {

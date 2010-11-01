@@ -13,12 +13,12 @@ namespace Deveel.Data.Net {
 		private HttpListener listener;
 		private Thread pollingThread;
 				
-		public HttpAdminService(IAdminServiceDelegator delegator, Uri uri)
-			: this(delegator, new HttpServiceAddress(uri)) {
+		public HttpAdminService(IServiceFactory serviceFactory, Uri uri)
+			: this(serviceFactory, new HttpServiceAddress(uri)) {
 		}
 		
-		public HttpAdminService(IAdminServiceDelegator delegator, HttpServiceAddress address)
-			: base(address, new HttpServiceConnector(), delegator) {
+		public HttpAdminService(IServiceFactory serviceFactory, HttpServiceAddress address)
+			: base(address, new HttpServiceConnector(), serviceFactory) {
 		}
 		
 		public IMessageSerializer Serializer {

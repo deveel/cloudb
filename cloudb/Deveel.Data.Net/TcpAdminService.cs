@@ -15,16 +15,16 @@ namespace Deveel.Data.Net {
 		private List<TcpConnection> connections;
 		private IMessageSerializer serializer;
 
-		public TcpAdminService(IAdminServiceDelegator delegator, IPAddress address, int port, string password)
-			: this(delegator, new TcpServiceAddress(address, port),  password) {
+		public TcpAdminService(IServiceFactory serviceFactory, IPAddress address, int port, string password)
+			: this(serviceFactory, new TcpServiceAddress(address, port),  password) {
 		}
 		
-		public TcpAdminService(IAdminServiceDelegator delegator, IPAddress address, string password)
-			: this(delegator, address, TcpServiceAddress.DefaultPort, password) {
+		public TcpAdminService(IServiceFactory serviceFactory, IPAddress address, string password)
+			: this(serviceFactory, address, TcpServiceAddress.DefaultPort, password) {
 		}
 		
-		public TcpAdminService(IAdminServiceDelegator delegator, TcpServiceAddress address, string password)
-			: base(address, new TcpServiceConnector(password), delegator) {
+		public TcpAdminService(IServiceFactory serviceFactory, TcpServiceAddress address, string password)
+			: base(address, new TcpServiceConnector(password), serviceFactory) {
 		}
 
 		public IMessageSerializer MessageSerializer {
@@ -45,6 +45,11 @@ namespace Deveel.Data.Net {
 				//TODO: INFO log ...
 
 				while (polling) {
+					if (!listener.Pending()) {
+						Thread.Sleep(500);
+						continue;
+					}
+
 					Socket s;
 					try {
 						// The socket to run the service,

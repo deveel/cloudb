@@ -20,24 +20,16 @@ namespace Deveel.Data.Net {
 			throw new ArgumentException("Invalid service type specified.");
 		}
 		
-		public IService CreateService(IServiceAddress address, ServiceType serviceType, IServiceConnector connector) {
-			if (serviceType == ServiceType.Manager) {
+		public void StartService(IServiceAddress address, ServiceType serviceType, IServiceConnector connector) {
+			if (serviceType == ServiceType.Manager)
 				manager = new MemoryManagerService(connector, address);
-				return manager;
-			}
-			if (serviceType == ServiceType.Root) {
+			if (serviceType == ServiceType.Root)
 				root = new MemoryRootService(connector);
-				return root;
-			}
-			if (serviceType == ServiceType.Block) {
+			if (serviceType == ServiceType.Block)
 				block =  new MemoryBlockService(connector);
-				return block;
-			}
-
-			throw new InvalidOperationException();
 		}
 		
-		public void DisposeService(ServiceType serviceType) {
+		public void StopService(ServiceType serviceType) {
 			if (serviceType == ServiceType.Manager && manager != null) {
 				manager.Stop();
 				manager = null;
@@ -53,9 +45,12 @@ namespace Deveel.Data.Net {
 		}
 		
 		public void Dispose() {
-			DisposeService(ServiceType.Manager);
-			DisposeService(ServiceType.Root);
-			DisposeService(ServiceType.Block);
+			if (manager != null)
+				manager.Dispose();
+			if (root != null)
+				root.Dispose();
+			if (block != null)
+				block.Dispose();
 		}
 	}
 }

@@ -167,11 +167,11 @@ namespace Deveel.Data.Net {
 			netConfig.AddAllowedIp("127.0.0.1");
 			Config(netConfig);
 
-			IAdminServiceDelegator delegator = null;
+			IServiceFactory delegator = null;
 			if (storeType == NetworkStoreType.Memory) {
-				delegator = new MemoryAdminServiceDelegator();
+				delegator = new MemoryServiceFactory();
 			} else if (storeType == NetworkStoreType.FileSystem) {
-				delegator = new FileAdminServiceDelegator(path);
+				delegator = new FileSystemServiceFactory(path);
 			}
 
 			adminService = new TcpAdminService(delegator, Local, NetworkPassword);

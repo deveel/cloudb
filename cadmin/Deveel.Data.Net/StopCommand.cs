@@ -5,27 +5,21 @@ using Deveel.Console;
 using Deveel.Console.Commands;
 
 namespace Deveel.Data.Net {
-	class DisposeCommand : Command {
+	class StopCommand : Command {
 		public override string Name {
-			get { return "dispose"; }
+			get { return "stop"; }
 		}
-		
-		public override string[] Aliases {
-			get { return new string[] { "stop" } ; }
-		}
-		
+				
 		public override string[] Synopsis {
-			get { return base.Synopsis; }
+			get { return new string[] { "stop <manager|root|block> [on <address>]" }; }
 		}
 		
 		public override bool RequiresContext {
 			get { return true; }
 		}
 		
-		private CommandResultCode StopRole(NetworkContext context, string role, string machine) {
-			IServiceAddress address = ServiceAddresses.ParseString(machine);
-			
-			Out.WriteLine("Stopping role " + role + " on " + address.ToString());
+		private CommandResultCode StopRole(NetworkContext context, string role, IServiceAddress address) {			
+			Out.WriteLine("Stopping role " + role + " on " + address);
 
 			MachineProfile p = context.Network.GetMachineProfile(address);
 			if (p == null) {
@@ -97,18 +91,33 @@ namespace Deveel.Data.Net {
 				return CommandResultCode.SyntaxError;
 			
 			string role = args.Current;
-			
-			if (!args.MoveNext())
-				return CommandResultCode.SyntaxError;
-			
-			if (args.Current != "on")
-				return CommandResultCode.SyntaxError;
-			
-			if (!args.MoveNext())
-				return CommandResultCode.SyntaxError;
-			
-			string address = args.Current;
-			
+
+			IServiceAddress address = null;
+
+			if (args.MoveNext()) {
+				if (args.Current != "on")
+					return CommandResultCode.SyntaxError;
+
+				if (!args.MoveNext())
+					return CommandResultCode.SyntaxError;
+
+				try {
+					address = ServiceAddresses.ParseString(args.Current);
+				} catch(Exception) {
+					Error.WriteLine("Invalid service address");
+					return CommandResultCode.ExecutionFailed;
+				}
+			} else {
+				IServiceAddress[] addresses = networkContext.Network.Configuration.NetworkNodes;
+				if (addresses != null && addresses.Length == 1)
+					address = addresses[0];
+			}
+
+			if (address == null) {
+				Error.WriteLine("cannot determine the address of the service to stop.");
+				return CommandResultCode.ExecutionFailed;
+			}
+
 			return StopRole(networkContext, role, address);
 		}
 	}

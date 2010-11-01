@@ -39,11 +39,19 @@ namespace Deveel.Data.Net {
 				return CommandResultCode.SyntaxError;
 
 			string address = args.Current;
+			IServiceAddress serviceAddress;
+
+			try {
+				serviceAddress = ServiceAddresses.ParseString(address);
+			} catch(Exception) {
+				Error.WriteLine("Invalid service address specified: {0}", address);
+				return CommandResultCode.ExecutionFailed;
+			}
 
 			NetworkConfigSource configSource = new NetworkConfigSource();
 
 			try {
-				configSource.AddNetworkNode(address);
+				configSource.AddNetworkNode(serviceAddress);
 			} catch(Exception e) {
 				Error.WriteLine("The address '" + address + "' is invalid: " + e.Message);
 				return CommandResultCode.ExecutionFailed;

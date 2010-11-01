@@ -1,11 +1,11 @@
 ﻿using System;
-using System.IO;
+
 using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
 	public sealed class FakeAdminService : AdminService {		
 		public FakeAdminService(FakeServiceConnector connector, NetworkStoreType storeType)
-			: base(FakeServiceAddress.Local, connector, new FakeAdminServiceDelegator(storeType)) {
+			: base(FakeServiceAddress.Local, connector, new FakeServiceFactory(storeType)) {
 		}
 		
 		public FakeAdminService(FakeServiceConnector connector)
@@ -34,104 +34,33 @@ namespace Deveel.Data.Net {
 			throw new InvalidOperationException();
 		}
 
-		#region FakeAdminServiceDelegator
+		#region FakeServiceFactory
 
-		private class FakeAdminServiceDelegator : IAdminServiceDelegator {
+		private class FakeServiceFactory : IServiceFactory {
+			private IServiceFactory factory;
 			private readonly NetworkStoreType storeType;
-			private string basePath;
-			private IService manager;
-			private IService root;
-			private IService block;
-			
-			public FakeAdminServiceDelegator(NetworkStoreType storeType) {
-				this.storeType = storeType;
-			}
 
-			public void Dispose() {
-				if (manager != null)
-					manager.Dispose();
-				if (root != null)
-					root.Dispose();
-				if (block != null)
-					block.Dispose();
+			public FakeServiceFactory(NetworkStoreType storeType) {
+				this.storeType = storeType;
 			}
 
 			public void Init(AdminService adminService) {
 				if (storeType == NetworkStoreType.FileSystem) {
-					ConfigSource config = ((FakeAdminService)adminService).Config;
-					basePath = config.GetString("node_directory", "./base");
-				}
-			}
-
-			public IService GetService(ServiceType serviceType) {
-				if (serviceType == ServiceType.Manager)
-					return manager;
-				if (serviceType == ServiceType.Root)
-					return root;
-				if (serviceType == ServiceType.Block)
-					return block;
-
-				throw new ArgumentException();
-			}
-
-			public IService CreateService(IServiceAddress address, ServiceType serviceType, IServiceConnector connector) {
-				if (storeType == NetworkStoreType.Memory) {
-					if (serviceType == ServiceType.Manager) {
-						manager = new MemoryManagerService(connector, address);
-						return manager;
-					}
-					if (serviceType == ServiceType.Root) {
-						root = new MemoryRootService(connector);
-						return root;
-					}
-					if (serviceType == ServiceType.Block) {
-						block = new MemoryBlockService(connector);
-						return block;
-					}
-				} else if (storeType == NetworkStoreType.FileSystem) {
-					if (serviceType == ServiceType.Manager) {
-						string dbPath = Path.Combine(basePath, "manager");
-						if (!Directory.Exists(dbPath))
-							Directory.CreateDirectory(dbPath);
-						
-						manager = new FileSystemManagerService(connector, basePath, dbPath, address);
-						return manager;
-					}
-					if (serviceType == ServiceType.Root) {
-						string rootPath = Path.Combine(basePath, "root");
-						if (!Directory.Exists(rootPath))
-							Directory.CreateDirectory(rootPath);
-						
-						root = new FileSystemRootService(connector, rootPath);
-						return root;
-					}
-					if (serviceType == ServiceType.Block) {
-						string blockPath = Path.Combine(basePath, "block");
-						if (!Directory.Exists(blockPath))
-							Directory.CreateDirectory(blockPath);
-						
-						block = new FileSystemBlockService(connector, blockPath);
-						return block;
-					}
+					ConfigSource config = adminService.Config;
+					string basePath = config.GetString("node_directory", "./base");
+					factory = new FileSystemServiceFactory(basePath);
+				} else {
+					factory = new MemoryServiceFactory();
 				}
 
-				throw new InvalidOperationException();
+				factory.Init(adminService);
 			}
 
-			public void DisposeService(ServiceType serviceType) {
-				if (serviceType == ServiceType.Manager) {
-					manager.Dispose();
-					manager = null;
-				} else if (serviceType == ServiceType.Root) {
-					root.Dispose();
-					root = null;
-				} else if (serviceType == ServiceType.Block) {
-					block.Dispose();
-					block = null;
-				}
+			public IService CreateService(IServiceAddress serviceAddress, ServiceType serviceType, IServiceConnector connector) {
+				return factory.CreateService(serviceAddress, serviceType, connector);
 			}
 		}
-		#endregion
 
+		#endregion
 	}
 }

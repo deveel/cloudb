@@ -134,7 +134,7 @@ namespace Deveel.Data.Net {
 		
 		protected override void OnStart() {
 			// Open the guid file,
-			string guidFile = Path.Combine(path, "block_server_guid");
+			string guidFile = Path.Combine(path, "block_guid");
 			// If the guid file exists,
 			if (File.Exists(guidFile)) {
 				// Get the contents,
@@ -213,7 +213,7 @@ namespace Deveel.Data.Net {
 			List<long> blocks = new List<long>(dir.Length);
 			foreach (string f in dir) {
 				string fileName = Path.GetFileName(f);
-				if (!fileName.Equals("block_server_guid") &&
+				if (!fileName.Equals("block_guid") &&
 					!fileName.EndsWith(".tempc") &&
 					!fileName.EndsWith(".tmpc1") &&
 					!fileName.EndsWith(".tmpc2")) {

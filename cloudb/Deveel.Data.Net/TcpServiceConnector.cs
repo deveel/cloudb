@@ -208,7 +208,11 @@ namespace Deveel.Data.Net {
 						writer.Flush();
 
 						ResponseMessage response = (ResponseMessage) serializer.Deserialize(c.Stream, MessageType.Response);
-						return new ResponseMessage(messageStream, response);
+						if (response is ResponseMessageStream) {
+							return response;
+						} else {
+							return new ResponseMessage(messageStream, response);
+						}
 					}
 				} catch (Exception e) {
 					// If this is a 'connection reset by peer' error, wipe the connection

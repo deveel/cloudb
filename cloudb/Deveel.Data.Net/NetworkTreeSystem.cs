@@ -311,7 +311,7 @@ namespace Deveel.Data.Net {
 			DataAddress[] refs = new DataAddress[sz];
 			long[] outRefs = new long[sz];
 
-			RequestMessageStream allocate_message = new RequestMessageStream();
+			RequestMessageStream allocateMessage = new RequestMessageStream();
 
 			// Make a connection with the manager server,
 			IMessageProcessor manager = connector.Connect(managerAddress, ServiceType.Manager);
@@ -329,63 +329,63 @@ namespace Deveel.Data.Net {
 					request.Arguments.Add(4096);
 				}
 
-				allocate_message.AddMessage(request);
+				allocateMessage.AddMessage(request);
 			}
 
 			// The result of the set of allocations,
-			ResponseMessageStream result_stream = (ResponseMessageStream) manager.Process(allocate_message);
+			ResponseMessageStream resultStream = (ResponseMessageStream) manager.Process(allocateMessage);
 			//DEBUG: ++network_comm_count;
 
 			// The unique list of blocks,
-			List<long> unique_blocks = new List<long>();
+			List<long> uniqueBlocks = new List<long>();
 
 			// Parse the result stream one message at a time, the order will be the
 			// order of the allocation messages,
 			int n = 0;
-			foreach (ResponseMessage m in result_stream) {
+			foreach (ResponseMessage m in resultStream) {
 				if (m.HasError)
 					throw m.Error.AsException();
 
 				DataAddress addr = (DataAddress) m.Arguments[0].Value;
 				refs[n] = addr;
 				// Make a list of unique block identifiers,
-				if (!unique_blocks.Contains(addr.BlockId)) {
-					unique_blocks.Add(addr.BlockId);
+				if (!uniqueBlocks.Contains(addr.BlockId)) {
+					uniqueBlocks.Add(addr.BlockId);
 				}
 				++n;
 			}
 
 			// Get the block to server map for each of the blocks,
 
-			IDictionary<long, IList<BlockServerElement>> block_to_server_map = GetServersForBlock(unique_blocks);
+			IDictionary<long, IList<BlockServerElement>> blockToServerMap = GetServersForBlock(uniqueBlocks);
 
 			// Make message streams for each unique block
-			int ubid_count = unique_blocks.Count;
-			RequestMessageStream[] ubid_stream = new RequestMessageStream[ubid_count];
-			for (int i = 0; i < ubid_stream.Length; ++i) {
-				ubid_stream[i] = new RequestMessageStream();
+			int ubid_count = uniqueBlocks.Count;
+			RequestMessageStream[] ubidStream = new RequestMessageStream[ubid_count];
+			for (int i = 0; i < ubidStream.Length; ++i) {
+				ubidStream[i] = new RequestMessageStream();
 			}
 
 			// Scan all the blocks and create the message streams,
 			for (int i = 0; i < sz; ++i) {
-				byte[] node_buf;
+				byte[] nodeBuf;
 
 				ITreeNode node = nodes[i];
 				// Is it a branch node?
 				if (node is TreeBranch) {
 					TreeBranch branch = (TreeBranch)node;
-					// Make a copy of the branch (NOTE; we clone() the array here).
-					long[] cur_node_data = (long[])branch.ChildPointers.Clone();
-					int cur_ndsz = branch.DataSize;
-					branch = new TreeBranch(refs[i].Value, cur_node_data, cur_ndsz);
+					// Make a copy of the branch (NOTE; we Clone() the array here).
+					long[] curNodeData = (long[])branch.ChildPointers.Clone();
+					int curNdsz = branch.DataSize;
+					branch = new TreeBranch(refs[i].Value, curNodeData, curNdsz);
 
 					// The number of children
 					int chsz = branch.ChildCount;
 					// For each child, if it's a heap node, look up the child id and
 					// reference map in the sequence and set the reference accordingly,
 					for (int o = 0; o < chsz; ++o) {
-						long child_ref = branch.GetChild(o);
-						if (child_ref < 0) {
+						long childRef = branch.GetChild(o);
+						if (childRef < 0) {
 							// The ref is currently on the heap, so adjust accordingly
 							int ref_id = sequence.LookupRef(i, o);
 							branch.SetChildOverride(o, refs[ref_id].Value);
@@ -394,38 +394,37 @@ namespace Deveel.Data.Net {
 
 					// Turn the branch into a 'node_buf' byte[] array object for
 					// serialization.
-					long[] node_data = branch.ChildPointers;
+					long[] nodeData = branch.ChildPointers;
 					int ndsz = branch.DataSize;
 					MemoryStream bout = new MemoryStream(1024);
 					BinaryWriter dout = new BinaryWriter(bout, Encoding.Unicode);
 					dout.Write(BranchType);
 					dout.Write(ndsz);
 					for (int o = 0; o < ndsz; ++o) {
-						dout.Write(node_data[o]);
+						dout.Write(nodeData[o]);
 					}
 					dout.Flush();
 
 					// Turn it into a byte array,
-					node_buf = bout.ToArray();
+					nodeBuf = bout.ToArray();
 
 					// Put this branch into the local cache,
 					networkCache.SetNode(refs[i], branch);
 
-				}
+				} else {
 					// If it's a leaf node,
-				else {
 
 					TreeLeaf leaf = (TreeLeaf)node;
 					int lfsz = leaf.Length;
 
-					node_buf = new byte[lfsz + 6];
+					nodeBuf = new byte[lfsz + 6];
 					// Technically, we could comment these next two lines out.
-					ByteBuffer.WriteInt2(LeafType, node_buf, 0);
-					ByteBuffer.WriteInt4(lfsz, node_buf, 2);
-					leaf.Read(0, node_buf, 6, lfsz);
+					ByteBuffer.WriteInt2(LeafType, nodeBuf, 0);
+					ByteBuffer.WriteInt4(lfsz, nodeBuf, 2);
+					leaf.Read(0, nodeBuf, 6, lfsz);
 
 					// Put this leaf into the local cache,
-					leaf = new ByteArrayTreeLeaf(refs[i].Value, node_buf);
+					leaf = new ByteArrayTreeLeaf(refs[i].Value, nodeBuf);
 					networkCache.SetNode(refs[i], leaf);
 
 				}
@@ -434,40 +433,42 @@ namespace Deveel.Data.Net {
 				DataAddress address = refs[i];
 				// Get the block id,
 				long blockId = address.BlockId;
-				int bid = unique_blocks.IndexOf(blockId);
+				int bid = uniqueBlocks.IndexOf(blockId);
 				RequestMessage request = new RequestMessage("writeToBlock");
 				request.Arguments.Add(address);
-				request.Arguments.Add(node_buf);
+				request.Arguments.Add(nodeBuf);
 				request.Arguments.Add(0);
-				request.Arguments.Add(node_buf.Length);
-				ubid_stream[bid].AddMessage(request);
+				request.Arguments.Add(nodeBuf.Length);
+				ubidStream[bid].AddMessage(request);
 
-				// Update 'out_refs' array,
+				// Update 'outRefs' array,
 				outRefs[i] = refs[i].Value;
-
 			}
 
 			// A log of successfully processed operations,
-			List<object> success_process = new List<object>(64);
+			List<object> successProcess = new List<object>(64);
 
 			// Now process the streams on the servers,
-			for (int i = 0; i < ubid_stream.Length; ++i) {
+			for (int i = 0; i < ubidStream.Length; ++i) {
 				// The output message,
-				RequestMessageStream message_out = ubid_stream[i];
+				RequestMessageStream requestMessageStream = ubidStream[i];
+
 				// Get the servers this message needs to be sent to,
-				long block_id = unique_blocks[i];
-				IList<BlockServerElement> block_servers = block_to_server_map[block_id];
+				long block_id = uniqueBlocks[i];
+				IList<BlockServerElement> blockServers = blockToServerMap[block_id];
+
 				// Format a message for writing this node out,
-				int bssz = block_servers.Count;
-				IMessageProcessor[] block_server_procs = new IMessageProcessor[bssz];
+				int bssz = blockServers.Count;
+				IMessageProcessor[] blockServerProcs = new IMessageProcessor[bssz];
+
 				// Make the block server connections,
 				for (int o = 0; o < bssz; ++o) {
-					IServiceAddress address = block_servers[o].Address;
-					block_server_procs[o] = connector.Connect(address, ServiceType.Block);
-					ResponseMessageStream message_in = (ResponseMessageStream) block_server_procs[o].Process(message_out);
+					IServiceAddress address = blockServers[o].Address;
+					blockServerProcs[o] = connector.Connect(address, ServiceType.Block);
+					ResponseMessageStream responseMessageStream = (ResponseMessageStream) blockServerProcs[o].Process(requestMessageStream);
 					//DEBUG: ++network_comm_count;
 
-					if (message_in.HasError) {
+					if (responseMessageStream.HasError) {
 						// If this is an error, we need to report the failure to the
 						// manager server,
 						ReportBlockServerFailure(address);
@@ -475,27 +476,28 @@ namespace Deveel.Data.Net {
 						networkCache.RemoveServers(block_id);
 
 						// Rollback any server writes already successfully made,
-						for (int p = 0; p < success_process.Count; p += 2) {
-							IServiceAddress blocks_addr = (IServiceAddress) success_process[p];
-							RequestMessageStream to_rollback = (RequestMessageStream) success_process[p + 1];
+						for (int p = 0; p < successProcess.Count; p += 2) {
+							IServiceAddress blockAddress = (IServiceAddress) successProcess[p];
+							RequestMessageStream toRollback = (RequestMessageStream) successProcess[p + 1];
 
-							List<DataAddress> rollback_nodes = new List<DataAddress>(128);
-							foreach(Message rm in to_rollback) {
+							List<DataAddress> rollbackNodes = new List<DataAddress>(128);
+							foreach(Message rm in toRollback) {
 								DataAddress raddr = (DataAddress) rm.Arguments[0].Value;
-								rollback_nodes.Add(raddr);
+								rollbackNodes.Add(raddr);
 							}
+
 							// Create the rollback message,
-							RequestMessage rollback_msg = new RequestMessage("rollbackNodes");
-							rollback_msg.Arguments.Add(rollback_nodes.ToArray());
+							RequestMessage rollbackRequest = new RequestMessage("rollbackNodes");
+							rollbackRequest.Arguments.Add(rollbackNodes.ToArray());
 
 							// Send it to the block server,
-							ResponseMessage msg_in = connector.Connect(blocks_addr, ServiceType.Block).Process(rollback_msg);
+							ResponseMessage responseMessage = connector.Connect(blockAddress, ServiceType.Block).Process(rollbackRequest);
 							//DEBUG: ++network_comm_count;
 
 							// If rollback generated an error we throw the error now
 							// because this likely is a serious network error.
-							if (msg_in.HasError)
-								throw new NetworkException("Rollback wrote failed: " + msg_in.ErrorMessage);
+							if (responseMessage.HasError)
+								throw new NetworkException("Rollback wrote failed: " + responseMessage.ErrorMessage);
 						}
 
 						// Retry,
@@ -503,12 +505,12 @@ namespace Deveel.Data.Net {
 							return DoPersist(sequence, tryCount - 1);
 
 						// Otherwise we fail the write
-						throw new NetworkException(message_in.ErrorMessage);
+						throw new NetworkException(responseMessageStream.ErrorMessage);
 					}
 
 					// If we succeeded without an error, add to the log
-					success_process.Add(address);
-					success_process.Add(message_out);
+					successProcess.Add(address);
+					successProcess.Add(requestMessageStream);
 
 				}
 			}
@@ -523,41 +525,42 @@ namespace Deveel.Data.Net {
 		}
 
 		public DataAddress CreateEmptyDatabase() {
-			TreeNodeHeap node_heap = new TreeNodeHeap(17, 4 * 1024 * 1024);
+			TreeNodeHeap nodeHeap = new TreeNodeHeap(17, 4 * 1024 * 1024);
 
-			TreeLeaf head_leaf = node_heap.CreateLeaf(null, Key.Head, 256);
+			TreeLeaf headLeaf = nodeHeap.CreateLeaf(null, Key.Head, 256);
 			// Insert a tree identification pattern
-			head_leaf.Write(0, new byte[] { 1, 1, 1, 1 }, 0, 4);
+			headLeaf.Write(0, new byte[] { 1, 1, 1, 1 }, 0, 4);
+
 			// Create an empty tail node
-			TreeLeaf tail_leaf = node_heap.CreateLeaf(null, Key.Tail, 256);
+			TreeLeaf tailLeaf = nodeHeap.CreateLeaf(null, Key.Tail, 256);
 			// Insert a tree identification pattern
-			tail_leaf.Write(0, new byte[] { 1, 1, 1, 1 }, 0, 4);
+			tailLeaf.Write(0, new byte[] { 1, 1, 1, 1 }, 0, 4);
 
 			// The write sequence,
 			TreeWrite seq = new TreeWrite();
-			seq.NodeWrite(head_leaf);
-			seq.NodeWrite(tail_leaf);
+			seq.NodeWrite(headLeaf);
+			seq.NodeWrite(tailLeaf);
 			IList<long> refs = Persist(seq);
 
 			// Create a branch,
 			int maxBranchSize = MaxBranchSize;
-			TreeBranch root_branch = node_heap.CreateBranch(null, maxBranchSize);
-			root_branch.Set(refs[0], 4,
+			TreeBranch rootBranch = nodeHeap.CreateBranch(null, maxBranchSize);
+			rootBranch.Set(refs[0], 4,
 			                Key.Tail.GetEncoded((1)), 
 							Key.Tail.GetEncoded((2)),
 			                refs[1], 4);
 
 			seq = new TreeWrite();
-			seq.NodeWrite(root_branch);
+			seq.NodeWrite(rootBranch);
 			refs = Persist(seq);
 
 			// The written root node reference,
 			long root_id = refs[0];
 
 			// Delete the head and tail leaf, and the root branch
-			node_heap.Delete(head_leaf.Id);
-			node_heap.Delete(tail_leaf.Id);
-			node_heap.Delete(root_branch.Id);
+			nodeHeap.Delete(headLeaf.Id);
+			nodeHeap.Delete(tailLeaf.Id);
+			nodeHeap.Delete(rootBranch.Id);
 
 			// Return the root,
 			return new DataAddress(root_id);
