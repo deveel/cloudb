@@ -21,6 +21,12 @@ namespace Deveel.Data.Net {
 			
 			Commands.Register(typeof(AddCommand));
 			Commands.Register(typeof(RemoveCommand));
+
+			Commands.Register(typeof(CreateCommand));
+			Commands.Register(typeof(RollbackCommand));
+			Commands.Register(typeof(MoveCommand));
+			Commands.Register(typeof(FixCommand));
+			Commands.Register(typeof(LocateCommand));
 		}
 
 		[STAThread]

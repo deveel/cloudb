@@ -50,7 +50,12 @@
     <Compile Include="Deveel.Data.Net\AddCommand.cs" />
     <Compile Include="Deveel.Data.Net\CloudAdmin.cs" />
     <Compile Include="Deveel.Data.Net\ConnectCommand.cs" />
+    <Compile Include="Deveel.Data.Net\CreateCommand.cs" />
     <Compile Include="Deveel.Data.Net\DisconnectCommand.cs" />
+    <Compile Include="Deveel.Data.Net\FixCommand.cs" />
+    <Compile Include="Deveel.Data.Net\IBlockMapProcess.cs" />
+    <Compile Include="Deveel.Data.Net\LocateCommand.cs" />
+    <Compile Include="Deveel.Data.Net\RollbackCommand.cs" />
     <Compile Include="Deveel.Data.Net\StopCommand.cs" />
     <Compile Include="Deveel.Data.Net\StartCommand.cs" />
     <Compile Include="Deveel.Data.Net\MoveCommand.cs" />
