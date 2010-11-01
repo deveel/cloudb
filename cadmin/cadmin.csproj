@@ -58,6 +58,7 @@
     <Compile Include="Deveel.Data.Net\RefreshCommand.cs" />
     <Compile Include="Deveel.Data.Net\RemoveCommand.cs" />
     <Compile Include="Deveel.Data.Net\ShowCommand.cs" />
+    <Compile Include="Deveel.Data\BasePathWrapper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

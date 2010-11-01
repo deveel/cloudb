@@ -29,7 +29,8 @@ namespace Deveel.Data.Net {
 			admin.SetPrompt("cloudb> ");
 			admin.Interrupted += new EventHandler(CloudAdminInterrupted);
 
-			Options options = admin.CreateOptions();
+			Options options = new Options();
+			admin.RegisterOptions(options);
 			ICommandLineParser parser = new GnuParser(options);
 			CommandLine commandLine = null;
 

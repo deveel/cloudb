@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 
 using Deveel.Console;
 using Deveel.Console.Commands;
@@ -10,8 +11,13 @@ namespace Deveel.Data.Net {
 		}
 		
 		public override string[] Synopsis {
-			get { return new string[] { "add path <type> <path-name> to <root>", 
-					"add base path <path-name> to <root>" }; }
+			get {
+				return new string[] {
+				                    	"add path <type> <path-name> to <root>",
+				                    	"add base path <path-name> to <root>",
+										"add value <value> into <table> with key <key> [to <path>]"
+				                    };
+			}
 		}
 		
 		public override bool RequiresContext {
@@ -44,6 +50,82 @@ namespace Deveel.Data.Net {
 			return CommandResultCode.Success;
 		}
 
+		private CommandResultCode AddValue(NetworkContext context, CommandArguments args) {
+			if (!args.MoveNext())
+				return CommandResultCode.SyntaxError;
+
+			string value = args.Current;
+
+			if (String.IsNullOrEmpty(value))
+				return CommandResultCode.ExecutionFailed;
+
+			if (value[0] == '\'') {
+				bool endFound = false;
+				StringBuilder sb = new StringBuilder();
+				while (!endFound) {
+					for (int i = 0; !String.IsNullOrEmpty(value) && i < value.Length; i++) {
+						char c = value[i];
+						if (c == '\'' && i > 0) {
+							endFound = true;
+							break;
+						}
+
+						sb.Append(c);
+					}
+
+					if (!endFound && args.MoveNext()) {
+						sb.Append(' ');
+						value = args.Current;
+					}
+				}
+
+				value = sb.ToString();
+			}
+
+			if (!args.MoveNext())
+				return CommandResultCode.SyntaxError;
+			if (args.Current != "into")
+				return CommandResultCode.SyntaxError;
+			if (!args.MoveNext())
+				return CommandResultCode.SyntaxError;
+
+			string tableName = args.Current;
+
+			if (!args.MoveNext())
+				return CommandResultCode.SyntaxError;
+			if (args.Current != "with")
+				return CommandResultCode.SyntaxError;
+			if (!args.MoveNext())
+				return CommandResultCode.SyntaxError;
+			if (args.Current != "key")
+				return CommandResultCode.SyntaxError;
+			if (!args.MoveNext())
+				return CommandResultCode.SyntaxError;
+
+			string key = args.Current;
+
+			string pathName = null;
+
+			if (args.MoveNext()) {
+				if (args.Current != "to")
+					return CommandResultCode.SyntaxError;
+				if (!args.MoveNext())
+					return CommandResultCode.SyntaxError;
+
+				pathName = args.Current;
+			}
+
+			try {
+				context.AddValueToPath(pathName, tableName, key, value);
+			} catch(Exception e) {
+				Error.WriteLine("error while adding the value: " + e.Message);
+				Error.WriteLine();
+				return CommandResultCode.ExecutionFailed;
+			}
+			
+			return CommandResultCode.Success;
+		}
+
 		
 		public override CommandResultCode Execute(IExecutionContext context, CommandArguments args) {
 			NetworkContext networkContext = (NetworkContext)context;
@@ -63,8 +145,10 @@ namespace Deveel.Data.Net {
 					return CommandResultCode.SyntaxError;
 				if (args.Current != "path")
 					return CommandResultCode.SyntaxError;
-				
+
 				pathType = "Deveel.Data.BasePath, cloudbase";
+			} else if (args.Current == "value") {
+				return AddValue(networkContext, args);
 			} else {
 				return CommandResultCode.SyntaxError;
 			}
