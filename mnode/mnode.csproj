@@ -68,7 +68,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Configuration.Install" />
     <Reference Include="System.Data" />
+    <Reference Include="System.ServiceProcess" />
     <Reference Include="System.Xml" />
     <Reference Include="deveel-cli, Version=1.0.3938.15205, Culture=neutral, PublicKeyToken=null">
       <HintPath>..\libs\deveel-cli.dll</HintPath>
@@ -76,6 +78,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Deveel.Data.Net\MachineNode.cs" />
+    <Compile Include="Deveel.Data.Net\MachineNodeService.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

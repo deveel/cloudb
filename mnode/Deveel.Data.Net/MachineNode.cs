@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Specialized;
+using System.Configuration.Install;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -7,6 +9,7 @@ using System.Runtime.InteropServices;
 #if UNIX
 using Mono.Unix.Native;
 #endif
+using System.ServiceProcess;
 using System.Threading;
 
 using Deveel.Configuration;
@@ -30,15 +33,12 @@ namespace Deveel.Data.Net {
 			options.AddOption("host", true, "The interface address to bind the socket on the local machine " +
 							  "(optional - if not given binds to all interfaces)");
 			options.AddOption("port", true, "The port to bind the socket.");
-			/*
-			TODO:
 			options.AddOption("install", false, "Installs the node as a service in this machine");
 			options.AddOption("user", true, "The user name for the authorization credentials to install/uninstall " +
 			                 "the service.");
-			options.AddOption("pass", true, "The password credential used to authorize installation and " +
+			options.AddOption("password", true, "The password credential used to authorize installation and " +
 			                 "uninstallation of the service in this machine.");
 			options.AddOption("uninstall", false, "Uninstalls a service for the node that was previously installed.");
-			*/
 			options.AddOption("storage", true, "The type of storage used to persist node information and data");
 			options.AddOption("protocol", true, "The connection protocol used by this node to listen connections");
 			return options;
@@ -104,6 +104,23 @@ namespace Deveel.Data.Net {
 			} catch(ParseException) {
 				wout.WriteLine("Error parsing arguments.");
 				failed = true;
+			}
+
+			if (commandLine.HasOption("install")) {
+				try {
+					Install(commandLine.GetOptionValue("user"), commandLine.GetOptionValue("password"));
+				} catch(Exception e) {
+					Console.Error.WriteLine("Error installing service: " + e.Message);
+					return 1;
+				}
+			} else if (commandLine.HasOption("uninstall")) {
+				try {
+					Uninstall();
+					return 0;
+				} catch(Exception e) {
+					Console.Error.WriteLine("Error uninstalling service: " + e.Message);
+					return 1;
+				}
 			}
 
 			// Check arguments that can be null,
@@ -202,6 +219,41 @@ namespace Deveel.Data.Net {
 			}
 
 			return 0;
+		}
+
+		private static void Install(string user, string password) {
+			ServiceProcessInstaller processInstaller = new ServiceProcessInstaller();
+			if (!String.IsNullOrEmpty(user)) {
+				processInstaller.Account = ServiceAccount.NetworkService;
+				processInstaller.Username = user;
+				processInstaller.Password = password;
+			} else {
+				processInstaller.Account = ServiceAccount.NetworkService;
+			}
+
+			string execPath = Path.Combine(Environment.CurrentDirectory, "mnode.exe");
+			string assemblyPath = String.Format("/assemblypath={0}", execPath);
+			InstallContext context = new InstallContext(null, new string[] { assemblyPath });
+
+			ServiceInstaller installer = new ServiceInstaller();
+			installer.Context = context;
+			installer.DisplayName = MachineNodeService.DisplayName;
+			installer.Description = MachineNodeService.Description;
+			installer.ServiceName = MachineNodeService.Name;
+			installer.StartType = ServiceStartMode.Automatic;
+			installer.Parent = processInstaller;
+
+			ListDictionary state = new ListDictionary();
+			installer.Install(state);
+		}
+
+		private static void Uninstall() {
+			InstallContext context = new InstallContext(null, null);
+			ServiceInstaller installer = new ServiceInstaller();
+			installer.Context = context;
+			installer.ServiceName = MachineNodeService.Name;
+			ListDictionary state = new ListDictionary();
+			installer.Uninstall(state);
 		}
 		
 #if WIN32
