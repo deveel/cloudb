@@ -18,7 +18,7 @@ namespace Deveel.Data.Net {
 					MachineProfile machine_profile = new MachineProfile(server);
 
 					// Request a report from the administration role on the machine,
-					IMessageProcessor mp = network_connector.Connect(server, ServiceType.Admin);
+					IMessageProcessor mp = connector.Connect(server, ServiceType.Admin);
 					RequestMessage request = new RequestMessage("report");
 					ResponseMessage response = mp.Process(request);
 
@@ -79,7 +79,7 @@ namespace Deveel.Data.Net {
 
 		public bool IsValidNode(IServiceAddress machine) {
 			// Request a report from the administration role on the machine,
-			IMessageProcessor mp = network_connector.Connect(machine, ServiceType.Admin);
+			IMessageProcessor mp = connector.Connect(machine, ServiceType.Admin);
 			RequestMessage request = new RequestMessage("report");
 			ResponseMessage response = mp.Process(request);
 

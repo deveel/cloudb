@@ -1,30 +1,28 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 
-using Deveel.Data.Diagnostics;
 using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
 	public sealed partial class NetworkProfile {
 		public NetworkProfile(IServiceConnector connector) {
-			this.network_connector = connector;
+			this.connector = connector;
 		}
 
-		private NetworkConfigSource network_config;
-		private readonly IServiceConnector network_connector;
+		private NetworkConfigSource config;
+		private readonly IServiceConnector connector;
 		private List<MachineProfile> machine_profiles = null;
 
 		public NetworkConfigSource Configuration {
-			get { return network_config; }
-			set { network_config = value; }
+			get { return config; }
+			set { config = value; }
 		}
 
 		public IServiceAddress[] ServiceAddresses {
 			get {
-				if (network_config == null)
+				if (config == null)
 					return new IServiceAddress[0];
-				IServiceAddress[] node_list = network_config.NetworkNodes;
+				IServiceAddress[] node_list = config.NetworkNodes;
 				// Sort the list of service addresses (the list is probably already sorted)
 				Array.Sort(node_list);
 				return node_list;
@@ -78,8 +76,12 @@ namespace Deveel.Data.Net {
 			}
 		}
 
+		public IServiceConnector Connector {
+			get { return connector; }
+		}
+
 		private ResponseMessage Command(IServiceAddress machine, ServiceType serviceType, RequestMessage request) {
-			IMessageProcessor proc = network_connector.Connect(machine, serviceType);
+			IMessageProcessor proc = connector.Connect(machine, serviceType);
 			return proc.Process(request);
 		}
 

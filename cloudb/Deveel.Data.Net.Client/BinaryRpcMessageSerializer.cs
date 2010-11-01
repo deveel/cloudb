@@ -56,7 +56,7 @@ namespace Deveel.Data.Net.Client {
 			
 			foreach(KeyValuePair<byte, Type> pair in typeCodes) {
 				if (pair.Value == type ||
-				    (pair.Value.IsInterface && 
+				    ((pair.Value.IsInterface || pair.Value.IsAbstract) && 
 				     pair.Value.IsAssignableFrom(type)))
 					return pair.Key;
 			}
@@ -158,7 +158,7 @@ namespace Deveel.Data.Net.Client {
 				Type arrayType = GetType(arrayTypeCode);
 				Array array = Array.CreateInstance(arrayType, sz);
 				for (int i = 0; i < sz; i++) {
-					object value = ReadValue(reader, arrayTypeCode);
+					object value = ReadValue(reader);
 					array.SetValue(value, i);
 				}
 
@@ -298,8 +298,12 @@ namespace Deveel.Data.Net.Client {
 			if (String.IsNullOrEmpty(messageName)) {
 				if (message is RequestMessage)
 					throw new ArgumentException("A request message must have a name.");
+
+				Message request = ((ResponseMessage) message).Request;
+				if (request == null)
+					throw new ArgumentException("An unnamed response must belong to a request context.");
 				
-				messageName = ((ResponseMessage)message).Request.Name;
+				messageName = request.Name;
 			}
 			
 			writer.Write(messageName);

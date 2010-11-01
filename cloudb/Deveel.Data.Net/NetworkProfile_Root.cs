@@ -29,7 +29,7 @@ namespace Deveel.Data.Net {
 			IServiceAddress managerServer = man.Address;
 
 			// Create a new empty database,
-			NetworkClient client = new NetworkClient(managerServer, network_connector);
+			NetworkClient client = new NetworkClient(managerServer, connector);
 			client.Connect();
 			DataAddress dataAddress = client.CreateEmptyDatabase();
 			client.Disconnect();
@@ -147,6 +147,48 @@ namespace Deveel.Data.Net {
 
 			// Return the full list as an array
 			return fullList.ToArray();
+		}
+
+		public DataAddress[] GetHistoricalPathRoots(IServiceAddress root, string pathName, DateTime time, int maxCount) {
+			InspectNetwork();
+
+			// Check machine is in the schema,
+			MachineProfile machine = CheckMachineInNetwork(root);
+			// Check it's root,
+			if (!machine.IsRoot)
+				throw new NetworkAdminException("Machine '" + root + "' is not a root");
+
+			// Perform the command,
+			RequestMessage request = new RequestMessage("getPathHistorical");
+			request.Arguments.Add(pathName);
+			request.Arguments.Add(time.ToBinary());
+			request.Arguments.Add(time.ToBinary());
+
+			ResponseMessage m = Command(root, ServiceType.Root, request);
+			if (m.HasError)
+				throw new NetworkAdminException(m.ErrorMessage);
+
+			// Return the data address array,
+			return (DataAddress[])m.ReturnValue;
+		}
+
+		public void PublishPath(IServiceAddress root, string pathName, DataAddress address) {
+			InspectNetwork();
+
+			// Check machine is in the schema,
+			MachineProfile machine = CheckMachineInNetwork(root);
+			// Check it's root,
+			if (!machine.IsRoot)
+				throw new NetworkAdminException("Machine '" + root + "' is not a root");
+
+			// Perform the command,
+			RequestMessage request = new RequestMessage("publishPath");
+			request.Arguments.Add(pathName);
+			request.Arguments.Add(address);
+
+			ResponseMessage m = Command(root, ServiceType.Root, request);
+			if (m.HasError)
+				throw new NetworkAdminException(m.ErrorMessage);
 		}
 	}
 }
