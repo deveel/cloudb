@@ -2,6 +2,7 @@
 using System.IO;
 using System.Threading;
 
+using Deveel.Data.Configuration;
 using Deveel.Data.Diagnostics;
 
 using NUnit.Framework;

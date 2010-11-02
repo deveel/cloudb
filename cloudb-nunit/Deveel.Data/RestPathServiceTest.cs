@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Xml;
 
+using Deveel.Data.Configuration;
 using Deveel.Data.Diagnostics;
 using Deveel.Data.Net.Client;
 

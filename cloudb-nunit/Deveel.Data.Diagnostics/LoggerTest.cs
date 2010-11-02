@@ -1,5 +1,7 @@
 ﻿using System;
 
+using Deveel.Data.Configuration;
+
 using NUnit.Framework;
 
 namespace Deveel.Data.Diagnostics {

@@ -1,5 +1,6 @@
 ﻿using System;
 
+using Deveel.Data.Configuration;
 using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {

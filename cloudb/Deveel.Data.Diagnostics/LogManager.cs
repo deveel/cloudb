@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 
+using Deveel.Data.Configuration;
+
 namespace Deveel.Data.Diagnostics {
 	public static class LogManager {
 		private static readonly Dictionary<string, ILogger> loggers = new Dictionary<string, ILogger>(128);

@@ -22,6 +22,8 @@
 
 using System;
 
+using Deveel.Data.Configuration;
+
 namespace Deveel.Data.Diagnostics {
 	/// <summary>
 	/// An interface for logging errors, warnings, messages, and exceptions 

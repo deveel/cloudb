@@ -4,6 +4,8 @@ using System.IO;
 using System.Net;
 using System.Text;
 
+using Deveel.Data.Configuration;
+
 namespace Deveel.Data.Net {
 	public class NetworkConfigSource : ConfigSource {
 		private readonly string source;
@@ -15,10 +17,6 @@ namespace Deveel.Data.Net {
 		public const string ConnectWhiteList = "connect_whitelist";
 		public const string NetworkNodeList = "network_nodelist";
 		public const string ConfigCheckTimeout = "configcheck_timeout";
-
-		public NetworkConfigSource(Stream stream)
-			: base(stream) {
-		}
 
 		public NetworkConfigSource(string source) {
 			this.source = source;

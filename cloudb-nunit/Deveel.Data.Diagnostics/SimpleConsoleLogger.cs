@@ -1,6 +1,8 @@
 ﻿using System;
 using System.IO;
 
+using Deveel.Data.Configuration;
+
 namespace Deveel.Data.Diagnostics {
 	[LoggerName("simple-console")]
 	public sealed class SimpleConsoleLogger : ILogger {

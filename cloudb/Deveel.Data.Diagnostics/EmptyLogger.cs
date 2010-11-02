@@ -1,5 +1,7 @@
 ﻿using System;
 
+using Deveel.Data.Configuration;
+
 namespace Deveel.Data.Diagnostics {
 	internal class EmptyLogger : ILogger {
 		public void Dispose() {

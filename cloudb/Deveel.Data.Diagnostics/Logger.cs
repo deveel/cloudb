@@ -2,6 +2,8 @@
 using System.Diagnostics;
 using System.Threading;
 
+using Deveel.Data.Configuration;
+
 namespace Deveel.Data.Diagnostics {
 	public sealed class Logger : ILogger {
 		internal Logger(string name, ILogger logger) {

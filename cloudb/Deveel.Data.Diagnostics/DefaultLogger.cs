@@ -25,6 +25,8 @@ using System.IO;
 using System.Text;
 using System.Threading;
 
+using Deveel.Data.Configuration;
+
 namespace Deveel.Data.Diagnostics {
 	/// <summary>
 	/// A default implementation of <see cref="ILogger"/> that logs 

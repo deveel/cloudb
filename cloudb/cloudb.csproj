@@ -62,6 +62,7 @@
   <ItemGroup>
     <Compile Include="Deveel.Data.Caching\Cache.cs" />
     <Compile Include="Deveel.Data.Caching\ICache.cs" />
+    <Compile Include="Deveel.Data.Configuration\ConfigFormat.cs" />
     <Compile Include="Deveel.Data.Diagnostics\Analytics.cs" />
     <Compile Include="Deveel.Data.Diagnostics\AnalyticsRecord.cs" />
     <Compile Include="Deveel.Data.Diagnostics\Logger.cs" />
@@ -210,7 +211,7 @@
     <Compile Include="ComponentAce.Compression.Libs.zlib\Adler32.cs" />
     <Compile Include="Deveel.Data.Util\ProductInfo.cs" />
     <Compile Include="Deveel.Data.Util\StrongPagedAccess.cs" />
-    <Compile Include="Deveel.Data\ConfigSource.cs" />
+    <Compile Include="Deveel.Data.Configuration\ConfigSource.cs" />
     <Compile Include="Deveel.Data\MemoryDatabase.cs" />
     <Compile Include="Deveel.Data\SortedIndex.cs" />
     <Compile Include="Deveel.Data\TreeBranch.cs">

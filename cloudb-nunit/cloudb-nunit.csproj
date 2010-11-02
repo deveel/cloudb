@@ -83,7 +83,7 @@
     <Compile Include="Deveel.Data.Net\XmlRpcMessageSerializerTest.cs" />
     <Compile Include="Deveel.Data\BasePathTest.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LoggerTest.cs" />
-    <Compile Include="Deveel.Data\ConfigSourceTest.cs" />
+    <Compile Include="Deveel.Data.Configuration\ConfigSourceTest.cs" />
     <Compile Include="Deveel.Data\RestPathServiceTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <None Include="cloudb-nunit.build" />

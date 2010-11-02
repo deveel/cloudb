@@ -2,6 +2,8 @@
 using System.IO;
 using System.Reflection;
 
+using Deveel.Data.Configuration;
+
 using log4net.Appender;
 using log4net.Config;
 using log4net.Core;

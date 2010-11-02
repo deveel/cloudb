@@ -13,6 +13,7 @@ using System.ServiceProcess;
 using System.Threading;
 
 using Deveel.Configuration;
+using Deveel.Data.Configuration;
 using Deveel.Data.Diagnostics;
 using Deveel.Data.Util;
 
@@ -84,7 +85,7 @@ namespace Deveel.Data.Net {
 			Console.Out.WriteLine("{0} {1} ( {2} )", libInfo.Title, libInfo.Version, libInfo.Copyright);
 
 			string nodeConfig = null, netConfig = null;
-			string hostArg = null, port_arg = null;
+			string hostArg = null, portArg = null;
 
 			StringWriter wout = new StringWriter();
 			Options options = GetOptions();
@@ -100,7 +101,7 @@ namespace Deveel.Data.Net {
 				nodeConfig = commandLine.GetOptionValue("nodeconfig", "node.conf");
 				netConfig = commandLine.GetOptionValue("netconfig", "network.conf");
 				hostArg = commandLine.GetOptionValue("host");
-				port_arg = commandLine.GetOptionValue("port");
+				portArg = commandLine.GetOptionValue("port");
 			} catch(ParseException) {
 				wout.WriteLine("Error parsing arguments.");
 				failed = true;
@@ -131,7 +132,7 @@ namespace Deveel.Data.Net {
 				wout.WriteLine("Error, no node configuration file given.");
 				failed = true;
 			}
-			if (port_arg == null) {
+			if (portArg == null) {
 				wout.WriteLine("Error, no port address given.");
 				failed = true;
 			}
@@ -160,7 +161,8 @@ namespace Deveel.Data.Net {
 				// Parse the network configuration string,
 				NetworkConfigSource netConfigSource;
 				using(FileStream stream = new FileStream(netConfig, FileMode.Open, FileAccess.Read, FileShare.None)) {
-					netConfigSource = new NetworkConfigSource(stream);
+					netConfigSource = new NetworkConfigSource();
+					netConfigSource.Load(stream);
 				}
 
 				string password = nodeConfigSource.GetString("network_password", null);
@@ -195,8 +197,8 @@ namespace Deveel.Data.Net {
 				}
 
 				int port;
-				if (!Int32.TryParse(port_arg, out  port)) {
-					Console.Out.WriteLine("Error: couldn't parse port argument: " + port_arg);
+				if (!Int32.TryParse(portArg, out  port)) {
+					Console.Out.WriteLine("Error: couldn't parse port argument: " + portArg);
 					return 1;
 				}
 				
@@ -213,6 +215,7 @@ namespace Deveel.Data.Net {
 			} catch(Exception e) {
 				Console.Out.WriteLine(e.Message);
 				Console.Out.WriteLine(e.StackTrace);
+				return 1;
 			} finally {
 				if (service != null)
 					service.Dispose();
