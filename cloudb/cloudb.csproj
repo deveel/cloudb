@@ -63,6 +63,9 @@
     <Compile Include="Deveel.Data.Caching\Cache.cs" />
     <Compile Include="Deveel.Data.Caching\ICache.cs" />
     <Compile Include="Deveel.Data.Configuration\ConfigFormat.cs" />
+    <Compile Include="Deveel.Data.Configuration\IConfigFormatter.cs" />
+    <Compile Include="Deveel.Data.Configuration\PropertiesConfigFormatter.cs" />
+    <Compile Include="Deveel.Data.Configuration\XmlConfigFormatter.cs" />
     <Compile Include="Deveel.Data.Diagnostics\Analytics.cs" />
     <Compile Include="Deveel.Data.Diagnostics\AnalyticsRecord.cs" />
     <Compile Include="Deveel.Data.Diagnostics\CompositeLogger.cs" />

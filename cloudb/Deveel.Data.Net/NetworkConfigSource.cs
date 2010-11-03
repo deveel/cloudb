@@ -233,7 +233,8 @@ namespace Deveel.Data.Net {
 
 					if (lastReadTime != DateTime.MinValue && modTime > lastReadTime) {
 						using(Stream inputStream = response.GetResponseStream()) {
-							Load(inputStream);
+							//TODO: make this generic ...
+							LoadProperties(inputStream);
 						}
 
 						lastReadTime = modTime;
@@ -243,7 +244,8 @@ namespace Deveel.Data.Net {
 				DateTime modTime = File.GetLastWriteTime(source);
 				if (lastReadTime != DateTime.MinValue && modTime > lastReadTime) {
 					using(FileStream fileStream = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read)) {
-						Load(fileStream);
+						//TODO: make this generic ...
+						LoadProperties(fileStream);
 					}
 
 					lastReadTime = modTime;

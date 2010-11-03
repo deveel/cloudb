@@ -50,6 +50,23 @@ namespace Deveel.Data.Configuration {
 		public int ChildCount {
 			get { return children.Count; }
 		}
+		
+		private static IConfigFormatter GetFormatter(ConfigFormat format) {
+			IConfigFormatter formatter;
+			
+			switch(format) {
+				case ConfigFormat.Properties:
+					formatter = new PropertiesConfigFormatter();
+					break;
+				case ConfigFormat.Xml:
+					formatter = new XmlConfigFormatter();
+					break;
+				default:
+					throw new ArgumentException("Format '" + format + "' is not supported.");
+			}
+
+			return formatter;
+		}
 
 		public bool HasValue(string key) {
 			int index = key.IndexOf('.');
@@ -236,27 +253,48 @@ namespace Deveel.Data.Configuration {
 
 			return false;
 		}
-
-		public void Load(Stream inputStream) {
-			if (!inputStream.CanRead)
-				throw new ArgumentException("Cannot read from the stream.", "inputStream");
-
-			Util.Properties properties = new Util.Properties();
-			properties.Load(inputStream);
-			foreach(KeyValuePair<object, object> pair in properties) {
-				SetValue((string)pair.Key, (string)pair.Value);
-			}
+		
+		public void Load(IConfigFormatter formatter, Stream input) {
+			if (!input.CanRead)
+				throw new ArgumentException("The input stream cannot be read.", "input");
+			
+			if (formatter == null)
+				throw new ArgumentNullException("formatter");
+			
+			formatter.Load(this, input);
 		}
-
-		public void Save(Stream outputStream) {
-			if (!outputStream.CanWrite)
-				throw new ArgumentException("The stream cannot be written.", "outputStream");
-
-			Util.Properties properties = new Util.Properties();
-			foreach(KeyValuePair<string, string> pair in keyValues) {
-				properties.SetProperty(pair.Key, pair.Value);
-			}
-			properties.Store(outputStream, null);
+		
+		public void Load(ConfigFormat format, Stream input) {
+			IConfigFormatter formatter = GetFormatter(format);
+			formatter.Load(this, input);
+		}
+		
+		public void LoadProperties(Stream input) {
+			Load(ConfigFormat.Properties, input);
+		}
+		
+		public void LoadXml(Stream input) {
+			Load(ConfigFormat.Xml, input);
+		}
+				
+		public void Save(IConfigFormatter formatter, Stream output) {
+			if (formatter == null)
+				throw new ArgumentNullException("formatter");
+			
+			formatter.Save(this, output);
+		}
+		
+		public void Save(ConfigFormat format, Stream output) {
+			IConfigFormatter formatter = GetFormatter(format);
+			Save(formatter, output);
+		}
+		
+		public void SaveProperties(Stream output) {
+			Save(ConfigFormat.Properties, output);
+		}
+		
+		public void SaveXml(Stream output) {
+			Save(ConfigFormat.Xml, output);
 		}
 
 		public object Clone() {
