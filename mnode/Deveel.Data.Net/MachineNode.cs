@@ -155,14 +155,16 @@ namespace Deveel.Data.Net {
 				// Get the node configuration file,
 				ConfigSource nodeConfigSource = new ConfigSource();
 				using (FileStream fin = new FileStream(nodeConfig, FileMode.Open, FileAccess.Read, FileShare.None)) {
-					nodeConfigSource.Load(new BufferedStream(fin));
+					//TODO: make it configurable ...
+					nodeConfigSource.LoadProperties(new BufferedStream(fin));
 				}
 
 				// Parse the network configuration string,
 				NetworkConfigSource netConfigSource;
 				using(FileStream stream = new FileStream(netConfig, FileMode.Open, FileAccess.Read, FileShare.None)) {
 					netConfigSource = new NetworkConfigSource();
-					netConfigSource.Load(stream);
+					//TODO: make it configurable ...
+					netConfigSource.LoadProperties(stream);
 				}
 
 				string password = nodeConfigSource.GetString("network_password", null);
@@ -172,7 +174,7 @@ namespace Deveel.Data.Net {
 				}
 
 				// configure the loggers
-				LogManager.Init(nodeConfigSource);
+				Logger.Init(nodeConfigSource);
 
 				//TODO: support also IPv6
 

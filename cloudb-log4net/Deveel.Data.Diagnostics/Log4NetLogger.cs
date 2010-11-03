@@ -113,7 +113,7 @@ namespace Deveel.Data.Diagnostics {
 		}
 
 		public void Init(ConfigSource config) {
-			string loggerName = config.GetString(LogManager.LoggerNameKey);
+			string loggerName = config.Name;
 			if (loggerName == null)
 				throw new InvalidOperationException();
 

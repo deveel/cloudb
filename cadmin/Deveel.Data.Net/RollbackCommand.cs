@@ -48,7 +48,7 @@ namespace Deveel.Data.Net {
 			Out.WriteLine(" state.");
 			Out.WriteLine();
 
-			Answer answer = Ask("If you are sure you want to continue type YES (case-sensitive) ", new string[] {"YES", "no"}, 1);
+			Answer answer = Input.Ask("If you are sure you want to continue type YES (case-sensitive) ", new string[] {"YES", "no"}, 1);
 			if (answer.SelectedOption != 0)
 				return;
 
