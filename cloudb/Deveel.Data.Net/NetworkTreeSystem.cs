@@ -23,7 +23,7 @@ namespace Deveel.Data.Net {
 			failures = new Dictionary<IServiceAddress, DateTime>();
 			pathToRoot = new Dictionary<string, IServiceAddress>();
 			
-			logger = LogManager.NetworkLogger;
+			logger = Logger.Network;
 		}
 
 		private readonly IServiceConnector connector;

@@ -153,7 +153,7 @@ namespace Deveel.Data.Configuration {
 				string childName = key.Substring(0, index);
 				ConfigSource child = GetChild(childName);
 				if (child == null)
-					throw new ArgumentException("The child '" + childName + "' was not found.");
+					child = AddChild(childName);
 
 				key = key.Substring(index + 1);
 				child.SetValue(key, value);
@@ -263,6 +263,9 @@ namespace Deveel.Data.Configuration {
 			ConfigSource config = (ConfigSource) Activator.CreateInstance(GetType());
 			foreach(KeyValuePair<string , string> pair in keyValues) {
 				config.SetValue(pair.Key, pair.Value);
+			}
+			foreach(ConfigSource child in children) {
+				config.children.Add((ConfigSource)child.Clone());
 			}
 			return config;
 		}

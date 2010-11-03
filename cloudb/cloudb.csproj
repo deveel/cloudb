@@ -65,14 +65,14 @@
     <Compile Include="Deveel.Data.Configuration\ConfigFormat.cs" />
     <Compile Include="Deveel.Data.Diagnostics\Analytics.cs" />
     <Compile Include="Deveel.Data.Diagnostics\AnalyticsRecord.cs" />
+    <Compile Include="Deveel.Data.Diagnostics\CompositeLogger.cs" />
     <Compile Include="Deveel.Data.Diagnostics\Logger.cs" />
-    <Compile Include="Deveel.Data.Diagnostics\LoggerNameAttribute.cs" />
+    <Compile Include="Deveel.Data.Diagnostics\LoggerTypeNameAttribute.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LogLevel.cs" />
     <Compile Include="Deveel.Data.Diagnostics\DefaultLogger.cs" />
     <Compile Include="Deveel.Data.Diagnostics\EmptyLogger.cs" />
     <Compile Include="Deveel.Data.Diagnostics\ILogger.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LogEntry.cs" />
-    <Compile Include="Deveel.Data.Diagnostics\LogManager.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LogWriter.cs" />
     <Compile Include="Deveel.Data.Net.Client\BinaryMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Client\BinaryRpcMessageSerializer.cs" />

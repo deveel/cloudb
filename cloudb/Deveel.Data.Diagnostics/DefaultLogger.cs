@@ -37,7 +37,7 @@ namespace Deveel.Data.Diagnostics {
 	/// depth.  So for example, only message above or equal to level Alert are
 	/// shown.
 	/// </remarks>
-	[LoggerName("default")]
+	[LoggerTypeNameAttribute("default")]
 	public class DefaultLogger : ILogger {
 		/// <summary>
 		/// The debug Lock object.
@@ -146,7 +146,7 @@ namespace Deveel.Data.Diagnostics {
 			}
 		}
 		
-				/// <summary>
+		/// <summary>
 		/// Parses a file string to an absolute position in the file system.
 		/// </summary>
 		/// <remarks>
@@ -174,13 +174,11 @@ namespace Deveel.Data.Diagnostics {
 			return res;
 		}
 
-		// ---------- Implemented from ILogger ----------
-
 		public void Init(ConfigSource config) {
-			string log_path_string = config.GetString("log_path");
-			string root_path_var = config.GetString("root_path");
-			string read_only_access = config.GetString("read_only");
-			string debug_logs = config.GetString("debug_logs");
+			string log_path_string = config.GetString("path");
+			string root_path_var = config.GetString("rootPath");
+			string read_only_access = config.GetString("readOnly");
+			string debug_logs = config.GetString("debugLogs");
 			bool read_only_bool = false;
 			if (read_only_access != null) {
 				read_only_bool = String.Compare(read_only_access, "enabled", true) == 0;
@@ -205,7 +203,7 @@ namespace Deveel.Data.Diagnostics {
 				LogWriter f_writer;
 				String dlog_file_name = "";
 				try {
-					dlog_file_name = config.GetString("log_file");
+					dlog_file_name = config.GetString("file");
 					string debug_log_file = Path.Combine(Path.GetFullPath(log_path), dlog_file_name);
 
 					// Allow log size to grow to 512k and allow 12 archives of the log
@@ -227,12 +225,12 @@ namespace Deveel.Data.Diagnostics {
 				output = new EmptyTextWriter();
 			}
 
-			debug_level = config.GetInt32("log_level", -1);
+			debug_level = config.GetInt32("level", -1);
 			if (debug_level == -1)
 				// stops all the output
 				debug_level = 255;
 
-			string format = config.GetString("log_format", null);
+			string format = config.GetString("format", null);
 			if (format != null)
 				message_format = format;
 		}

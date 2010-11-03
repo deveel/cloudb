@@ -2,10 +2,10 @@
 
 namespace Deveel.Data.Diagnostics {
 	[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-	public sealed class LoggerNameAttribute : Attribute {
+	public sealed class LoggerTypeNameAttribute : Attribute {
 		private readonly string name;
 
-		public LoggerNameAttribute(string name) {
+		public LoggerTypeNameAttribute(string name) {
 			this.name = name;
 		}
 

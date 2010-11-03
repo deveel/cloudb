@@ -16,7 +16,7 @@ namespace Deveel.Data.Net {
 		public event EventHandler Error;
 
 		protected Service() {
-			log = LogManager.NetworkLogger;
+			log = Logger.Network;
 		}
 
 		protected Logger Logger {

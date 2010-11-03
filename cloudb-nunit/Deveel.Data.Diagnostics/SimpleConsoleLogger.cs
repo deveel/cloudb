@@ -4,7 +4,7 @@ using System.IO;
 using Deveel.Data.Configuration;
 
 namespace Deveel.Data.Diagnostics {
-	[LoggerName("simple-console")]
+	[LoggerTypeNameAttribute("simple-console")]
 	public sealed class SimpleConsoleLogger : ILogger {
 		public void Init(ConfigSource config) {
 		}

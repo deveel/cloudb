@@ -8,38 +8,49 @@ namespace Deveel.Data.Diagnostics {
 	[TestFixture]
 	public class LoggerTest {
 		[Test]
-		public void ConfigureDefaultDebuggerTest() {
+		public void ConfigureDefaultDebugger() {
 			ConfigSource config = new ConfigSource();
-			config.SetValue("logger", "default");
+			config.SetValue("logger.foo.type", "default");
 
-			LogManager.Init(config);
-			ILogger logger = LogManager.GetLogger("default");
-			Assert.IsInstanceOf(typeof(Logger), logger);
-			Assert.IsInstanceOf(typeof(DefaultLogger), ((Logger)logger).BaseLogger);
+			Logger.Init(config);
+			Logger logger = Logger.GetLogger("foo");
+			Assert.IsInstanceOf(typeof(DefaultLogger), logger.BaseLogger);
 		}
 		
 		[Test]
 		public void ConfigureSimpleConsoleLogger() {
 			ConfigSource config = new ConfigSource();
-			config.SetValue("logger", "simple-console");
+			config.SetValue("logger.foo.type", "simple-console");
 			
-			LogManager.Init(config);
-			ILogger logger = LogManager.GetLogger("simple-console");
-			Assert.IsInstanceOf(typeof(Logger), logger);
-			Assert.IsInstanceOf(typeof(SimpleConsoleLogger), ((Logger)logger).BaseLogger);
+			Logger.Init(config);
+			Logger logger = Logger.GetLogger("foo");
+			Assert.IsInstanceOf(typeof(SimpleConsoleLogger), logger.BaseLogger);
 			
-			((Logger)logger).Info("Printing a log message");
+			logger.Info("Printing a log message");
 		}
 		
 		[Test]
 		public void ConfigureNetworkLogger() {
 			ConfigSource config = new ConfigSource();
-			config.SetValue("network_log_type", "simple-console");
+			config.SetValue("logger.network.type", "simple-console");
 			
-			LogManager.Init(config);
-			ILogger logger = LogManager.NetworkLogger;
-			Assert.IsInstanceOf(typeof(Logger), logger);
-			Assert.IsInstanceOf(typeof(SimpleConsoleLogger), ((Logger)logger).BaseLogger);
+			Logger.Init(config);
+			Logger logger = Logger.Network;
+			Assert.IsInstanceOf(typeof(SimpleConsoleLogger), logger.BaseLogger);
+		}
+		
+		[Test]
+		public void CompositeConsoleLogger() {
+			ConfigSource config = new ConfigSource();
+			config.SetValue("logger.composite.type", "composite");
+			config.SetValue("logger.composite.1.type", "simple-console");
+			config.SetValue("logger.composite.2.type", "simple-console");
+			
+			Logger.Init(config);
+			Logger logger = Logger.GetLogger("composite");
+			Assert.IsInstanceOf(typeof(CompositeLogger), logger.BaseLogger);
+			
+			logger.Info("Print a simple message that must be written in the console twice");
 		}
 	}
 }

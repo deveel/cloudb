@@ -11,7 +11,7 @@ using log4net.Layout;
 using log4net.Repository;
 
 namespace Deveel.Data.Diagnostics {
-	[LoggerName("log4j")]
+	[LoggerTypeNameAttribute("log4j")]
 	public sealed class Log4NetLogger : ILogger {
 		private log4net.ILog log;
 
@@ -22,13 +22,13 @@ namespace Deveel.Data.Diagnostics {
 		private static Level GetLogLevel(ConfigSource config) {
 			ILoggerRepository repository = LoggerManager.GetRepository(Assembly.GetCallingAssembly());
 			Level level = Level.Off;
-			string val = config.GetString("log_level");
+			string val = config.GetString("level");
 			if (val != null) {
 				level = repository.LevelMap[val];
 				if (level == null) {
 					int index = val.IndexOf(':');
 					if (index == -1)
-						throw new Exception("The 'log_level' configuration must specify a name and a numeric level.");
+						throw new Exception("The 'level' configuration must specify a name and a numeric level.");
 					string levelName = val.Substring(0, index);
 					string sLevelValue = val.Substring(index + 1);
 					int levelValue;
@@ -41,7 +41,7 @@ namespace Deveel.Data.Diagnostics {
 		}
 
 		private static void ConfigPattern(AppenderSkeleton appender, ConfigSource config) {
-			string logPattern = config.GetString("log_pattern", null);
+			string logPattern = config.GetString("pattern", null);
 			if (logPattern == null)
 				logPattern = "%date [%thread] %-5level %logger - %message%newline";
 
@@ -52,7 +52,7 @@ namespace Deveel.Data.Diagnostics {
 
 		private static IAppender GetFileAppender(string loggerName, ConfigSource config, Level level) {
 			// Logging directory,
-			string value = config.GetString("log_directory");
+			string value = config.GetString("directory");
 			if (value == null)
 				return null;
 
@@ -65,7 +65,7 @@ namespace Deveel.Data.Diagnostics {
 			if (!value.EndsWith("/"))
 				value = value + "/";
 
-			string fileName = config.GetString("log_file", null);
+			string fileName = config.GetString("file", null);
 			if (fileName == null)
 				fileName = "node.log";
 
@@ -120,7 +120,7 @@ namespace Deveel.Data.Diagnostics {
 			Level level = GetLogLevel(config);
 			IAppender appender = null;
 
-			string logOutput = config.GetString("log_output");
+			string logOutput = config.GetString("output");
 			if (logOutput == null || 
 				logOutput.Equals("console", StringComparison.InvariantCultureIgnoreCase)) {
 				appender = GetConsoleAppender(loggerName, config, level);

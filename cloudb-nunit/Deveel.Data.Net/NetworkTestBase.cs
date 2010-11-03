@@ -45,9 +45,9 @@ namespace Deveel.Data.Net {
 				config.SetValue("node_directory", path);
 			}
 
-			config.SetValue(LogManager.NetworkLoggerName + "_type", "simple-console");
-			LogManager.Init(config);
-			Assert.IsInstanceOf(typeof(SimpleConsoleLogger), LogManager.NetworkLogger.BaseLogger);
+			config.SetValue("logger." + Logger.NetworkLoggerName + ".type", "simple-console");
+			Logger.Init(config);
+			Assert.IsInstanceOf(typeof(SimpleConsoleLogger), Logger.Network.BaseLogger);
 		}
 
 		protected abstract AdminService CreateAdminService(NetworkStoreType storeType);

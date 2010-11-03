@@ -7,7 +7,7 @@ using Deveel.Data.Store;
 namespace Deveel.Data {
 	public sealed class FileSystemDatabase : IDatabase {
 		private readonly string path;
-		private DefaultLogger debug;
+		private Logger debug;
 		private LoggingBufferManager bufferManager;
 		private JournalledFileStore fileStore;
 		private StoreTreeSystem treeSystem;
@@ -25,8 +25,9 @@ namespace Deveel.Data {
 
 		public FileSystemDatabase(string path) {
 			this.path = path;
-			debug = new DefaultLogger();
-			debug.SetDebugLevel(1000000);
+			
+			//TODO: we should find a way to set also a dedicated path to the logger ...
+			debug = (Logger) Logger.Store.Clone();
 
 			// set the defaults ...
 			fileRolloverSize = 512 * 1024 * 1024;
@@ -139,10 +140,8 @@ namespace Deveel.Data {
 				const string fileExt = "db";
 				const string dbFileName = "data";
 
-				debug = new DefaultLogger();
-				debug.SetDebugLevel(1000000);
 				bufferManager = new LoggingBufferManager(path, path, false, maxPageCount, pageSize, fileExt, fileRolloverSize,
-				                                          new Logger("data", debug), true);
+				                                          debug, true);
 				bufferManager.Start();
 
 				// The backing store

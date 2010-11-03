@@ -7,14 +7,14 @@ using Deveel.Data.Configuration;
 
 namespace Deveel.Data.Diagnostics {
 	public static class LogManager {
-		private static readonly Dictionary<string, ILogger> loggers = new Dictionary<string, ILogger>(128);
+		private static readonly Dictionary<string, Logger> loggers = new Dictionary<string, Logger>(128);
 		private static readonly Dictionary<string, Type> loggerTypeMap = new Dictionary<string, Type>(128);
 
 		private static readonly object logSyncLock = new object();
+		private static bool initid;
 
-		public const string LoggerNameKey = "log_name";
-		public const string NetworkLoggerName = "network_log";
-		public const string StorageLoggerName = "store_log";
+		public const string NetworkLoggerName = "network";
+		public const string StorageLoggerName = "store";
 		
 		public static Logger NetworkLogger {
 			get { return GetLogger(NetworkLoggerName); }
@@ -34,8 +34,8 @@ namespace Deveel.Data.Diagnostics {
 						type != typeof(ILogger) && 
 						type != typeof(Logger) &&
 						!type.IsAbstract) {
-						LoggerNameAttribute nameAttribute =
-							(LoggerNameAttribute) Attribute.GetCustomAttribute(type, typeof(LoggerNameAttribute));
+						LoggerTypeNameAttribute nameAttribute =
+							(LoggerTypeNameAttribute) Attribute.GetCustomAttribute(type, typeof(LoggerTypeNameAttribute));
 						if (nameAttribute != null && 
 							!loggerTypeMap.ContainsKey(nameAttribute.Name))
 							loggerTypeMap[nameAttribute.Name] = type;
@@ -44,7 +44,7 @@ namespace Deveel.Data.Diagnostics {
 			}
 		}
 
-		private static Type GetLoggerType(string typeName) {
+		internal static Type GetLoggerType(string typeName) {
 			Type type;
 			if (!loggerTypeMap.TryGetValue(typeName, out type)) {
 				type = Type.GetType(typeName, false, true);
@@ -53,64 +53,52 @@ namespace Deveel.Data.Diagnostics {
 			}
 			return type;
 		}
-
+		
 		public static void Init(ConfigSource config) {
 			lock(logSyncLock) {
+				if (initid)
+					return;
+				
 				InspectLoggers();
-
-				string ln = config.GetString("logger", null);
-				if (ln == null)
-					ln = config.GetString("loggers", null);
 				
-				List<string> loggerNames = new List<string>();
-				loggerNames.Add(NetworkLoggerName);
-				loggerNames.Add(StorageLoggerName);
+				ConfigSource loggerConfig = config;
+				// if it is a root configuration, get the 'logger' child
+				if (loggerConfig.Parent == null)
+					loggerConfig = config.GetChild("logger");
 				
-				if (ln != null) {
-					string[] sp = ln.Split(',');
-					for (int i = 0; i < sp.Length; i++) {
-						loggerNames.Add(sp[i].Trim());
-					}
-				}
-				for (int i = 0; i < loggerNames.Count; i++) {
-					string loggerName = loggerNames[i];
-					ConfigSource loggerConfig = new ConfigSource();
-					foreach(string key in config.Keys) {
-						if (key.StartsWith(loggerName + "_")) {
-							string value = config.GetString(key);
-							string loggerKey = key.Substring(loggerName.Length + 1, key.Length - (loggerName.Length + 1));
-							loggerConfig.SetValue(loggerKey, value);
-						}
-					}
-
-					loggerConfig.SetValue(LoggerNameKey, loggerName);
-
-					Type loggerType;
-					if (!loggerTypeMap.TryGetValue(loggerName, out loggerType)) {
-						string loggerTypeName = loggerConfig.GetString("type", null);
-						if (loggerTypeName == null)
-							loggerTypeName = typeof(DefaultLogger).AssemblyQualifiedName;
-
-						loggerType = GetLoggerType(loggerTypeName);
-						if (loggerType == null || !typeof(ILogger).IsAssignableFrom(loggerType))
-							continue;
-					}
+				if (loggerConfig == null || loggerConfig.Name != "logger")
+					throw new ArgumentException("The configuration is invalid.");
+				
+				if (loggerConfig.ChildCount == 0)
+					return;
+				
+				foreach(ConfigSource child in loggerConfig.Children) {
+					string loggerTypeString = child.GetString("type");
+					if (String.IsNullOrEmpty(loggerTypeString))
+						loggerTypeString = "default";
+					
+					Type loggerType = GetLoggerType(loggerTypeString);
+					if (loggerType == null || !typeof(ILogger).IsAssignableFrom(loggerType))
+						continue;
+						
 					try {
 						ILogger logger = (ILogger) Activator.CreateInstance(loggerType, true);
-						logger.Init(loggerConfig);
-						loggers[loggerName] = logger;
+						logger.Init(child);
+						loggers[child.Name] = new Logger(child.Name, logger, config);
 					} catch {
 						continue;
 					}
 				}
+				
+				initid = true;
 			}
 		}
 
 		public static Logger GetLogger(string logName) {
-			ILogger logger;
+			Logger logger;
 			if (!loggers.TryGetValue(logName, out logger))
-				logger = new EmptyLogger();
-			return new Logger(logName, logger);
+				logger = new Logger(logName, new EmptyLogger(), null);
+			return logger;
 		}
 	}
 }

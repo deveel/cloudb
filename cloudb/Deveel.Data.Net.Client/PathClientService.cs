@@ -20,7 +20,7 @@ namespace Deveel.Data.Net.Client {
 			network = new NetworkProfile(connector);
 			network.Configuration = netConfig;
 
-			log = LogManager.NetworkLogger;
+			log = Logger.Network;
 		}
 
 		~PathClientService() {
