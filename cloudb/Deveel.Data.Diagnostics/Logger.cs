@@ -239,6 +239,10 @@ namespace Deveel.Data.Diagnostics {
 		public void Warning(string message) {
 			Log(LogLevel.Warning, GetLoggingType(), message);
 		}
+		
+		public void Warning(string message, Exception e) {
+			Log(LogLevel.Warning, GetLoggingType(), message, e);
+		}
 
 		public void Info(object ob, string message) {
 			Log(LogLevel.Information, ob, message);

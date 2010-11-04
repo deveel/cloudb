@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
+using Deveel.Data.Diagnostics;
 using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
@@ -13,6 +14,8 @@ namespace Deveel.Data.Net {
 		public TcpServiceConnector(string password) {
 			connections = new Dictionary<TcpServiceAddress, TcpConnection>();
 			this.password = password;
+			
+			log = Logger.Network;
 
 			// This thread kills connections that have timed out.
 			backgroundThread = new Thread(PurgeConnections);
@@ -27,6 +30,8 @@ namespace Deveel.Data.Net {
 
 		private readonly Thread backgroundThread;
 		private bool purgeThreadStopped;
+		
+		private readonly Logger log;
 
 		public string Password {
 			get { return password; }
@@ -85,7 +90,7 @@ namespace Deveel.Data.Net {
 							dout.Flush();
 							c.s.Close();
 						} catch (IOException e) {
-							//TODO: ERROR log ...
+							log.Error("Failed to dispose timed out connection", e);
 						}
 					}
 

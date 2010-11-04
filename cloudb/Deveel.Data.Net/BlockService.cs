@@ -23,8 +23,6 @@ namespace Deveel.Data.Net {
 		private readonly object blockUploadLock = new object();
 		private int processId;
 		private Timer sendBlockTimer;
-
-		private Logger log;
 		
 		protected BlockService(IServiceConnector connector) {
 			this.connector = connector;
@@ -121,7 +119,7 @@ namespace Deveel.Data.Net {
 				} catch (IOException e) {
 					// We log the warning, but otherwise ignore any IO Error on a
 					// file synchronize.
-					//TODO: WARN log ...
+					Logger.Warning("Error while flushing block '" + container.BlockId + "': " + e.Message);
 				}
 			}
 		}
@@ -244,7 +242,7 @@ namespace Deveel.Data.Net {
 
 			private void CloseContainers(Dictionary<long, BlockContainer> touched) {
 				foreach (KeyValuePair<long, BlockContainer> c in touched) {
-					//TODO: DEBUG log ..
+					service.Logger.Info("Closing block '" + c.Key + "'.");
 					c.Value.Close();
 				}
 			}
@@ -259,7 +257,7 @@ namespace Deveel.Data.Net {
 						service.lastBlockId = blockId;
 					}
 					touched[blockId] = b;
-					//TODO: DEBUG log ...
+					service.Logger.Info("Opening block '" + blockId + "'.");
 				}
 				return b;
 			}
@@ -339,12 +337,12 @@ namespace Deveel.Data.Net {
 					// If the block was accessed less than 5 minutes ago, we don't allow
 					// the copy to happen,
 					if (info.blockId == service.lastBlockId) {
-						//TODO: INFO log ...
+						service.Logger.Info("Can't copy last block_id ( " + info.blockId + " ) on server.");
 						return;
 					} else if (container.LastWriteTime >
 							   DateTime.Now.AddMilliseconds(-(6 * 60 * 1000))) {
 						// Won't copy a block that was written to within the last 6 minutes,
-						//TODO: INFO log ...
+						service.Logger.Info("Can't copy block ( " + info.blockId + " ) written to within the last 6 minutes.");
 						return;
 					}
 
@@ -367,7 +365,7 @@ namespace Deveel.Data.Net {
 							inputStream = p.Process(outputStream);
 
 							if (inputStream.HasError) {
-								service.log.Log(LogLevel.Error, "sendBlockPath Error: " + inputStream.ErrorMessage);
+								service.Logger.Log(LogLevel.Error, "sendBlockPath Error: " + inputStream.ErrorMessage);
 								return;
 							}
 
@@ -384,7 +382,7 @@ namespace Deveel.Data.Net {
 					inputStream = p.Process(outputStream);
 
 					if (inputStream.HasError) {
-						service.log.Error("sendBlockComplete Error: " + inputStream.ErrorMessage);
+						service.Logger.Error("sendBlockComplete Error: " + inputStream.ErrorMessage);
 						return;
 					}
 
@@ -394,18 +392,18 @@ namespace Deveel.Data.Net {
 					outputStream.Arguments.Add(info.blockId);
 					outputStream.Arguments.Add(info.destServerGuid);
 
-					//TODO: DEBUG log ...
+					service.Logger.Info("Adding block_id->server mapping (" + info.blockId + " -> " + info.destServerGuid + ")");
 
 					// Process the message,
 					inputStream = mp.Process(outputStream);
 					
 					if (inputStream.HasError) {
-						service.log.Error("addBlockServerMapping Error: " + inputStream.ErrorMessage);
+						service.Logger.Error("addBlockServerMapping Error: " + inputStream.ErrorMessage);
 						return;
 					}
 
 				} catch (IOException e) {
-					service.log.Error("IO Error: " + e.Message);
+					service.Logger.Error("IO Error: " + e.Message);
 				}
 			}
 
@@ -524,11 +522,11 @@ namespace Deveel.Data.Net {
 							throw new ApplicationException("Unknown message name: " + request.Name);
 					}
 				} catch (OutOfMemoryException e) {
-					service.log.Error("Out of Memory");
+					service.Logger.Error("Out of Memory");
 					service.SetErrorState(e);
 					throw;
 				} catch (Exception e) {
-					service.log.Error("Error while processing: " + e.Message, e);
+					service.Logger.Error("Error while processing: " + e.Message, e);
 					response.Arguments.Add(new MessageError(e));
 				}
 
@@ -536,7 +534,7 @@ namespace Deveel.Data.Net {
 				try {
 					CloseContainers(containersTouched);
 				} catch (Exception e) {
-					service.log.Error("Error while closing containers: " + e.Message, e);
+					service.Logger.Error("Error while closing containers: " + e.Message, e);
 				}
 
 				return response;

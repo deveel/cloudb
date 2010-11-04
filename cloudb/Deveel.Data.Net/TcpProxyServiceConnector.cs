@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
+using Deveel.Data.Diagnostics;
 using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
@@ -82,8 +83,8 @@ namespace Deveel.Data.Net {
 				}
 				pin.Close();
 				pout.Close();
-			} catch (IOException) {
-				//TODO: ERROR log ...
+			} catch (Exception e) {
+				Logger.Network.Error("Error while closing a proxy connection", e);
 			} finally {
 				initString = null;
 				pin = null;

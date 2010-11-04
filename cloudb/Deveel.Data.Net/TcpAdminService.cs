@@ -42,7 +42,7 @@ namespace Deveel.Data.Net {
 
 		private void Poll() {
 			try {				
-				//TODO: INFO log ...
+				Logger.Info("Node started on " + Address);
 
 				while (polling) {
 					if (!listener.Pending()) {
@@ -63,7 +63,7 @@ namespace Deveel.Data.Net {
 						// Make sure this ip address is allowed,
 						IPAddress ipAddress = ((IPEndPoint)s.RemoteEndPoint).Address;
 
-						//TODO: INFO log ...
+						Logger.Info("Connection from " + ipAddress);
 
 						if (IPAddress.IsLoopback(ipAddress) || 
 							IsAddressAllowed(ipAddress.ToString())) {
@@ -74,15 +74,15 @@ namespace Deveel.Data.Net {
 							connections.Add(c);
 							ThreadPool.QueueUserWorkItem(c.Work, null);
 						} else {
-							//TODO: ERROR log ...
+							Logger.Error("Connection refused from " + ipAddress + ": not allowed");
 						}
 
 					} catch (SocketException e) {
-						//TODO: WARN log ...
+						Logger.Warning("Socket Errot while processing a connection.", e);
 					}
 				}
 			} catch(Exception e) {
-				//TODO: ERROR log ...
+				Logger.Error("Error while polling.", e);
 			}
 		}
 
@@ -101,8 +101,8 @@ namespace Deveel.Data.Net {
 					listener.Server.ReceiveBufferSize = 256 * 1024;
 				}
 				listener.Start(150);
-			} catch (IOException e) {
-				//TODO: ERROR log ...
+			} catch (SocketException e) {
+				Logger.Error("Socket Error while starting the TCP Admin service.", e);
 				throw;
 			}
 
@@ -263,20 +263,20 @@ namespace Deveel.Data.Net {
 						((SocketException)e.InnerException).ErrorCode == (int)SocketError.ConnectionReset)) {
 						// Ignore this one also,
 					} else {
-						//TODO: ERROR log ...
+						service.Logger.Error("IO Error during connection input", e);
 					}
 				} catch (SocketException e) {
 					if (e.ErrorCode == (int)SocketError.ConnectionReset) {
 						// Ignore connection reset messages,
 					} else {
-						//TODO: ERROR log ...
+						service.Logger.Error("Socket Error during connection input", e);
 					}
 				} finally {
 					// Make sure the socket is closed before we return from the thread,
 					try {
 						socket.Close();
-					} catch (IOException e) {
-						//TODO: ERROR log ...
+					} catch (Exception e) {
+						service.Logger.Error("Error on connection close", e);
 					}
 				}
 			}

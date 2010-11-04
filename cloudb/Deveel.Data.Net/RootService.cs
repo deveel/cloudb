@@ -572,11 +572,11 @@ namespace Deveel.Data.Net {
 							throw new ApplicationException("Unknown message received: " + request.Name);
 					}
 				} catch (OutOfMemoryException e) {
-					//TODO: ERROR log ...
+					service.Logger.Error("Out of memory!");
 					service.SetErrorState(e);
 					throw e;
 				} catch (Exception e) {
-					//TODO: ERROR log ...
+					service.Logger.Error("Error while processing", e);
 					response.Arguments.Add(new MessageError(e));
 				}
 

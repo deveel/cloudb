@@ -46,7 +46,7 @@ namespace Deveel.Data.Net {
 		private const short BranchType = 0x022EB;
 
 		private void ReportBlockServerFailure(IServiceAddress address) {
-			//TODO: WARN log ...
+			log.Warning("Reporting failure for " + address + " to manager service.");
 
 			// Failure throttling,
 			lock (failures) {
@@ -100,7 +100,7 @@ namespace Deveel.Data.Net {
 					} catch (Exception e) {
 						// Unknown closeness,
 						// Log a severe error,
-						logger.Error("Cannot determine the proximity factor for address " + node);
+						logger.Error("Cannot determine the proximity factor for address " + node, e);
 						closeness = Int32.MaxValue;
 					}
 
@@ -944,7 +944,7 @@ namespace Deveel.Data.Net {
 		}
 
 		public ErrorStateException SetErrorState(Exception error) {
-			//TODO: ERROR log ...
+			Logger.Network.Error("Entering error state", error);
 			errorState = new ErrorStateException(error);
 			return errorState;
 		}

@@ -6,6 +6,8 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
+using Deveel.Data.Diagnostics;
+
 namespace Deveel.Data.Net.Client {
 	public class BinaryPathClientService : PathClientService {
 		public BinaryPathClientService(IServiceAddress address, TcpServiceAddress managerAddress, string password) 
@@ -146,20 +148,20 @@ namespace Deveel.Data.Net.Client {
 					     ((SocketException)e.InnerException).ErrorCode == (int)SocketError.ConnectionReset)) {
 						// Ignore this one also,
 					} else {
-						//TODO: ERROR log ...
+						Logger.Client.Error("IO Error in a connection");
 					}
 				} catch (SocketException e) {
 					if (e.ErrorCode == (int)SocketError.ConnectionReset) {
 						// Ignore connection reset messages,
 					} else {
-						//TODO: ERROR log ...
+						Logger.Client.Error("Socket Error in a connection.");
 					}
 				} finally {
 					// Make sure the socket is closed before we return from the thread,
 					try {
 						socket.Close();
-					} catch (IOException e) {
-						//TODO: ERROR log ...
+					} catch (Exception e) {
+						Logger.Client.Error("Error while closing a socket.", e);
 					}
 				}
 			}
