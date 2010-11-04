@@ -40,13 +40,13 @@ namespace Deveel.Data.Net {
 		private long max_transaction_node_heap_size;
 
 		private ErrorStateException errorState;
-		private Logger logger;
+		private readonly Logger logger;
 
 		private const short LeafType = 0x019EC;
 		private const short BranchType = 0x022EB;
 
 		private void ReportBlockServerFailure(IServiceAddress address) {
-			log.Warning("Reporting failure for " + address + " to manager service.");
+			logger.Warning("Reporting failure for " + address + " to manager service.");
 
 			// Failure throttling,
 			lock (failures) {
