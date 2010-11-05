@@ -5,15 +5,54 @@ using System.Collections.Generic;
 using Deveel.Data.Store;
 
 namespace Deveel.Data {
+	/// <summary>
+	/// An implementation of  <see cref="IIndex"/> that is backed 
+	/// by a <see cref="DataFile" /> and which values are ordered.
+	/// </summary>
+	/// <remarks>
+	/// When modifications happen, the change is immediately mapped 
+	/// into the underlying data file, growing or shrinking the size 
+	/// of the underlying data file according to the operation done
+	/// on the index.
+	/// <para>
+	/// This implementation offers a practical way of representing a 
+	/// sorted index of objects within a database. The collation of the 
+	/// list items can be defined via an instance of the <see cref="IIndexedObjectComparer"/>
+	/// interface, or the order may be defined as a function of the index 
+	/// value itself, as per the <see cref="IIndex"/>.
+	/// </para>
+	/// <para>
+	/// This list object supports containing duplicate values.
+	/// </para>
+	/// </remarks>
 	public class SortedIndex : IIndex {
 		private readonly DataFile file;
 		private readonly bool readOnly;
 
+		/// <summary>
+		/// Constructs an instance of the index, wrapped around the given
+		/// <see cref="DataFile"/>.
+		/// </summary>
+		/// <param name="file">The underlying <see cref="DataFile"/> where the
+		/// data of the index will be reflected.</param>
+		/// <param name="readOnly">Indicates whether any change to the index
+		/// is it possible (if <b>false</b>) or if is it a read-only instance
+		/// (if <b>true</b>).</param>
 		public SortedIndex(DataFile file, bool readOnly) {
 			this.file = file;
 			this.readOnly = readOnly;
 		}
 
+		/// <summary>
+		/// Constructs an instance of the index, wrapped around the given
+		/// <see cref="DataFile"/>.
+		/// </summary>
+		/// <param name="file">The underlying <see cref="DataFile"/> where the
+		/// data of the index will be reflected.</param>
+		/// <remarks>
+		/// Instances of <see cref="SortedIndex"/> constructed with this
+		/// constructor are always mutable.
+		/// </remarks>
 		public SortedIndex(DataFile file)
 			: this(file, false) {
 		}

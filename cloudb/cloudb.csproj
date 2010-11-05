@@ -86,6 +86,7 @@
     <Compile Include="Deveel.Data.Net.Client\IMessageStream.cs" />
     <Compile Include="Deveel.Data.Net.Client\IPathClientAuthorize.cs" />
     <Compile Include="Deveel.Data.Net.Client\IMessageStreamSupport.cs" />
+    <Compile Include="Deveel.Data.Net.Client\IPathTransaction.cs" />
     <Compile Include="Deveel.Data.Net.Client\IRestMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Client\ITextMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Client\IXmlRpcTypeResolver.cs" />
@@ -130,7 +131,6 @@
     <Compile Include="Deveel.Data.Net.Client\XmlRestMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Client\XmlMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Client\IPathContext.cs" />
-    <Compile Include="Deveel.Data.Net\IPathTransaction.cs" />
     <Compile Include="Deveel.Data.Net.Client\PathClientService.cs">
       <SubType>Component</SubType>
     </Compile>
