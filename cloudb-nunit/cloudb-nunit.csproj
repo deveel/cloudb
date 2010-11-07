@@ -59,11 +59,10 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Xml" />
     <Reference Include="nunit.framework, Version=2.5.7.10213, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77">
       <HintPath>..\libs\nunit\framework\nunit.framework.dll</HintPath>
     </Reference>
+    <Reference Include="System.XML" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Deveel.Data.Diagnostics\SimpleConsoleLogger.cs" />
@@ -89,10 +88,6 @@
     <None Include="cloudb-nunit.build" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\cloudb-json\cloudb-json.csproj">
-      <Project>{55B63423-D06B-4B26-A668-32E07EBE7234}</Project>
-      <Name>cloudb-json</Name>
-    </ProjectReference>
     <ProjectReference Include="..\cloudbase\cloudbase.csproj">
       <Project>{A2099A92-DA13-4440-B2F9-7890750E0E70}</Project>
       <Name>cloudbase</Name>

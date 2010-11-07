@@ -157,6 +157,9 @@
     <Compile Include="Deveel.Data.Net\MemoryServiceFactory.cs" />
     <Compile Include="Deveel.Data.Net\ServiceState.cs" />
     <Compile Include="Deveel.Data.Net\ServiceStatus.cs" />
+    <Compile Include="Deveel.Data.Net\TcpProxyAdminService.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Deveel.Data\IIndexCursor.cs" />
     <Compile Include="Deveel.Data\IIndex.cs" />
     <Compile Include="Deveel.Data\IInteractiveEnumerator.cs">
