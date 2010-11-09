@@ -136,6 +136,8 @@ namespace Deveel.Data.Net {
 						connector.pout.Write(code);
 						TcpServiceAddressHandler handler = new TcpServiceAddressHandler();
 						byte[] addressBytes = handler.ToBytes(address);
+						connector.pout.Write(handler.GetCode(typeof(TcpServiceAddress)));
+						connector.pout.Write(addressBytes.Length);
 						connector.pout.Write(addressBytes);
 						serializer.Serialize(messageStream, connector.pout.BaseStream);
 						connector.pout.Flush();
