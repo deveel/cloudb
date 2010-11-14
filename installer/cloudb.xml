@@ -3,89 +3,86 @@
     <fullName>DeveelDB in the Cloud</fullName>
     <version>1.0</version>
     <installerFilename>${product_shortname}-${product_version}-${platform_name}.${platform_exec_suffix}</installerFilename>
+    <allowLanguageSelection>1</allowLanguageSelection>
     <preInstallationActionList>
-        <setInstallerVariable name="dotNetVersionReq" value="2.0"/>
-        <setInstallerVariable name="dotNetVersion" value=""/>
-
-	<!-- .NET 1.0 -->
-	<actionGroup>
+        <actionGroup>
+            <explanation>.NET detection</explanation>
             <actionList>
-                <registryGet key="HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\.NETFramework\policy\v1.0" name="3705" variable="dotNetValue"/>
-                <setInstallerVariable name="dotNetVersion" value="1.0">
-                    <ruleList>
-                        <compareText logic="equals" text="${dotNetValue}" value="3321-3705"/>
-                    </ruleList>
+                <setInstallerVariable>
+                    <name>dotnet_or_mono_found</name>
+                    <value>0</value>
                 </setInstallerVariable>
-            </actionList>
-            <ruleList>
-                <compareVersions logic="less_or_equal" version1="${dotNetVersionReq}" version2="1.0"/>
-            </ruleList>
-        </actionGroup>
-
-	<!-- .NET 1.1 -->
-	<actionGroup>
-            <actionList>
-                <registryGet key="HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\.NETFramework\policy\v1.1" name="4322" variable="dotNetValue"/>
-                <setInstallerVariable name="dotNetVersion" value="1.1">
+                <actionGroup>
+                    <explanation>Detect MS .NET</explanation>
+                    <actionList>
+                        <autodetectDotNetFramework>
+                            <abortOnError>0</abortOnError>
+                            <showMessageOnError>0</showMessageOnError>
+                        </autodetectDotNetFramework>
+                        <setInstallerVariable>
+                            <name>dotnet_or_mono_found</name>
+                            <value>1</value>
+                            <ruleList>
+                                <isTrue>
+                                    <value>${dotnet_autodetected}</value>
+                                </isTrue>
+                            </ruleList>
+                        </setInstallerVariable>
+                    </actionList>
                     <ruleList>
-                        <compareText logic="equals" text="${dotNetValue}" value="3706-4322"/>
+                        <isFalse>
+                            <value>dotnet_or_mono_found</value>
+                        </isFalse>
+                        <platformTest>
+                            <type>windows</type>
+                        </platformTest>
                     </ruleList>
-                </setInstallerVariable>
-            </actionList>
-            <ruleList>
-                <compareVersions logic="less_or_equal" version1="${dotNetVersionReq}" version2="1.1"/>
-            </ruleList>
-        </actionGroup>
-
-	<!-- .NET 2.0 -->
-	<actionGroup>
-            <actionList>
-                <registryGet key="HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\.NETFramework\policy\v2.0" name="50727" variable="dotNetValue"/>
-                <setInstallerVariable name="dotNetVersion" value="2.0">
+                </actionGroup>
+                <actionGroup>
+                    <explanation>Detect Mono</explanation>
+                    <actionList>
+                        <unpackFile>
+                            <component>monotest</component>
+                            <destination>${system_temp_directory}/monotest.exe</destination>
+                            <folder>monotest</folder>
+                            <origin>monotest.exe</origin>
+                        </unpackFile>
+                        <runProgram>
+                            <customErrorMessage>Unable to find .NET framework</customErrorMessage>
+                            <program>mono</program>
+                            <programArguments>${system_temp_directory}/monotest.exe</programArguments>
+                        </runProgram>
+                        <setInstallerVariable>
+                            <name>dotnet_or_mono_found</name>
+                            <value>1</value>
+                            <ruleList>
+                                <compareValues>
+                                    <logic>equals</logic>
+                                    <value1>${program_exit_code}</value1>
+                                    <value2>0</value2>
+                                </compareValues>
+                            </ruleList>
+                        </setInstallerVariable>
+                        <deleteFile>
+                            <path>${system_temp_directory}/monotest.exe</path>
+                        </deleteFile>
+                    </actionList>
                     <ruleList>
-                        <compareText logic="equals" text="${dotNetValue}" value="50727-50727"/>
+                        <isFalse>
+                            <value>dotnet_or_mono_found</value>
+                        </isFalse>
                     </ruleList>
-                </setInstallerVariable>
-            </actionList>
-            <ruleList>
-                <compareVersions logic="less_or_equal" version1="${dotNetVersionReq}" version2="2.0"/>
-            </ruleList>
-        </actionGroup>
-
-	<!-- .NET 3.0 -->
-	<actionGroup>
-            <actionList>
-                <registryGet key="HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\NET Framework Setup\NDP\v3.0\Setup" name="InstallSuccess" variable="dotNetValue"/>
-                <setInstallerVariable name="version" value="3.0">
+                </actionGroup>
+                <throwError>
+                    <text>Valid version of .NET framework not found</text>
                     <ruleList>
-                        <compareText logic="equals" text="${dotNetValue}" value="1"/>
+                        <isFalse>
+                            <value>${dotnet_or_mono_found}</value>
+                        </isFalse>
                     </ruleList>
-                </setInstallerVariable>
+                </throwError>
             </actionList>
-            <ruleList>
-                <compareVersions logic="less_or_equal" version1="${required}" version2="3.0"/>
-            </ruleList>
         </actionGroup>
-
-	<!-- .NET 3.5 -->
-	<actionGroup>
-            <actionList>
-                <registryGet key="HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\NET Framework Setup\NDP\v3.5" name="Install" variable="dotNetValue"/>
-                <setInstallerVariable name="dotNetVersion" value="3.5">
-                    <ruleList>
-                        <compareText logic="equals" text="${dotNetValue}" value="1"/>
-                    </ruleList>
-                </setInstallerVariable>
-            </actionList>
-            <ruleList>
-                <compareVersions logic="less_or_equal" version1="${dotNetReq}" version2="3.5"/>
-            </ruleList>
-        </actionGroup>
-        <throwError text="This application requires .NET ${required} or greater">
-            <ruleList>
-                <compareText logic="equals" text="${version}" value=""/>
-            </ruleList>
-        </throwError>
     </preInstallationActionList>
     <allowComponentSelection>1</allowComponentSelection>
     <cdromDirectory>${product_shortname}-${product_version}</cdromDirectory>
@@ -230,6 +227,43 @@
                     </distributionFileList>
                 </folder>
             </folderList>
+            <parameterList>
+                <parameterGroup>
+                    <name>service_params</name>
+                    <explanation></explanation>
+                    <value></value>
+                    <default></default>
+                    <parameterList>
+                        <parameterGroup>
+                            <name>service_address</name>
+                            <explanation></explanation>
+                            <value></value>
+                            <default></default>
+                            <orientation>horizontal</orientation>
+                            <parameterList>
+                                <stringParameter>
+                                    <name>host</name>
+                                    <description>Host</description>
+                                    <explanation></explanation>
+                                    <value></value>
+                                    <default></default>
+                                    <allowEmptyValue>0</allowEmptyValue>
+                                    <width>40</width>
+                                </stringParameter>
+                                <stringParameter>
+                                    <name>port</name>
+                                    <description>:</description>
+                                    <explanation></explanation>
+                                    <value></value>
+                                    <default></default>
+                                    <allowEmptyValue>1</allowEmptyValue>
+                                    <width>40</width>
+                                </stringParameter>
+                            </parameterList>
+                        </parameterGroup>
+                    </parameterList>
+                </parameterGroup>
+            </parameterList>
             <startMenuShortcutList>
                 <startMenuShortcut>
                     <comment>Standalone Console Machine Node Service</comment>

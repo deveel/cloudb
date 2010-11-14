@@ -12,6 +12,8 @@
     <AssemblyName>cloudbase</AssemblyName>
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>cloudbase.pfx</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -51,6 +53,7 @@
     <Compile Include="Deveel.Data\Directory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <None Include="cloudbase.build" />
+    <None Include="cloudbase.pfx" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>

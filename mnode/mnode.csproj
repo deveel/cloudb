@@ -22,6 +22,8 @@
     <DebugSymbols>true</DebugSymbols>
     <StartArguments>-port 35500</StartArguments>
     <StartWorkingDirectory>..\test\</StartWorkingDirectory>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>mnode.pfx</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <ErrorReport>prompt</ErrorReport>
@@ -88,6 +90,9 @@
       <Project>{A18511ED-5BA6-4811-B44F-F730FAD84CE8}</Project>
       <Name>cloudb</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="mnode.pfx" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
