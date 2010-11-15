@@ -3,25 +3,79 @@
 <project name="cloudb" default="all">
 	<property name="name" value="CloudB" readonly="true" />
 	<property name="version" value="1.0b" readonly="true" />
-	<property name="document" value="False" />
+	<property name="document" value="False" dynamic="True" />
 	<property name="build.define" value="TRACE" />
 	<property name="build.output" value="./build" />
 	<property name="build.debug" value="false" />
-	<property name="build.doc" value="null" />
+	<property name="build.doc" value="" />
 	<property name="notest" value="false" />
 	<property name="dist.platform" value="windows" />
-	<property name="dist.path" value="dist" />
+	<property name="dist.path" value="./dist" />
 	<target name="installer" depends="all">
 		<property name="install.builder" value="libs\bitrock\builder-cli.exe" verbose="True" if="${convert::to-boolean(dist.platform == 'windows')}" />
 		<exec program="${install.builder}" verbose="True">
 			<arg value="build" />
 			<arg value="installer\cloudb.xml" />
 			<arg value="${dist.platform}" />
-			<arg value="--license installer\license.xml"/>
+			<arg value="--license installer\license.xml" />
 		</exec>
 	</target>
 	<target name="all">
 		<echo message="Building all components" />
-		<nant buildfile="./cloudb/cloudb.build" target="cloudb" />
+		<call target="kernel" />
+		<call target="cadmin" />
+	</target>
+	<!-- Builds the kernel library of the solution -->
+	<target name="kernel">
+		<echo message="building cloudb core component to ${build.output}/cloudb.dll.." />
+		<property name="build.define" value="TRACE;DEBUG" if="${build.debug}" />
+		<property name="build.doc" value="cloudb.xml" if="${document}" />
+		<csc debug="${build.debug}" doc="${build.doc}" optimize="${not build.debug}" output="${build.output}/cloudb.dll" target="library" define="${build.define}" keyfile="cloudb\cloudb.pfx">
+			<references>
+				<include name="System.dll" />
+			</references>
+			<sources basedir="cloudb">
+				<include name="Properties/AssemblyInfo.cs" />
+				<include name="ComponentAce.Compression.Libs.zlib/*.cs" />
+				<include name="Deveel.Data/*.cs" />
+				<include name="Deveel.Data.Caching/*.cs" />
+				<include name="Deveel.Data.Configuration/*.cs" />
+				<include name="Deveel.Data.Diagnostics/*.cs" />
+				<include name="Deveel.Data.Net/*.cs" />
+				<include name="Deveel.Data.Net.Client/*.cs" />
+				<include name="Deveel.Data.Store/*.cs" />
+				<include name="Deveel.Data.Util/*.cs" />
+			</sources>
+		</csc>
+	</target>
+	<target name="cadmin" depends="kernel">
+		<echo message="Building Cloud Admin command-line tool" />
+		<csc output="${build.output}" target="exe">
+			<references>
+				<include name="System.dll" />
+				<include name="..\libs\deveel-cli.dll" />
+				<include name="..\libs\deveelrl.dll" />
+				<include name="..\libs\shellapp.dll" />
+				<include name="${build.output}\cloudb.dll" />
+			</references>
+			<sources>
+				<include name=".\Deveel.Data\BasePathWrapper.cs" />
+				<include name=".\Deveel.Data.Net\*.cs" />
+			</sources>
+		</csc>
+	</target>
+	<target name="logger-log4net" depends="kernel">
+		<echo message="Building CloudB log4net logger component" />
+		<csc output="${build.output}" target="library" define="${build.define}" keyfile="cloudb-log4net\cloudb-log4net.pfx">
+			<references>
+				<include name="System.dll" />
+				<include name="${build.output}/cloudb.dll" />
+				<include name="libs/log4net.dll" />
+			</references>
+			<sources>
+				<include name="cloudb-log4net/Properties/AssemblyInfo.cs" />
+				<include name="cloudb-log4net/Deveel.Data.Diagnostics/*.cs" />
+			</sources>
+		</csc>
 	</target>
 </project>
