@@ -13,7 +13,9 @@
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SignAssembly>true</SignAssembly>
-    <AssemblyOriginatorKeyFile>cadmin.pfx</AssemblyOriginatorKeyFile>
+    <SourceAnalysisOverrideSettingsFile>C:\Documents and Settings\aprovenzano\Application Data\ICSharpCode/SharpDevelop3.0\Settings.SourceAnalysis</SourceAnalysisOverrideSettingsFile>
+    <DelaySign>False</DelaySign>
+    <AssemblyOriginatorKeyMode>File</AssemblyOriginatorKeyMode>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -34,10 +36,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="deveel-cli, Version=1.0.3938.15205, Culture=neutral, PublicKeyToken=null">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\libs\deveel-cli.dll</HintPath>
-    </Reference>
     <Reference Include="deveelrl, Version=1.2.0.37360, Culture=neutral, PublicKeyToken=9fbac9d9ab2b152f">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\libs\deveelrl.dll</HintPath>
@@ -45,6 +43,10 @@
     <Reference Include="shellapp, Version=0.7.4.0, Culture=neutral, PublicKeyToken=null">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\libs\shellapp.dll</HintPath>
+    </Reference>
+    <Reference Include="deveel-cli, Version=1.0.3939.39851, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\libs\deveel-cli.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

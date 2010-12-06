@@ -64,11 +64,12 @@
     <Reference Include="nunit.framework, Version=2.5.7.10213, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77">
       <HintPath>..\libs\nunit\framework\nunit.framework.dll</HintPath>
     </Reference>
-    <Reference Include="System.XML" />
+    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Deveel.Data.Diagnostics\SimpleConsoleLogger.cs" />
     <Compile Include="Deveel.Data.Net.Client\BinaryRpcSerializerTest.cs" />
+    <Compile Include="Deveel.Data.Net.Client\XmlRpcMessageSerializerTest.cs" />
     <Compile Include="Deveel.Data.Net\FakeAdminService.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -81,11 +82,8 @@
     <Compile Include="Deveel.Data.Net\FakeNetworkTest.cs" />
     <Compile Include="Deveel.Data.Net\NetworkTestBase.cs" />
     <Compile Include="Deveel.Data.Net\TcpNetworkTest.cs" />
-    <Compile Include="Deveel.Data.Net\XmlRpcMessageSerializerTest.cs" />
-    <Compile Include="Deveel.Data\BasePathTest.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LoggerTest.cs" />
     <Compile Include="Deveel.Data.Configuration\ConfigSourceTest.cs" />
-    <Compile Include="Deveel.Data\RestPathServiceTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <None Include="cloudb-nunit.build" />
     <None Include="cloudb-nunit.pfx" />

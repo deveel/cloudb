@@ -74,7 +74,7 @@
     <Reference Include="System.Data" />
     <Reference Include="System.ServiceProcess" />
     <Reference Include="System.Xml" />
-    <Reference Include="deveel-cli, Version=1.0.3938.15205, Culture=neutral, PublicKeyToken=null">
+    <Reference Include="deveel-cli, Version=1.0.3939.39851, Culture=neutral, PublicKeyToken=null">
       <HintPath>..\libs\deveel-cli.dll</HintPath>
     </Reference>
   </ItemGroup>
