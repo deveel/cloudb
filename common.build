@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<project name="common">
+	<property name="version" value="1.0b" />
+	<property name="document" value="" />
+	<property name="sign" value="False" />
+	<property name="sources" value="." />
+	<property name="define" value="TRACE" />
+	<property name="output" value="./build" />
+	<property name="debug" value="false" />
+	<property name="dist-path" value="./dist" />
+	<property name="platform" value="windows" />
+	<property name="notest" value="true" />
+	<property name="package" value="all" />
+	
+	<target name="-build-kernel">
+	  <nant buildfile="../cloudb/default.build" target="all" inheritall="false">
+	    <property name="output" value="${path::get-full-path(output)}" readonly="True" />
+	    <property name="dist-path" value="${path::get-full-path(dist-path)}" readonly="True" />
+	    <property name="kernel" value="${path::get-full-path(kernel)}" readonly="True" />
+	    <property name="libs" value="${path::get-full-path(libs)}" readonly="True" />	
+	    <property name="platform" value="${platform}" readonly="True" />
+	    <property name="notest" value="${notest}" readonly="True" />
+	    <property name="package" value="${package}" readonly="True" />
+	    <property name="sign" value="${sign}" readonly="True" />
+	  </nant>
+	</target>
+</project>

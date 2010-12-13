@@ -8,12 +8,12 @@
 	<property name="define" value="TRACE" />
 	<property name="output" value="./build" />
 	<property name="debug" value="false" />
-	<property name="path" value="./dist" />
+	<property name="dist-path" value="./dist" />
 	<property name="platform" value="windows" />
 	<property name="notest" value="true" />
 	<property name="package" value="all" />
 	<target name="all">
-		<echo message="building cloudb core component to ${output}/cloudb.dll from sources ${sources} ..." />
+		<echo message="building cloudb core component to ${path::get-full-path(output)}/cloudb.dll from sources ${path::get-full-path(sources)} ..." />
 		<csc debug="${debug}" optimize="${not debug}" output="${output}/cloudb.dll" target="library" define="${define}" verbose="${verbose}">
 			<references>
 				<include name="System.dll" />
@@ -32,10 +32,13 @@
 			</sources>
 		</csc>
 		<if test="${not notest}">
-			<call target="test" />
+			<call target="-core-test" />
 		</if>
 	</target>
 	<target name="test" unless="${notest}" depends="all">
+		<call target="-core-test" />
+	</target>
+	<target name="-core-test">
 		<csc output="${output}\cloudb-nunit.dll" target="library" define="${define}">
 			<references>
 				<include name="${sources}\..\libs\nunit\framework\nunit.framework.dll" />
@@ -55,31 +58,48 @@
 	</target>
 	<target name="package" depends="all">
 		<choose>
-			<when test="${package} == 'bin'">
-				<call target="package-bin" />
+			<when test="${package == 'bin'}">
+				<call target="-package-bin" />
 			</when>
-			<when test="${package} == 'src'">
-				<call target="package-src" />
+			<when test="${package == 'src'}">
+				<call target="-package-src" />
 			</when>
 			<otherwise>
-				<call target="package-all" />
+				<call target="-package-all" />
 			</otherwise>
 		</choose>
-		<tar destfile="${dist.path}/cloudb-${version}-${dist.platform}.tar.gz" compression="GZip" verbose="${verbose}">
-			<fileset basedir="${build.output}">
+	</target>
+	<target name="-package-all" depends="all">
+		<tar destfile="${dist-path}/cloudb-${version}.tar.gz" compression="GZip">
+			<fileset prefix="src" basedir="${sources}">
+				<include name="ComponentAce.Compression.Libs.zlib/*.cs" />
+				<include name="Deveel.Data/*.cs" />
+				<include name="Deveel.Data.Caching/*.cs" />
+				<include name="Deveel.Data.Configuration/*.cs" />
+				<include name="Deveel.Data.Diagnostics/*.cs" />
+				<include name="Deveel.Data.Net/*.cs" />
+				<include name="Deveel.Data.Net.Client/*.cs" />
+				<include name="Deveel.Data.Store/*.cs" />
+				<include name="Deveel.Data.Util/*.cs" />
+				<include name="Properties/AssemblyInfo.cs" />
+				<include name="cloudb.csproj" />
+				<include name="default.build" />
+			</fileset>
+			<fileset prefix="bin" basedir="${output}">
 				<include name="cloudb.dll" />
 			</fileset>
 		</tar>
+		<zip zipfile="${dist-path}/cloudb-${version}.zip" />
 	</target>
-	<target name="package-all" depends="all">
-		<tar />
-		<zip />
+	<target name="-package-bin" depends="all">
+		<tar destfile="${dist-path}/cloudb-${version}-bin.tar.gz">
+			<fileset basedir="${output}">
+				<include name="cloudb.dll" />
+			</fileset>
+		</tar>
+		<zip zipfile="${dist-path}/cloudb-${version}-bin.zip" />
 	</target>
-	<target name="package-bin" depends="all">
-		<tar />
-		<zip />
-	</target>
-	<target name="package-src">
+	<target name="-package-src">
 		<tar destfile="${dist-path}/cloudb-${version}-src.tar.gz" compression="GZip" verbose="${verbose}">
 			<fileset basedir="${sources}">
 				<include name="cloudb/ComponentAce.Compression.Libs.zlib/*.cs" />
@@ -96,6 +116,13 @@
 				<include name="cloudb/default.build" />
 			</fileset>
 		</tar>
-		<zip />
+		<zip zipfile="${dist-path}/cloudb-${version}-src.tar.gz" />
+	</target>
+	<target name="clean">
+		<delete>
+			<fileset basedir="${output}">
+				<include name="cloudb.dll" if="${file::exists(path::combine(output, 'cloudb.dll'))}" />
+			</fileset>
+		</delete>
 	</target>
 </project>

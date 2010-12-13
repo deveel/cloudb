@@ -1,160 +1,96 @@
-﻿<?xml version="1.0"?>
+<?xml version="1.0"?>
 <project name="cloudb" default="all">
 	<property name="name" value="CloudB" />
 	<property name="version" value="1.0b" />
 	<property name="document" value="False" dynamic="True" />
 	<property name="sign" value="False" />
-	<property name="source" value="False" />
-	<property name="verbose" value="True" />
 	<property name="define" value="TRACE" />
 	<property name="output" value="./build" />
 	<property name="debug" value="false" />
 	<property name="notest" value="false" />
 	<property name="platform" value="windows" />
 	<property name="dist-path" value="./dist" />
-	<target name="installer" depends="all">
-		<property name="install.builder" value="libs\bitrock\builder-cli.exe" verbose="${verbose}" if="${convert::to-boolean(dist.platform == 'windows')}" />
+	<property name="package" value="all" />
+	
+	<target name="installer" depends="all" description="generates an installer for the entire project">
+		<property name="install.builder" value="libs\bitrock\builder-cli.exe" if="${platform == 'windows'}" />
 		<exec program="${install.builder}" verbose="${verbose}">
 			<arg value="build" />
 			<arg value="installer\cloudb.xml" />
-			<arg value="${dist.platform}" />
+			<arg value="${platform}" />
 			<arg value="--license installer\license.xml" />
 		</exec>
-	</target>
+	</target>	
 	<target name="package">
 		<choose>
-			<when test="${source}">
-				<call target="package-src" />
+			<when test="${package == 'src'}">
+				<call target="-package-src" />
+			</when>
+			<when test="${package == 'bin'}">
+			  <call target="-package-bin" />
 			</when>
 			<otherwise>
-				<call target="package-bin" />
+				<call target="-package-all" />
 			</otherwise>
 		</choose>
 	</target>
-	<target name="package-src">
-		<tar destfile="${dist.path}/cloudb-${version}-src.tar.gz" compression="GZip" verbose="${verbose}">
-			<fileset basedir=".">
-				<include name="cloudb/ComponentAce.Compression.Libs.zlib/*.cs" />
-				<include name="cloudb/Deveel.Data/*.cs" />
-				<include name="cloudb/Deveel.Data.Caching/*.cs" />
-				<include name="cloudb/Deveel.Data.Configuration/*.cs" />
-				<include name="cloudb/Deveel.Data.Diagnostics/*.cs" />
-				<include name="cloudb/Deveel.Data.Net/*.cs" />
-				<include name="cloudb/Deveel.Data.Net.Client/*.cs" />
-				<include name="cloudb/Deveel.Data.Store/*.cs" />
-				<include name="cloudb/Deveel.Data.Util/*.cs" />
-				<include name="cloudb/Properties/AssemblyInfo.cs" />
-				<include name="cloudb/cloudb.csproj" />
-				<include name="cloudb/default.build" />
-			</fileset>
-			<fileset basedir=".">
-				<include name="cloudb-nunit/Deveel.Data/*.cs" />
-				<include name="cloudb-nunit/Deveel.Data.Configuration/*.cs" />
-				<include name="cloudb-nunit/Deveel.Data.Diagnostics/*.cs" />
-				<include name="cloudb-nunit/Deveel.Data.Net/*.cs" />
-				<include name="cloudb-nunit/Deveel.Data.Net.Client/*.cs" />
-				<include name="cloudb-nunit/Properties/AssemblyInfo.cs" />
-				<include name="cloudb-nunit/cloudb-nunit.build" />
-				<include name="cloudb-nunit/cloudb-nunit.csproj" />
-			</fileset>
-			<fileset basedir=".">
-				<include name="mnode/Deveel.Data.Net/*.cs" />
-				<include name="mnode/Properties/AssemblyInfo.cs" />
-				<include name="mnode/mnode.csproj" />
-				<include name="mnode/mnode.unix.csproj" />
-			</fileset>
-			<fileset basedir=".">
-				<include name="cloudbase/Deveel.Data/*.cs" />
-				<include name="cloudbase/Properties/AssemblyInfo.cs" />
-				<include name="cloudbase/cloudbase.csproj" />
-				<include name="cloudbase/default.build" />
-			</fileset>
-			<fileset basedir=".">
-				<include name="cadmin/Deveel.Data/*.cs" />
-				<include name="cadmin/Deveel.Data.Net/*.cs" />
-				<include name="cadmin/Properties/AssemblyInfo.cs" />
-				<include name="cadmin/cadmin.csproj" />
-			</fileset>
-			<fileset basedir=".">
-				<include name="cloudbase-nunit/Deveel.Data/*.cs" />
-				<include name="cloudbase-nunit/Properties/AssemblyInfo.cs" />
-				<include name="cloudbase-nunit/cloudbase-nunit.csproj" />
-			</fileset>
-			<fileset basedir=".">
-				<include name="cloudb.build" />
-				<include name="cloudb.sln" />
-				<include name="COPYING" />
-				<include name="COPYING.HEADER" />
-				<include name="COPYING.LESSER" />
-			</fileset>
-		</tar>
+	<target name="-package-src">
+	  <call target="-package-src-kernel" />
+	  <call target="-package-src-cadmin" />
+	  <call target="-package-src-cloudbase" />
+	  <call target="-package-src-json" />
+	  <call target="-package-src-log4net" />
+	  <call target="-package-src-mnode" />
 	</target>
-	<target name="package-bin" depends="all">
-		<tar destfile="${dist.path}/cloudb-${version}-${dist.platform}.tar.gz" compression="GZip" verbose="${verbose}">
-			<fileset basedir=".">
-				<include name="COPYING" />
-				<include name="COPYING.HEADER" />
-				<include name="COPYING.LESSER" />
-			</fileset>
-			<fileset basedir="${build.output}" prefix="bin">
-				<include name="cloudb.dll" />
-				<include name="cloudbase.dll" />
-				<include name="mnode.exe" />
-				<include name="cadmin.exe" />
-				<include name="cloudb-json.dll" />
-				<include name="cloudb-log4net.dll" />
-			</fileset>
-		</tar>
-		<zip zipfile="${dist.path}/cloudb-${version}-${dist.platform}.zip" verbose="${verbose}">
-			<fileset basedir=".">
-				<include name="COPYING" />
-				<include name="COPYING.HEADER" />
-				<include name="COPYING.LESSER" />
-			</fileset>
-			<fileset basedir="${build.output}" prefix="bin">
-				<include name="cloudb.dll" />
-				<include name="cloudbase.dll" />
-				<include name="mnode.exe" />
-				<include name="cadmin.exe" />
-				<include name="cloudb-json.dll" />
-				<include name="cloudb-log4net.dll" />
-			</fileset>
-		</zip>
+	<target name="-package-src-kernel">
+	</target>
+	<target name="-package-src-cadmin">
+	</target>
+	<target name="-package-src-cloudbase">
+	</target>
+	<target name="-package-src-json">
+	</target>
+	<target name="-package-src-log4net">
+	</target>
+	<target name="-package-src-mnode">
+	</target>
+	<target name="-package-bin">
+	</target>
+	<target name="-package-all">
 	</target>
 	<target name="all">
-		<echo message="Building all components" verbose="${verbose}" />
-		<call target="kernel" verbose="${verbose}" />
-		<call target="cadmin" verbose="${verbose}" />
+		<echo message="Building all components" />
+		<call target="kernel"/>
+		<call target="cadmin"/>
 	</target>
 	<target name="kernel">
+		<echo message="Building the kernel library" />	
 		<nant buildfile="./cloudb/default.build" target="all" inheritall="false">
 			<properties>
 				<property name="sign" value="${sign}" readonly="true" />
 				<property name="notest" value="${notest}" readonly="true" />
-				<property name="output" value="${path::get-full-path(build.output)}" readonly="True" />
+				<property name="output" value="${path::get-full-path(output)}" readonly="True" />
 				<property name="sources" value="${path::get-full-path('./cloudb')}" readonly="True" />
-				<property name="define" value="${build.define}" readonly="true" />
-				<property name="debug" value="${build.debug}" readonly="true" />
-				<property name="platform" value="${dist.platform}" readonly="true" />
-				<property name="verbose" value="${verbose}" readonly="true" />	
+				<property name="define" value="${define}" readonly="true" />
+				<property name="debug" value="${debug}" readonly="true" />
+				<property name="platform" value="${platform}" readonly="true" />
 			</properties>
 		</nant>
 	</target>
 	<target name="cadmin" depends="kernel">
-		<echo message="Building Cloud Admin command-line tool" />
-		<csc output="${build.output}" target="exe">
-			<references>
-				<include name="System.dll" />
-				<include name="..\libs\deveel-cli.dll" />
-				<include name="..\libs\deveelrl.dll" />
-				<include name="..\libs\shellapp.dll" />
-				<include name="${build.output}\cloudb.dll" />
-			</references>
-			<sources>
-				<include name=".\Deveel.Data\BasePathWrapper.cs" />
-				<include name=".\Deveel.Data.Net\*.cs" />
-			</sources>
-		</csc>
+	  <nant buildfile="./cadmin/default.build" target="all" inheritall="false">
+	    <properties>
+	      <property name="sign" value="${sign}" readonly="true" />
+				<property name="notest" value="${notest}" readonly="true" />
+				<property name="output" value="${path::get-full-path(output)}" readonly="True" />
+				<property name="sources" value="${path::get-full-path('./cloudb')}" readonly="True" />
+				<property name="define" value="${define}" readonly="true" />
+				<property name="debug" value="${debug}" readonly="true" />
+				<property name="platform" value="${platform}" readonly="true" />
+				<property name="kernel" value="${output}" readonly="True" />
+				<property name="standalone" value="false" readonly="True" />
+	    </properties>
+	  </nant>
 	</target>
 	<target name="logger-log4net" depends="kernel">
 		<echo message="Building CloudB log4net logger component" />
