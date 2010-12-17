@@ -11,6 +11,7 @@
 	<property name="platform" value="windows" />
 	<property name="notest" value="true" />
 	<property name="package" value="all" />
+	<property name="package.name" value="" />
 	
 	<target name="-build-kernel">
 	  <nant buildfile="../cloudb/default.build" target="all" inheritall="false">
@@ -23,5 +24,28 @@
 	    <property name="package" value="${package}" readonly="True" />
 	    <property name="sign" value="${sign}" readonly="True" />
 	  </nant>
+	</target>
+	
+	<target name="package">
+	  <choose>
+	    <when test="${package == 'src'}">
+	      <if test="${package.name == ''}">
+	          <property name="${package.name}" value="${project::get-name()}-${version}-src" />
+	      </if>
+	      <call target="-package-src" />
+	    </when>
+	    <when test="${package == 'bin'}">
+	      <if test="${package.name == ''}">
+	          <property name="${package.name}" value="${project::get-name()}-${version}-bin" />
+	      </if>
+	      <call target="-package-bin" />
+	    </when>
+	    <otherwise>
+	      <if test="${package.name == ''}">
+	          <property name="${package.name}" value="${project::get-name()}-${version}" />
+	      </if>
+	      <call target="-package-all" />
+	    </otherwise>
+	  </choose>
 	</target>
 </project>

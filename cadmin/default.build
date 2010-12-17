@@ -1,21 +1,7 @@
 <?xml version="1.0"?>
-<project name="cadmin" default="all">
-	<property name="version" value="1.0b" />
-	<property name="document" value="False" />
-	<property name="sign" value="False" />
-	<property name="verbose" value="True" />
-	<property name="sources" value="." />
-	<property name="define" value="TRACE" />
-	<property name="output" value="./build" />
-	<property name="debug" value="false" />
-	<property name="dist-path" value="./dist" />
-	<property name="platform" value="windows" />
-	<property name="notest" value="true" />
-	<property name="package" value="all" />
-	<property name="libs" value="../libs" />	
-	<property name="kernel" value="../build" />
-	<property name="standalone" value="True" />
-	<target name="all">
+<project name="cadmin" default="build">
+  <include buildfile="../common.build" />
+	<target name="build">
   	<if test="${kernel == ''}">
   	  <echo message="the path to the kernel library was not specified or the assembly was not found: we will generate one" />
 	    <nant buildfile="../cloudb/default.build" target="all" inheritall="false">
@@ -65,7 +51,7 @@
 		</choose>	
 	</target>
 	<target name="-package-all" depends="all">
-		<tar destfile="${dist-path}/cadmin-${version}.tar.gz" compression="GZip">
+		<tar destfile="${dist-path}/${package.name}.tar.gz" compression="GZip">
 			<fileset prefix="bin" basedir="${output}">
 				<include name="cadmin.exe" />
 				<include name="deveel-cli.exe"/>
@@ -81,7 +67,7 @@
 		</tar>
 	</target>
 	<target name="-package-bin" depends="all">
-		  <tar destfile="${dist-path}/cadmin-${version}-src.tar.gz" compression="GZip">
+		  <tar destfile="${dist-path}/${package.name}.tar.gz" compression="GZip">
 	    <fileset basedir="${output}">
 	      <include name="cadmin.exe" />
 				<include name="deveel-cli.exe"/>
@@ -93,7 +79,7 @@
 	  </tar>
 	</target>
 	<target name="-package-src">
-		<tar destfile="${dist-path}/cadmin-${version}-src.tar.gz" compression="GZip">
+		<tar destfile="${dist-path}/${package.name}.tar.gz" compression="GZip">
 	    <fileset basedir="${sources}">
 	      <include name="Deveel.Data/*.cs" />
 	      <include name="Deveel.Data.Net/*.cs"/>

@@ -1,58 +1,46 @@
 <?xml version="1.0"?>
 <project name="cloudb" default="all">
-	<property name="name" value="CloudB" />
-	<property name="version" value="1.0b" />
-	<property name="document" value="False" dynamic="True" />
-	<property name="sign" value="False" />
-	<property name="define" value="TRACE" />
-	<property name="output" value="./build" />
-	<property name="debug" value="false" />
-	<property name="notest" value="false" />
-	<property name="platform" value="windows" />
-	<property name="dist-path" value="./dist" />
-	<property name="package" value="all" />
-	
-	<target name="installer" depends="all" description="generates an installer for the entire project">
-		<property name="install.builder" value="libs\bitrock\builder-cli.exe" if="${platform == 'windows'}" />
-		<exec program="${install.builder}" verbose="${verbose}">
-			<arg value="build" />
-			<arg value="installer\cloudb.xml" />
-			<arg value="${platform}" />
-			<arg value="--license installer\license.xml" />
-		</exec>
-	</target>	
-	<target name="package">
-		<choose>
-			<when test="${package == 'src'}">
-				<call target="-package-src" />
-			</when>
-			<when test="${package == 'bin'}">
-			  <call target="-package-bin" />
-			</when>
-			<otherwise>
-				<call target="-package-all" />
-			</otherwise>
-		</choose>
-	</target>
+  <include buildfile="common.build" />
 	<target name="-package-src">
-	  <call target="-package-src-kernel" />
-	  <call target="-package-src-cadmin" />
-	  <call target="-package-src-cloudbase" />
-	  <call target="-package-src-json" />
-	  <call target="-package-src-log4net" />
-	  <call target="-package-src-mnode" />
-	</target>
-	<target name="-package-src-kernel">
-	</target>
-	<target name="-package-src-cadmin">
-	</target>
-	<target name="-package-src-cloudbase">
-	</target>
-	<target name="-package-src-json">
-	</target>
-	<target name="-package-src-log4net">
-	</target>
-	<target name="-package-src-mnode">
+	  <property name="temp-path1" value="${path::combine(path::get-full-path(dist-path), 'temp1')}" readonly="True" />
+	  <property name="temp-path2" value="${path::combine(path::get-full-path(dist-path), 'temp2')}" readonly="True" />
+	  <nant buildfile="cloudb/default.build" target="-package-src" inheritall="false">
+	    <properties>
+	      <property name="dist-path" value="${temp-path1}" readonly="true" />
+	      <property name="package.name" value="cloudb-temp" readonly="true" />
+	    </properties>
+	  </nant>
+	  <nant buildfile="cadmin/default.build" target="-package-src" inheritall="false">
+	    <properties>
+	      <property name="dist-path" value="${temp-path1}" readonly="true" />
+	      <property name="package.name" value="cadmin-temp" readonly="true" />
+	    </properties>
+	  </nant>
+	  <nant buildfile="cloudbase/default.build" target="-package-src" inheritall="false">
+	    <properties>
+	      <property name="dist-path" value="${temp-path1}" readonly="true" />
+	      <property name="package.name" value="cloudbase-temp" readonly="true" />
+	    </properties>
+	  </nant>
+	  <nant buildfile="cloudb-json/default.build" target="-package-src" inheritall="false">
+	    <properties>
+	      <property name="dist-path" value="${temp-path1}" readonly="true" />
+	      <property name="package.name" value="json-temp" readonly="true" />
+	    </properties>
+	  </nant>
+	  <nant buildfile="cloudb-log4net/default.build" target="-package-src" inheritall="false">
+	    <properties>
+	      <property name="dist-path" value="${temp-path1}" readonly="true" />
+	      <property name="package.name" value="log4net-temp" readonly="true" />
+	    </properties>
+	  </nant>
+	  <nant buildfile="mnode/default.build" target="-package-src" inheritall="false">
+	    <properties>
+	      <property name="dist-path" value="${temp-path1}" readonly="true" />
+	      <property name="package.name" value="mnode-temp" readonly="true" />
+	    </properties>
+	  </nant>
+	  <gunzip src="${temp1}/cloudb-temp" to="${temp2}/cloudb" />
 	</target>
 	<target name="-package-bin">
 	</target>

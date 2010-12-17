@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<project name="cloudbase" default="build">
+  <include buildfile="../common.build" />
+	<target name="build">
+		<echo message="building cloudb base to ${output}/cloudbase.dll" />
+		<csc target="library" output="${output}/cloudbase.dll" debug="${debug}" define="${define}">
+			<sources>
+				<include name="Properties/AssemblyInfo.cs" />
+				<include name="Deveel.Data/*.cs" />
+			</sources>
+			<references>
+				<include name="System.dll" />
+				<include name="${kernel}/cloudb.dll" />
+			</references>
+		</csc>
+		<if test="${standalone}">
+		  <copy src="${kernel}/cloudb.dll" to="${output}" />
+		</if>
+	</target>
+	<target name="-package-src">
+	  <tar destfile="${dist-path}/${package.name}.tar.gz" compression="GZip">
+	    <fileset basedir="${sources}">
+	      <include name="Deveel.Data/*.cs" />
+	      <include name="Properties/AssemblyInfo.cs"/>
+	      <include name="cloudbase.csproj"/>
+	    </fileset>
+	  </tar>
+	</target>
+	<target name="-package-bin" depends="build">
+	  <tar destfile="${dist-path}/${package.name}.tar.gz" compression="GZip">
+	    <fileset basedir="${dist-path}">
+	      <include name="cloudbase.dll" />
+	      <include name="cloudb.dll" />
+	    </fileset>
+	  </tar>
+	</target>
+	<target name="-package-all" depends="build">
+	  <tar destfile="${dist-path}/${package.name}.tar.gz" compression="GZip">
+	    <fileset basedir="${sources}" prefix="src">
+	      <include name="Deveel.Data/*.cs" />
+	      <include name="Properties/AssemblyInfo.cs"/>
+	      <include name="cloudbase.csproj"/>
+	    </fileset>
+	    <fileset basedir="${output}" prefix="bin">
+	      <include name="cloudbase.dll" />
+	      <include name="cloudb.dll" />
+	    </fileset>
+	  </tar>
+	</target>
+</project>

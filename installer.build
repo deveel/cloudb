@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<project name="installer">
+  <include buildfile="default.build" />
+	<target name="bitrock" depends="all" description="generates an installer for the entire project">
+		<property name="install.builder" value="libs\bitrock\builder-cli.exe" if="${platform == 'windows'}" />
+		<exec program="${install.builder}" verbose="${verbose}">
+			<arg value="build" />
+			<arg value="installer\cloudb.xml" />
+			<arg value="${platform}" />
+			<arg value="--license installer\license.xml" />
+		</exec>
+	</target>	
+</project>
