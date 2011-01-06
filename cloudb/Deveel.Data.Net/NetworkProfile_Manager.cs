@@ -23,7 +23,7 @@ namespace Deveel.Data.Net {
 			RequestMessage request = new RequestMessage(messageName);
 			request.Arguments.Add(address);
 
-			ResponseMessage m = Command(current_manager.Address, ServiceType.Manager, request);
+			Message m = Command(current_manager.Address, ServiceType.Manager, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage, m.ErrorStackTrace);
 		}
@@ -46,7 +46,7 @@ namespace Deveel.Data.Net {
 			RequestMessage request = new RequestMessage(messageName);
 			request.Arguments.Add(address);
 
-			ResponseMessage m = Command(current_manager.Address, ServiceType.Manager, request);
+			Message m = Command(current_manager.Address, ServiceType.Manager, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 		}
@@ -80,7 +80,7 @@ namespace Deveel.Data.Net {
 			RequestMessage request = new RequestMessage("getRootFor");
 			request.Arguments.Add(pathName);
 
-			ResponseMessage m = Command(manager_server, ServiceType.Manager, request);
+			Message m = Command(manager_server, ServiceType.Manager, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 
@@ -99,7 +99,7 @@ namespace Deveel.Data.Net {
 			IServiceAddress manager_server = man.Address;
 
 			RequestMessage request = new RequestMessage("getBlockMappingCount");
-			ResponseMessage m = Command(manager_server, ServiceType.Manager, request);
+			Message m = Command(manager_server, ServiceType.Manager, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 
@@ -121,7 +121,7 @@ namespace Deveel.Data.Net {
 			request.Arguments.Add(p1);
 			request.Arguments.Add(p2);
 
-			ResponseMessage m = Command(manager_server, ServiceType.Manager, request);
+			Message m = Command(manager_server, ServiceType.Manager, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 
@@ -141,7 +141,7 @@ namespace Deveel.Data.Net {
 
 			RequestMessage request = new RequestMessage("getRegisteredServerList");
 
-			ResponseMessage m = Command(manager_server, ServiceType.Manager, request);
+			Message m = Command(manager_server, ServiceType.Manager, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 
@@ -171,7 +171,7 @@ namespace Deveel.Data.Net {
 			request.Arguments.Add(block_id);
 			request.Arguments.Add(server_guid);
 
-			ResponseMessage m = Command(manager_server, ServiceType.Manager, request);
+			Message m = Command(manager_server, ServiceType.Manager, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 		}
@@ -190,7 +190,7 @@ namespace Deveel.Data.Net {
 			request.Arguments.Add(block_id);
 			request.Arguments.Add(server_guid);
 
-			ResponseMessage m = Command(manager_server, ServiceType.Manager, request);
+			Message m = Command(manager_server, ServiceType.Manager, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 		}

@@ -1,18 +1,7 @@
-﻿<?xml version="1.0"?>
-<project default="all" name="kernel">
-	<property name="version" value="1.0b" />
-	<property name="document" value="False" />
-	<property name="sign" value="False" />
-	<property name="verbose" value="True" />
-	<property name="sources" value="." />
-	<property name="define" value="TRACE" />
-	<property name="output" value="./build" />
-	<property name="debug" value="false" />
-	<property name="dist-path" value="./dist" />
-	<property name="platform" value="windows" />
-	<property name="notest" value="true" />
-	<property name="package" value="all" />
-	<target name="all">
+<?xml version="1.0"?>
+<project default="build" name="kernel">
+  <include buildfile="../common.build"/>
+	<target name="build">
 		<echo message="building cloudb core component to ${path::get-full-path(output)}/cloudb.dll from sources ${path::get-full-path(sources)} ..." />
 		<csc debug="${debug}" optimize="${not debug}" output="${output}/cloudb.dll" target="library" define="${define}" verbose="${verbose}">
 			<references>
@@ -69,8 +58,8 @@
 			</otherwise>
 		</choose>
 	</target>
-	<target name="-package-all" depends="all">
-		<tar destfile="${dist-path}/cloudb-${version}.tar.gz" compression="GZip">
+	<target name="-package-all" depends="build">
+		<tar destfile="${package.name}.tar.gz" compression="GZip">
 			<fileset prefix="src" basedir="${sources}">
 				<include name="ComponentAce.Compression.Libs.zlib/*.cs" />
 				<include name="Deveel.Data/*.cs" />
@@ -89,7 +78,7 @@
 				<include name="cloudb.dll" />
 			</fileset>
 		</tar>
-		<zip zipfile="${dist-path}/cloudb-${version}.zip" />
+		<zip zipfile="${dist-path}/${package.name}.zip" />
 	</target>
 	<target name="-package-bin" depends="all">
 		<tar destfile="${dist-path}/cloudb-${version}-bin.tar.gz">
@@ -100,23 +89,23 @@
 		<zip zipfile="${dist-path}/cloudb-${version}-bin.zip" />
 	</target>
 	<target name="-package-src">
-		<tar destfile="${dist-path}/cloudb-${version}-src.tar.gz" compression="GZip" verbose="${verbose}">
+		<tar destfile="${dist-path}/${package.name}.tar.gz" compression="GZip" verbose="${verbose}">
 			<fileset basedir="${sources}">
-				<include name="cloudb/ComponentAce.Compression.Libs.zlib/*.cs" />
-				<include name="cloudb/Deveel.Data/*.cs" />
-				<include name="cloudb/Deveel.Data.Caching/*.cs" />
-				<include name="cloudb/Deveel.Data.Configuration/*.cs" />
-				<include name="cloudb/Deveel.Data.Diagnostics/*.cs" />
-				<include name="cloudb/Deveel.Data.Net/*.cs" />
-				<include name="cloudb/Deveel.Data.Net.Client/*.cs" />
-				<include name="cloudb/Deveel.Data.Store/*.cs" />
-				<include name="cloudb/Deveel.Data.Util/*.cs" />
-				<include name="cloudb/Properties/AssemblyInfo.cs" />
-				<include name="cloudb/cloudb.csproj" />
-				<include name="cloudb/default.build" />
+				<include name="ComponentAce.Compression.Libs.zlib/*.cs" />
+				<include name="Deveel.Data/*.cs" />
+				<include name="Deveel.Data.Caching/*.cs" />
+				<include name="Deveel.Data.Configuration/*.cs" />
+				<include name="Deveel.Data.Diagnostics/*.cs" />
+				<include name="Deveel.Data.Net/*.cs" />
+				<include name="Deveel.Data.Net.Client/*.cs" />
+				<include name="Deveel.Data.Store/*.cs" />
+				<include name="Deveel.Data.Util/*.cs" />
+				<include name="Properties/AssemblyInfo.cs" />
+				<include name="cloudb.csproj" />
+				<include name="default.build" />
 			</fileset>
 		</tar>
-		<zip zipfile="${dist-path}/cloudb-${version}-src.tar.gz" />
+		<zip zipfile="${dist-path}/${package.name}.zip" />
 	</target>
 	<target name="clean">
 		<delete>

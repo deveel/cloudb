@@ -144,7 +144,7 @@ namespace Deveel.Data.Net {
 						TcpServiceAddress address = (TcpServiceAddress) handler.FromBytes(addressBytes);
 						RequestMessage request = (RequestMessage) service.MessageSerializer.Deserialize(din.BaseStream, MessageType.Request);
 
-						ResponseMessage response;
+						Message response;
 
 						// Proxy the command over the network,
 						if (command == 'a') {

@@ -56,7 +56,7 @@ namespace Deveel.Data.Net {
 				this.serviceType = serviceType;
 			}
 			
-			private ResponseMessage DoProcess(RequestMessage messageStream, int tryCount) {
+			private Message DoProcess(Message messageStream, int tryCount) {
 				try {
 					HttpWebRequest request = (HttpWebRequest) HttpWebRequest.Create(address.ToUri());
 					lock (request) {
@@ -77,7 +77,7 @@ namespace Deveel.Data.Net {
 
 						Stream input = response.GetResponseStream();
 						ResponseMessage baseResponse = (ResponseMessage) connector.MessageSerializer.Deserialize(input, MessageType.Response);
-						return new ResponseMessage(messageStream, baseResponse);
+						return new ResponseMessage((RequestMessage)messageStream, baseResponse);
 					}
 				} catch (Exception e) {
 					if (tryCount == 0 && e is WebException)
@@ -92,14 +92,14 @@ namespace Deveel.Data.Net {
 						error = new MessageError(new Exception(e.Message, e));
 					}
 
-					ResponseMessage responseMessage;
-					if (messageStream is RequestMessageStream) {
-						responseMessage = new ResponseMessageStream();
-						ResponseMessage errorMessage = new ResponseMessage("error", messageStream);
+					Message responseMessage;
+					if (messageStream is MessageStream) {
+						responseMessage = MessageStream.NewResponse();
+						ResponseMessage errorMessage = new ResponseMessage("error");
 						errorMessage.Arguments.Add(error);
-						((ResponseMessageStream)responseMessage).AddMessage(errorMessage);
+						((MessageStream)responseMessage).AddMessage(errorMessage);
 					} else {
-						responseMessage = messageStream.CreateResponse("error");
+						responseMessage = ((RequestMessage) messageStream).CreateResponse("error");
 						responseMessage.Arguments.Add(error);
 					}
 
@@ -108,7 +108,7 @@ namespace Deveel.Data.Net {
 			}
 
 			
-			public ResponseMessage Process(RequestMessage message) {
+			public Message Process(Message message) {
 				return DoProcess(message, 0);
 			}
 		}

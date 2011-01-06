@@ -3,7 +3,7 @@
 using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
-	public delegate ResponseMessage ProcessCallback(ServiceType serviceType, RequestMessage inputStream);
+	public delegate Message ProcessCallback(ServiceType serviceType, Message inputStream);
 
 	public sealed class FakeServiceConnector : IServiceConnector {
 		public FakeServiceConnector(ProcessCallback callback) {
@@ -47,7 +47,7 @@ namespace Deveel.Data.Net {
 				this.serviceType = serviceType;
 			}
 
-			public ResponseMessage Process(RequestMessage messageStream) {
+			public Message Process(Message messageStream) {
 				return connector.callback(serviceType, messageStream);
 			}
 		}

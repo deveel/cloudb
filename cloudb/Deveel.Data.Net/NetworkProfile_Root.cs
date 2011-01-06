@@ -19,10 +19,10 @@ namespace Deveel.Data.Net {
 				throw new NetworkAdminException("No manager server found");
 
 			// Check with the root server that the class instantiates,
-			RequestMessage outputStream = new RequestMessage("checkPathType");
+			Message outputStream = new RequestMessage("checkPathType");
 			outputStream.Arguments.Add(pathType);
 
-			ResponseMessage m = Command(root, ServiceType.Root, outputStream);
+			Message m = Command(root, ServiceType.Root, outputStream);
 			if (m.HasError)
 				throw new NetworkAdminException("Type '" + pathType + "' doesn't instantiate on the root");
 
@@ -35,18 +35,18 @@ namespace Deveel.Data.Net {
 			client.Disconnect();
 
 			// Perform the command,
-			outputStream = new RequestMessageStream();
+			outputStream = new MessageStream(MessageType.Request);
 			RequestMessage request = new RequestMessage("addPath");
 			request.Arguments.Add(pathName);
 			request.Arguments.Add(pathType);
 			request.Arguments.Add(dataAddress);
-			((RequestMessageStream)outputStream).AddMessage(request);
+			((MessageStream)outputStream).AddMessage(request);
 
 			request = new RequestMessage("initPath");
 			request.Arguments.Add(pathName);
-			((RequestMessageStream)outputStream).AddMessage(request);
+			((MessageStream)outputStream).AddMessage(request);
 
-			ResponseMessage message = Command(root, ServiceType.Root, outputStream);
+			Message message = Command(root, ServiceType.Root, outputStream);
 			if (message.HasError)
 				throw new NetworkAdminException(message.ErrorMessage);
 
@@ -78,7 +78,7 @@ namespace Deveel.Data.Net {
 			RequestMessage request = new RequestMessage("removePath");
 			request.Arguments.Add(path_name);
 
-			ResponseMessage m = Command(root, ServiceType.Root, request);
+			Message m = Command(root, ServiceType.Root, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 
@@ -104,7 +104,7 @@ namespace Deveel.Data.Net {
 			RequestMessage request = new RequestMessage("getPathStats");
 			request.Arguments.Add(pathName);
 
-			ResponseMessage m = Command(root, ServiceType.Root, request);
+			Message m = Command(root, ServiceType.Root, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 
@@ -119,7 +119,7 @@ namespace Deveel.Data.Net {
 			MachineProfile machine_p = CheckMachineInNetwork(root);
 
 			RequestMessage request = new RequestMessage("pathReport");
-			ResponseMessage m = Command(root, ServiceType.Root, request);
+			Message m = Command(root, ServiceType.Root, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 
@@ -164,7 +164,7 @@ namespace Deveel.Data.Net {
 			request.Arguments.Add(time.ToBinary());
 			request.Arguments.Add(time.ToBinary());
 
-			ResponseMessage m = Command(root, ServiceType.Root, request);
+			ResponseMessage m = (ResponseMessage) Command(root, ServiceType.Root, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 
@@ -186,7 +186,7 @@ namespace Deveel.Data.Net {
 			request.Arguments.Add(pathName);
 			request.Arguments.Add(address);
 
-			ResponseMessage m = Command(root, ServiceType.Root, request);
+			Message m = Command(root, ServiceType.Root, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 		}

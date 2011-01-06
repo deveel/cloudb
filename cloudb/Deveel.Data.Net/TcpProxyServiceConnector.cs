@@ -117,7 +117,7 @@ namespace Deveel.Data.Net {
 
 			#region Implementation of IMessageProcessor
 
-			public ResponseMessage Process(RequestMessage messageStream) {
+			public Message Process(Message messageStream) {
 				try {
 					lock (connector.proxy_lock) {
 						IMessageSerializer serializer = connector.MessageSerializer;
@@ -143,7 +143,7 @@ namespace Deveel.Data.Net {
 						connector.pout.Flush();
 
 						ResponseMessage baseResponse = (ResponseMessage) serializer.Deserialize(connector.pin.BaseStream, MessageType.Response);
-						return new ResponseMessage(messageStream, baseResponse);
+						return new ResponseMessage((RequestMessage) messageStream, baseResponse);
 					}
 				} catch (IOException e) {
 					// Probably caused because the proxy closed the connection when a

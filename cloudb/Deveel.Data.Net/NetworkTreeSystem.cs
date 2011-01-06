@@ -65,7 +65,7 @@ namespace Deveel.Data.Net {
 			RequestMessage requestMessage = new RequestMessage("notifyBlockServerFailure");
 			requestMessage.Arguments.Add(address);
 			// Process the failure report message on the manager server,
-			ResponseMessage responseMessage = manager.Process(requestMessage);
+			Message responseMessage = manager.Process(requestMessage);
 			if (responseMessage.HasError)
 				logger.Error("Error found while processing 'notifyBlockServerFailure': " + responseMessage.ErrorMessage);
 		}
@@ -137,7 +137,7 @@ namespace Deveel.Data.Net {
 			// blocks.
 
 			IMessageProcessor manager = connector.Connect(managerAddress, ServiceType.Manager);
-			RequestMessageStream message_out = new RequestMessageStream();
+			MessageStream message_out = new MessageStream(MessageType.Request);
 
 			foreach (long block_id in noneCached) {
 				RequestMessage request = new RequestMessage("getServerListForBlock");
@@ -145,7 +145,7 @@ namespace Deveel.Data.Net {
 				message_out.AddMessage(request);
 			}
 
-			ResponseMessageStream message_in = (ResponseMessageStream) manager.Process(message_out);
+			MessageStream message_in = (MessageStream) manager.Process(message_out);
 
 			int n = 0;
 			foreach (ResponseMessage m in message_in) {
@@ -311,7 +311,7 @@ namespace Deveel.Data.Net {
 			DataAddress[] refs = new DataAddress[sz];
 			long[] outRefs = new long[sz];
 
-			RequestMessageStream allocateMessage = new RequestMessageStream();
+			MessageStream allocateMessage = new MessageStream(MessageType.Request);
 
 			// Make a connection with the manager server,
 			IMessageProcessor manager = connector.Connect(managerAddress, ServiceType.Manager);
@@ -333,7 +333,7 @@ namespace Deveel.Data.Net {
 			}
 
 			// The result of the set of allocations,
-			ResponseMessageStream resultStream = (ResponseMessageStream) manager.Process(allocateMessage);
+			MessageStream resultStream = (MessageStream) manager.Process(allocateMessage);
 			//DEBUG: ++network_comm_count;
 
 			// The unique list of blocks,
@@ -361,9 +361,9 @@ namespace Deveel.Data.Net {
 
 			// Make message streams for each unique block
 			int ubid_count = uniqueBlocks.Count;
-			RequestMessageStream[] ubidStream = new RequestMessageStream[ubid_count];
+			MessageStream[] ubidStream = new MessageStream[ubid_count];
 			for (int i = 0; i < ubidStream.Length; ++i) {
-				ubidStream[i] = new RequestMessageStream();
+				ubidStream[i] = new MessageStream(MessageType.Request);
 			}
 
 			// Scan all the blocks and create the message streams,
@@ -451,7 +451,7 @@ namespace Deveel.Data.Net {
 			// Now process the streams on the servers,
 			for (int i = 0; i < ubidStream.Length; ++i) {
 				// The output message,
-				RequestMessageStream requestMessageStream = ubidStream[i];
+				MessageStream requestMessageStream = ubidStream[i];
 
 				// Get the servers this message needs to be sent to,
 				long block_id = uniqueBlocks[i];
@@ -465,7 +465,7 @@ namespace Deveel.Data.Net {
 				for (int o = 0; o < bssz; ++o) {
 					IServiceAddress address = blockServers[o].Address;
 					blockServerProcs[o] = connector.Connect(address, ServiceType.Block);
-					ResponseMessageStream responseMessageStream = (ResponseMessageStream) blockServerProcs[o].Process(requestMessageStream);
+					MessageStream responseMessageStream = (MessageStream) blockServerProcs[o].Process(requestMessageStream);
 					//DEBUG: ++network_comm_count;
 
 					if (responseMessageStream.HasError) {
@@ -478,7 +478,7 @@ namespace Deveel.Data.Net {
 						// Rollback any server writes already successfully made,
 						for (int p = 0; p < successProcess.Count; p += 2) {
 							IServiceAddress blockAddress = (IServiceAddress) successProcess[p];
-							RequestMessageStream toRollback = (RequestMessageStream) successProcess[p + 1];
+							MessageStream toRollback = (MessageStream) successProcess[p + 1];
 
 							List<DataAddress> rollbackNodes = new List<DataAddress>(128);
 							foreach(Message rm in toRollback) {
@@ -491,7 +491,7 @@ namespace Deveel.Data.Net {
 							rollbackRequest.Arguments.Add(rollbackNodes.ToArray());
 
 							// Send it to the block server,
-							ResponseMessage responseMessage = connector.Connect(blockAddress, ServiceType.Block).Process(rollbackRequest);
+							Message responseMessage = connector.Connect(blockAddress, ServiceType.Block).Process(rollbackRequest);
 							//DEBUG: ++network_comm_count;
 
 							// If rollback generated an error we throw the error now
@@ -580,7 +580,7 @@ namespace Deveel.Data.Net {
 			RequestMessage requestMessage = new RequestMessage("getRootForPath");
 			requestMessage.Arguments.Add(pathName);
 			// Process the 'getRootFor' command,
-			ResponseMessage msg_in = manager.Process(requestMessage);
+			Message msg_in = manager.Process(requestMessage);
 			//DEBUG ++networkCommCount;
 
 			if (msg_in.HasError)
@@ -624,7 +624,7 @@ namespace Deveel.Data.Net {
 			RequestMessage request = new RequestMessage("commit");
 			request.Arguments.Add(path_name);
 			request.Arguments.Add(proposal);
-			ResponseMessage response = processor.Process(request);
+			Message response = processor.Process(request);
 
 			if (response.HasError) {
 				MessageError et = response.Error;
@@ -642,7 +642,7 @@ namespace Deveel.Data.Net {
 		public string[] FindAllPaths() {
 			IMessageProcessor processor = connector.Connect(managerAddress, ServiceType.Manager);
 			RequestMessage request = new RequestMessage("getAllPaths");
-			ResponseMessage response = processor.Process(request);
+			Message response = processor.Process(request);
 			if (response.HasError) {
 				logger.Error("An error occurred in 'getAllPath': " + response.ErrorMessage);
 				throw new Exception(response.ErrorMessage);
@@ -655,7 +655,7 @@ namespace Deveel.Data.Net {
 			IMessageProcessor processor = connector.Connect(root_server, ServiceType.Root);
 			RequestMessage request = new RequestMessage("getSnapshot");
 			request.Arguments.Add(name);
-			ResponseMessage response = processor.Process(request);
+			Message response = processor.Process(request);
 			if (response.HasError)
 				throw new Exception(response.ErrorMessage);
 
@@ -668,7 +668,7 @@ namespace Deveel.Data.Net {
 			request.Arguments.Add(name);
 			request.Arguments.Add(timeStart.ToBinary());
 			request.Arguments.Add(timeEnd.ToBinary());
-			ResponseMessage response = processor.Process(request);
+			Message response = processor.Process(request);
 			if (response.HasError)
 				throw new Exception(response.ErrorMessage);
 
@@ -757,7 +757,7 @@ namespace Deveel.Data.Net {
 			// For each unique block list,
 			foreach (List<long> blist in uniqueBlockList) {
 				// Make a block server request for each node in the block,
-				RequestMessageStream block_server_msg = new RequestMessageStream();
+				MessageStream block_server_msg = new MessageStream(MessageType.Request);
 				long block_id = -1;
 				foreach (long node_ref in blist) {
 					DataAddress address = new DataAddress(node_ref);
@@ -782,7 +782,7 @@ namespace Deveel.Data.Net {
 					if (server.IsStatusUp) {
 						// Open a connection with the block server,
 						IMessageProcessor block_server_proc = connector.Connect(server.Address, ServiceType.Block);
-						ResponseMessageStream message_in = (ResponseMessageStream) block_server_proc.Process(block_server_msg);
+						MessageStream message_in = (MessageStream) block_server_proc.Process(block_server_msg);
 						// DEBUG: ++networkCommCount;
 						// DEBUG: ++networkFetchCommCount;
 

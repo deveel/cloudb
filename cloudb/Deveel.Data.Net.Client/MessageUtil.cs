@@ -12,8 +12,8 @@ namespace Deveel.Data.Net.Client {
 		}
 
 		public static MessageError GetError(Message message) {
-			if (message is IMessageStream) {
-				foreach (Message msg in (IMessageStream)message) {
+			if (message is MessageStream) {
+				foreach (Message msg in (MessageStream)message) {
 					MessageError error = GetError(msg);
 					if (error != null)
 						return error;

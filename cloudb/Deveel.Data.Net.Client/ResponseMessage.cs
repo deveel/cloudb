@@ -50,22 +50,6 @@ namespace Deveel.Data.Net.Client {
 			set { code = value; }
 		}
 
-		public bool HasError {
-			get { return MessageUtil.HasError(this); }
-		}
-
-		public string ErrorMessage {
-			get { return MessageUtil.GetErrorMessage(this); }
-		}
-
-		public string ErrorStackTrace {
-			get { return MessageUtil.GetErrorStackTrace(this); }
-		}
-
-		public MessageError Error {
-			get { return MessageUtil.GetError(this); }
-		}
-
 		public bool HasReturnValue {
 			get { return Arguments.Count == 1 && !HasError; }
 		}

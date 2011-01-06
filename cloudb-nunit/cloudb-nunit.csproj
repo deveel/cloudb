@@ -1,21 +1,24 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="3.5" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProductVersion>9.0.30729</ProductVersion>
+    <ProductVersion>9.0.21022</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{05D455D6-1EA4-4C27-A4F2-797A518FE00A}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>cloudb_nunit</RootNamespace>
+    <RootNamespace>Deveel.Data</RootNamespace>
     <AssemblyName>cloudb-nunit</AssemblyName>
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
     <FileUpgradeFlags>
     </FileUpgradeFlags>
     <OldToolsVersion>3.5</OldToolsVersion>
     <UpgradeBackupLocation />
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <SourceAnalysisOverrideSettingsFile>C:\Documents and Settings\aprovenzano\Application Data\ICSharpCode/SharpDevelop3.0\Settings.SourceAnalysis</SourceAnalysisOverrideSettingsFile>
+    <StartWorkingDirectory>bin\Debug\</StartWorkingDirectory>
+    <SignAssembly>true</SignAssembly>
     <PublishUrl>publish\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
@@ -28,23 +31,22 @@
     <MapFileExtensions>true</MapFileExtensions>
     <ApplicationRevision>0</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
-    <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
-    <SourceAnalysisOverrideSettingsFile>C:\Documents and Settings\aprovenzano\Application Data\ICSharpCode/SharpDevelop3.0\Settings.SourceAnalysis</SourceAnalysisOverrideSettingsFile>
-    <StartWorkingDirectory>bin\Debug\</StartWorkingDirectory>
-    <SignAssembly>true</SignAssembly>
-    <AssemblyOriginatorKeyFile>cloudb-nunit.pfx</AssemblyOriginatorKeyFile>
+    <AllowUnsafeBlocks>False</AllowUnsafeBlocks>
+    <NoStdLib>False</NoStdLib>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
+    <DebugType>Full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+    <ConsolePause>false</ConsolePause>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -58,6 +60,14 @@
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <StartAction>Program</StartAction>
     <StartProgram>..\libs\nunit\nunit.exe</StartProgram>
+    <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Platform)' == 'AnyCPU' ">
+    <RegisterForComInterop>False</RegisterForComInterop>
+    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
+    <BaseAddress>4194304</BaseAddress>
+    <PlatformTarget>x86</PlatformTarget>
+    <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -71,7 +81,6 @@
     <Compile Include="Deveel.Data.Net.Client\BinaryRpcSerializerTest.cs" />
     <Compile Include="Deveel.Data.Net.Client\XmlRpcMessageSerializerTest.cs" />
     <Compile Include="Deveel.Data.Net\FakeAdminService.cs">
-      <SubType>Component</SubType>
     </Compile>
     <Compile Include="Deveel.Data.Net\HttpMessageFormat.cs" />
     <Compile Include="Deveel.Data.Net\HttpNetworkTest.cs" />
@@ -85,8 +94,7 @@
     <Compile Include="Deveel.Data.Diagnostics\LoggerTest.cs" />
     <Compile Include="Deveel.Data.Configuration\ConfigSourceTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <None Include="cloudb-nunit.build" />
-    <None Include="cloudb-nunit.pfx" />
+    <None Include="default.build" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\cloudbase\cloudbase.csproj">

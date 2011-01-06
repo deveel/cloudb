@@ -20,7 +20,7 @@ namespace Deveel.Data.Net {
 					// Request a report from the administration role on the machine,
 					IMessageProcessor mp = connector.Connect(server, ServiceType.Admin);
 					RequestMessage request = new RequestMessage("report");
-					ResponseMessage response = mp.Process(request);
+					Message response = mp.Process(request);
 
 					if (response.HasError) {
 						machine_profile.ErrorState = response.ErrorMessage;
@@ -66,7 +66,7 @@ namespace Deveel.Data.Net {
 		private void ChangeRole(MachineProfile machine, string status, String role_type) {
 			RequestMessage msg_out = new RequestMessage(status);
 			msg_out.Arguments.Add(role_type);
-			ResponseMessage m = Command(machine.Address, ServiceType.Admin, msg_out);
+			Message m = Command(machine.Address, ServiceType.Admin, msg_out);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 
@@ -81,7 +81,7 @@ namespace Deveel.Data.Net {
 			// Request a report from the administration role on the machine,
 			IMessageProcessor mp = connector.Connect(machine, ServiceType.Admin);
 			RequestMessage request = new RequestMessage("report");
-			ResponseMessage response = mp.Process(request);
+			Message response = mp.Process(request);
 
 			if (response.HasError)
 				// Not a valid node,
@@ -128,7 +128,7 @@ namespace Deveel.Data.Net {
 
 		public AnalyticsRecord[] GetAnalyticsStats(IServiceAddress server) {
 			RequestMessage request = new RequestMessage("reportStats");
-			ResponseMessage m = Command(server, ServiceType.Admin, request);
+			Message m = Command(server, ServiceType.Admin, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 

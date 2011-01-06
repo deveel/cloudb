@@ -30,19 +30,19 @@
 	  <choose>
 	    <when test="${package == 'src'}">
 	      <if test="${package.name == ''}">
-	          <property name="${package.name}" value="${project::get-name()}-${version}-src" />
+	          <property name="package.name" value="${project::get-name()}-${version}-src" />
 	      </if>
 	      <call target="-package-src" />
 	    </when>
 	    <when test="${package == 'bin'}">
 	      <if test="${package.name == ''}">
-	          <property name="${package.name}" value="${project::get-name()}-${version}-bin" />
+	          <property name="package.name" value="${project::get-name()}-${version}-bin" />
 	      </if>
 	      <call target="-package-bin" />
 	    </when>
 	    <otherwise>
 	      <if test="${package.name == ''}">
-	          <property name="${package.name}" value="${project::get-name()}-${version}" />
+	          <property name="package.name" value="${project::get-name()}-${version}" />
 	      </if>
 	      <call target="-package-all" />
 	    </otherwise>

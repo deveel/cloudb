@@ -22,7 +22,7 @@ namespace Deveel.Data.Net {
 			: this(NetworkStoreType.Memory) {
 		}
 		
-		internal ResponseMessage ProcessCallback(ServiceType serviceType, RequestMessage inputStream) {
+		internal Message ProcessCallback(ServiceType serviceType, Message inputStream) {
 			if (serviceType == ServiceType.Admin)
 				return Processor.Process(inputStream);
 			if (serviceType == ServiceType.Manager)
