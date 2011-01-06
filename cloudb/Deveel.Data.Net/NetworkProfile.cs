@@ -80,7 +80,7 @@ namespace Deveel.Data.Net {
 			get { return connector; }
 		}
 
-		private ResponseMessage Command(IServiceAddress machine, ServiceType serviceType, RequestMessage request) {
+		private Message Command(IServiceAddress machine, ServiceType serviceType, Message request) {
 			IMessageProcessor proc = connector.Connect(machine, serviceType);
 			return proc.Process(request);
 		}

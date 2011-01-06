@@ -16,7 +16,7 @@ namespace Deveel.Data.Net {
 			RequestMessage request = new RequestMessage("serverGUID");
 			request.Arguments.Add(block);
 
-			ResponseMessage m = Command(block, ServiceType.Block, request);
+			Message m = Command(block, ServiceType.Block, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 
@@ -32,7 +32,7 @@ namespace Deveel.Data.Net {
 				throw new NetworkAdminException("Machine '" + block + "' is not a block role");
 
 			RequestMessage request = new RequestMessage("blockSetReport");
-			ResponseMessage m = Command(block, ServiceType.Block, request);
+			Message m = Command(block, ServiceType.Block, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 
@@ -56,7 +56,7 @@ namespace Deveel.Data.Net {
 			request.Arguments.Add(dest_server_sguid);
 			request.Arguments.Add(manager_server);
 
-			ResponseMessage m = Command(source_block_server, ServiceType.Block, request);
+			Message m = Command(source_block_server, ServiceType.Block, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 		}

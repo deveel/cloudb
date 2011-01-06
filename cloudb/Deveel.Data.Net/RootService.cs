@@ -472,14 +472,14 @@ namespace Deveel.Data.Net {
 
 			private readonly RootService service;
 
-			public ResponseMessage Process(RequestMessage request) {
-				ResponseMessage response;
-				if (RequestMessageStream.TryProcess(this, request, out response))
+			public Message Process(Message request) {
+				Message response;
+				if (MessageStream.TryProcess(this, request, out response))
 					return response;
 
 				// The reply message,
 
-				response = request.CreateResponse();
+				response = ((RequestMessage) request).CreateResponse();
 
 				try {
 					service.CheckErrorState();

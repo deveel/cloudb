@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
-<project name="cloudb" default="all">
-  <include buildfile="common.build" />
+<project name="cloudb" default="all" xmlns="http://nant.sf.net/release/0.91-alpha2/nant.xsd">
+  <include buildfile="common.build"/>
 	<target name="-package-src">
 	  <property name="temp-path1" value="${path::combine(path::get-full-path(dist-path), 'temp1')}" readonly="True" />
 	  <property name="temp-path2" value="${path::combine(path::get-full-path(dist-path), 'temp2')}" readonly="True" />
@@ -96,13 +96,5 @@
 	</target>
 	<target name="json" depends="kernel" />
 	<target name="mnode" depends="kernel">
-		<csc output="${build.output}/mnode.exe" target="exe">
-			<references>
-				<include name="System" />
-				<include name="${build.output}/cloudb.dll" />
-				<include name="./libs/deveel-cli.dll" />
-			</references>
-			<sources />
-		</csc>
 	</target>
 </project>

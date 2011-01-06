@@ -185,7 +185,7 @@ namespace Deveel.Data.Net {
 			private readonly ServiceType serviceType;
 			private readonly TcpServiceConnector connector;
 
-			private ResponseMessage DoProcess(RequestMessage messageStream, int tryCount) {
+			private Message DoProcess(Message messageStream, int tryCount) {
 				TcpConnection c = null;
 
 				try {
@@ -212,11 +212,11 @@ namespace Deveel.Data.Net {
 						serializer.Serialize(messageStream, c.Stream);
 						writer.Flush();
 
-						ResponseMessage response = (ResponseMessage) serializer.Deserialize(c.Stream, MessageType.Response);
-						if (response is ResponseMessageStream) {
+						Message response = serializer.Deserialize(c.Stream, MessageType.Response);
+						if (response is MessageStream) {
 							return response;
 						} else {
-							return new ResponseMessage(messageStream, response);
+							return new ResponseMessage((RequestMessage) messageStream, (ResponseMessage) response);
 						}
 					}
 				} catch (Exception e) {
@@ -238,14 +238,14 @@ namespace Deveel.Data.Net {
 						error = new MessageError(new Exception(e.Message, e));
 					}
 
-					ResponseMessage responseMessage;
-					if (messageStream is RequestMessageStream) {
-						responseMessage = new ResponseMessageStream();
+					Message responseMessage;
+					if (messageStream is MessageStream) {
+						responseMessage = new MessageStream(MessageType.Response);
 						ResponseMessage inner = new ResponseMessage();
 						inner.Arguments.Add(error);
-						((ResponseMessageStream)responseMessage).AddMessage(inner);
+						((MessageStream)responseMessage).AddMessage(inner);
 					} else {
-						responseMessage = messageStream.CreateResponse();
+						responseMessage = ((RequestMessage) messageStream).CreateResponse();
 						responseMessage.Arguments.Add(error);
 					}
 
@@ -258,7 +258,7 @@ namespace Deveel.Data.Net {
 
 			#region Implementation of IMessageProcessor
 
-			public ResponseMessage Process(RequestMessage messageStream) {
+			public Message Process(Message messageStream) {
 				return DoProcess(messageStream, 0);
 			}
 

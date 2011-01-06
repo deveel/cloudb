@@ -26,8 +26,8 @@ namespace Deveel.Data.Net.Client {
 		public void Serialize(Message message, Stream output) {
 			BinaryWriter writer = new BinaryWriter(output, Encoding);
 
-			if (message is IMessageStream) {
-				IMessageStream messageStream = (IMessageStream) message;
+			if (message is MessageStream) {
+				MessageStream messageStream = (MessageStream) message;
 
 				writer.Write(2);
 				int sz = messageStream.MessageCount;
@@ -54,12 +54,7 @@ namespace Deveel.Data.Net.Client {
 				return Deserialize(reader, messageType);
 			
 			if (type == 2) {
-				IMessageStream stream;
-				if (messageType == MessageType.Request)
-					stream = new RequestMessageStream();
-				else
-					stream = new ResponseMessageStream();
-
+				MessageStream stream = new MessageStream(messageType);
 				int sz = reader.ReadInt32();
 				for (int i = 0; i < sz; i++) {
 					stream.AddMessage(Deserialize(reader, messageType));

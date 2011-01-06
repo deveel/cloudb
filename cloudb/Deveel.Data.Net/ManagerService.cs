@@ -209,7 +209,7 @@ namespace Deveel.Data.Net {
 			// Lock the block service with this manager
 			RequestMessage request = new RequestMessage("bindWithManager");
 			request.Arguments.Add(address);
-			ResponseMessage response = processor.Process(request);
+			Message response = processor.Process(request);
 			if (response.HasError)
 				throw new ApplicationException(response.ErrorMessage);
 
@@ -274,7 +274,7 @@ namespace Deveel.Data.Net {
 			// Unlock the block service from this manager
 			RequestMessage request = new RequestMessage("unbindWithManager");
 			request.Arguments.Add(address);
-			ResponseMessage inputStream = processor.Process(request);
+			Message inputStream = processor.Process(request);
 			if (inputStream.HasError)
 				throw new ApplicationException(inputStream.ErrorMessage);
 
@@ -314,7 +314,7 @@ namespace Deveel.Data.Net {
 				// Unlock the block service from this manager
 				RequestMessage request = new RequestMessage("unbindWithManager");
 				request.Arguments.Add(address);
-				ResponseMessage response = processor.Process(request);
+				Message response = processor.Process(request);
 				if (response.HasError)
 					throw new ApplicationException(response.ErrorMessage);
 			}
@@ -373,7 +373,7 @@ namespace Deveel.Data.Net {
 			// Lock the root service with this manager
 			RequestMessage request = new RequestMessage("bindWithManager");
 			request.Arguments.Add(address);
-			ResponseMessage response = processor.Process(request);
+			Message response = processor.Process(request);
 			if (response.HasError)
 				throw new ApplicationException(response.ErrorMessage);
 
@@ -424,7 +424,7 @@ namespace Deveel.Data.Net {
 			// Unlock the block service from this manager
 			RequestMessage request = new RequestMessage("unbindWithManager");
 			request.Arguments.Add(address);
-			ResponseMessage response = processor.Process(request);
+			Message response = processor.Process(request);
 			if (response.HasError)
 				throw new ApplicationException(response.ErrorMessage);
 
@@ -455,7 +455,7 @@ namespace Deveel.Data.Net {
 				// Unlock the root service from this manager
 				RequestMessage request = new RequestMessage("unbindWithManager");
 				request.Arguments.Add(address);
-				ResponseMessage response = processor.Process(request);
+				Message response = processor.Process(request);
 				if (response.HasError)
 					throw new ApplicationException(response.ErrorMessage);
 			}
@@ -731,7 +731,7 @@ namespace Deveel.Data.Net {
 			IMessageProcessor p = connector.Connect(server.Address, ServiceType.Block);
 			RequestMessage request = new RequestMessage("poll");
 			request.Arguments.Add("manager heartbeat");
-			ResponseMessage response = p.Process(request);
+			Message response = p.Process(request);
 				// Any error with the poll means no status change,
 				if (response.HasError) {
 					pollOk = false;
@@ -828,12 +828,12 @@ namespace Deveel.Data.Net {
 
 			private readonly ManagerService service;
 
-			public ResponseMessage Process(RequestMessage request) {
-				ResponseMessage response;
-				if (RequestMessageStream.TryProcess(this, request, out response))
+			public Message Process(Message request) {
+				Message response;
+				if (MessageStream.TryProcess(this, request, out response))
 					return response;
 
-				response = request.CreateResponse();
+				response = ((RequestMessage) request).CreateResponse();
 
 				// The messages in the stream,
 				try {

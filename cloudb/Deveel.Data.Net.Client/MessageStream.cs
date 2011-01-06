@@ -3,19 +3,18 @@ using System.Collections;
 using System.Collections.Generic;
 
 namespace Deveel.Data.Net.Client {
-	internal class RequestMessageStream : RequestMessage, IMessageStream {
+	public sealed class MessageStream : Message, IEnumerable<Message> {
 		private readonly List<Message> messages;
+		private readonly MessageType type;
 
-		public RequestMessageStream() {
+		internal MessageStream(MessageType type)
+			: base(null) {
+			this.type = type;
 			messages = new List<Message>();
 		}
 
-		public int MessageCount {
-			get { return messages.Count; }
-		}
-
-		public MessageType Type {
-			get { return MessageType; }
+		public override MessageType MessageType {
+			get { return type; }
 		}
 
 		public override MessageArguments Arguments {
@@ -29,6 +28,10 @@ namespace Deveel.Data.Net.Client {
 		public override string Name {
 			get { return base.Name; }
 			set { throw new NotSupportedException(); }
+		}
+
+		public int MessageCount {
+			get { return messages.Count; }
 		}
 
 		public Message GetMessage(int index) {
@@ -47,16 +50,24 @@ namespace Deveel.Data.Net.Client {
 			return GetEnumerator();
 		}
 
-		public static bool TryProcess(IMessageProcessor processor, RequestMessage request, out ResponseMessage response) {
-			RequestMessageStream requestStream = request as RequestMessageStream;
+		public static MessageStream NewRequest() {
+			return new MessageStream(MessageType.Request);
+		}
+
+		public static MessageStream NewResponse() {
+			return new MessageStream(MessageType.Response);
+		}
+
+		public static bool TryProcess(IMessageProcessor processor, Message request, out Message response) {
+			MessageStream requestStream = request as MessageStream;
 			if (requestStream == null) {
 				response = null;
 				return false;
 			}
 
-			response = new ResponseMessageStream();
+			response = new MessageStream(MessageType.Response);
 			foreach (RequestMessage streamMessage in requestStream) {
-				((ResponseMessageStream)response).AddMessage(processor.Process(streamMessage));
+				((MessageStream)response).AddMessage(processor.Process(streamMessage));
 			}
 
 			return true;

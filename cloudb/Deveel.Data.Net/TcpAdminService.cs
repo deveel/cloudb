@@ -209,7 +209,7 @@ namespace Deveel.Data.Net {
 						IMessageSerializer serializer = service.MessageSerializer;
 						RequestMessage requestMessage = (RequestMessage) serializer.Deserialize(reader.BaseStream, MessageType.Request);
 
-						ResponseMessage responseMessage;
+						Message responseMessage;
 
 						// For analytics
 						DateTime benchmark_start = DateTime.Now;

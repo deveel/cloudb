@@ -274,7 +274,7 @@ namespace Deveel.Data.Net.Client {
 
 		[Test]
 		public void RequestMessageStreamSerialize() {
-			RequestMessageStream requestStream = new RequestMessageStream();
+			MessageStream requestStream = MessageStream.NewRequest();
 			RequestMessage request = new RequestMessage("testMethod1");
 			request.Arguments.Add(true);
 			requestStream.AddMessage(request);
@@ -328,8 +328,8 @@ namespace Deveel.Data.Net.Client {
 			sb.Append("</messageStream>");
 
 			Message message = Deserialize(sb.ToString(), MessageType.Request);
-			Assert.IsInstanceOf(typeof(RequestMessageStream), message);
-			RequestMessageStream requestStream = (RequestMessageStream) message;
+			Assert.IsInstanceOf(typeof(MessageStream), message);
+			MessageStream requestStream = (MessageStream) message;
 			Assert.AreEqual(2, requestStream.MessageCount);
 		}
 	}

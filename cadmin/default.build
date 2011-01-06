@@ -5,14 +5,16 @@
   	<if test="${kernel == ''}">
   	  <echo message="the path to the kernel library was not specified or the assembly was not found: we will generate one" />
 	    <nant buildfile="../cloudb/default.build" target="all" inheritall="false">
-	      <property name="output" value="${path::get-full-path(output)}" readonly="True" />
-	      <property name="dist-path" value="${path::get-full-path(dist-path)}" readonly="True" />
-	      <property name="kernel" value="${path::get-full-path(kernel)}" readonly="True" />
-	      <property name="libs" value="${path::get-full-path(libs)}" readonly="True" />	
-	      <property name="platform" value="${platform}" readonly="True" />
-	      <property name="notest" value="${notest}" readonly="True" />
-	      <property name="package" value="${package}" readonly="True" />
-	      <property name="sign" value="${sign}" readonly="True" />
+        <properties>
+          <property name="output" value="${path::get-full-path(output)}" readonly="True" />
+          <property name="dist-path" value="${path::get-full-path(dist-path)}" readonly="True" />
+          <property name="kernel" value="${path::get-full-path(kernel)}" readonly="True" />
+          <property name="libs" value="${path::get-full-path(libs)}" readonly="True" />
+          <property name="platform" value="${platform}" readonly="True" />
+          <property name="notest" value="${notest}" readonly="True" />
+          <property name="package" value="${package}" readonly="True" />
+          <property name="sign" value="${sign}" readonly="True" />
+        </properties>
 	    </nant>
 	  </if>
 	  <csc output="${output}/cadmin.exe" target="exe">
@@ -37,20 +39,7 @@
 		  <copy file="${kernel}/cloudb.dll" todir="${output}" overwrite="true"/>
 		</if>
 	</target>
-	<target name="package">
-		<choose>
-			<when test="${package == 'bin'}">
-				<call target="-package-bin" />	
-			</when>
-			<when test="${package == 'src'}">
-				<call target="-package-src" />	
-			</when>
-			<otherwise>
-				<call target="-package-all" />	
-			</otherwise>
-		</choose>	
-	</target>
-	<target name="-package-all" depends="all">
+	<target name="-package-all" depends="build">
 		<tar destfile="${dist-path}/${package.name}.tar.gz" compression="GZip">
 			<fileset prefix="bin" basedir="${output}">
 				<include name="cadmin.exe" />
@@ -66,7 +55,7 @@
 			</fileset>
 		</tar>
 	</target>
-	<target name="-package-bin" depends="all">
+	<target name="-package-bin" depends="build">
 		  <tar destfile="${dist-path}/${package.name}.tar.gz" compression="GZip">
 	    <fileset basedir="${output}">
 	      <include name="cadmin.exe" />
@@ -87,18 +76,5 @@
 	      <include name="cadmin.csproj"/>
 	    </fileset>
 	  </tar>
-	</target>
-	<target name="prepare-package">
-		<choose>
-			<when test="${package == 'bin'}">
-				<call target="-package-bin" />	
-			</when>
-			<when test="${package == 'src'}">
-				<call target="-package-src" />	
-			</when>
-			<otherwise>
-				<call target="-package-all" />	
-			</otherwise>
-		</choose>
 	</target>
 </project>

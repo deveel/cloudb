@@ -346,8 +346,8 @@ namespace Deveel.Data.Net {
 						return;
 					}
 
-					ResponseMessage inputStream;
-					RequestMessage outputStream;
+					Message response;
+					Message request;
 
 					// If the block does exist, push it over,
 					byte[] buf = new byte[16384];
@@ -355,17 +355,17 @@ namespace Deveel.Data.Net {
 					using (Stream input = container.OpenInputStream()) {
 						int read;
 						while ((read = input.Read(buf, 0, buf.Length)) != 0) {
-							outputStream = new RequestMessage("sendBlockPart");
-							outputStream.Arguments.Add(info.blockId);
-							outputStream.Arguments.Add(pos);
-							outputStream.Arguments.Add(container.Type);
-							outputStream.Arguments.Add(buf);
-							outputStream.Arguments.Add(read);
+							request = new RequestMessage("sendBlockPart");
+							request.Arguments.Add(info.blockId);
+							request.Arguments.Add(pos);
+							request.Arguments.Add(container.Type);
+							request.Arguments.Add(buf);
+							request.Arguments.Add(read);
 							// Process the message,
-							inputStream = p.Process(outputStream);
+							response = p.Process(request);
 
-							if (inputStream.HasError) {
-								service.Logger.Log(LogLevel.Error, "sendBlockPath Error: " + inputStream.ErrorMessage);
+							if (response.HasError) {
+								service.Logger.Log(LogLevel.Error, "sendBlockPath Error: " + response.ErrorMessage);
 								return;
 							}
 
@@ -374,31 +374,31 @@ namespace Deveel.Data.Net {
 					}
 
 					// Send the 'complete' command,
-					outputStream = new RequestMessage("sendBlockComplete");
-					outputStream.Arguments.Add(info.blockId);
-					outputStream.Arguments.Add(container.Type);
+					request = new RequestMessage("sendBlockComplete");
+					request.Arguments.Add(info.blockId);
+					request.Arguments.Add(container.Type);
 
 					// Process the message,
-					inputStream = p.Process(outputStream);
+					response = p.Process(request);
 
-					if (inputStream.HasError) {
-						service.Logger.Error("sendBlockComplete Error: " + inputStream.ErrorMessage);
+					if (response.HasError) {
+						service.Logger.Error("sendBlockComplete Error: " + response.ErrorMessage);
 						return;
 					}
 
 					// Tell the manager service about this new block mapping,
 					IMessageProcessor mp = service.connector.Connect(info.managerAddress, ServiceType.Manager);
-					outputStream = new RequestMessage("addBlockServerMapping");
-					outputStream.Arguments.Add(info.blockId);
-					outputStream.Arguments.Add(info.destServerGuid);
+					request = new RequestMessage("addBlockServerMapping");
+					request.Arguments.Add(info.blockId);
+					request.Arguments.Add(info.destServerGuid);
 
 					service.Logger.Info("Adding block_id->server mapping (" + info.blockId + " -> " + info.destServerGuid + ")");
 
 					// Process the message,
-					inputStream = mp.Process(outputStream);
+					response = mp.Process(request);
 					
-					if (inputStream.HasError) {
-						service.Logger.Error("addBlockServerMapping Error: " + inputStream.ErrorMessage);
+					if (response.HasError) {
+						service.Logger.Error("addBlockServerMapping Error: " + response.ErrorMessage);
 						return;
 					}
 
@@ -417,11 +417,11 @@ namespace Deveel.Data.Net {
 			// The nodes fetched in this message,
 			private List<long> readNodes;
 
-			public ResponseMessage Process(RequestMessage message) {
-				ResponseMessage response;
+			public Message Process(Message message) {
+				Message response;
 				readNodes = null;
 
-				if (RequestMessageStream.TryProcess(this, message, out response)) {
+				if (MessageStream.TryProcess(this, message, out response)) {
 					readNodes = null;
 					return response;
 				}

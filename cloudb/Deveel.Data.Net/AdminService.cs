@@ -189,12 +189,12 @@ namespace Deveel.Data.Net {
 				return stats;
 			}
 
-			public ResponseMessage Process(RequestMessage request) {
-				ResponseMessage response;
-				if (RequestMessageStream.TryProcess(this, request, out response))
+			public Message Process(Message request) {
+				Message response;
+				if (MessageStream.TryProcess(this, request, out response))
 					return response;
 
-				response = request.CreateResponse();
+				response = ((RequestMessage)request).CreateResponse();
 
 				// For each message in the message input,
 				try {

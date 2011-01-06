@@ -5,7 +5,7 @@ using System.Text;
 using Newtonsoft.Json;
 
 namespace Deveel.Data.Net.Client {
-	public sealed class JsonRpcMessageSerializer : JsonMessageSerializer, IMessageStreamSupport {
+	public sealed class JsonRpcMessageSerializer : JsonMessageSerializer {
 		private readonly List<IJsonRpcTypeResolver> resolvers = new List<IJsonRpcTypeResolver>();
 
 		public JsonRpcMessageSerializer(string encoding)

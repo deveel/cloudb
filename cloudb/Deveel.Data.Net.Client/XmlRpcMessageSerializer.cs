@@ -322,8 +322,8 @@ namespace Deveel.Data.Net.Client {
 		private void WriteResponse(Message message, XmlWriter xmlWriter) {
 			xmlWriter.WriteStartElement("methodResponse");
 			
-			if (MessageUtil.HasError(message)) {
-				MessageError error = MessageUtil.GetError(message);
+			if (message.HasError) {
+				MessageError error = message.Error;
 				xmlWriter.WriteStartElement("fault");
 				WriteValue(error, null, xmlWriter);
 				xmlWriter.WriteEndElement();
@@ -686,10 +686,7 @@ namespace Deveel.Data.Net.Client {
 						} else if (elementName == "methodResponse") {
 							message = new ResponseMessage();
 						} else if (elementName == "messageStream") {
-							if (messageType == MessageType.Request)
-								message = new RequestMessageStream();
-							else
-								message = new ResponseMessageStream();
+							message = new MessageStream(messageType);
 
 							while (xmlReader.Read()) {
 								if (xmlReader.NodeType == XmlNodeType.EndElement) {
@@ -698,11 +695,8 @@ namespace Deveel.Data.Net.Client {
 									if (xmlReader.LocalName == "messageStream")
 										break;
 								}
-								if (messageType == MessageType.Request) {
-									((RequestMessageStream)message).AddMessage(Deserialize(xmlReader, messageType));
-								} else {
-									((ResponseMessageStream)message).AddMessage(Deserialize(xmlReader, messageType));
-								}
+								
+								((MessageStream)message).AddMessage(Deserialize(xmlReader, messageType));
 							}
 						} else {
 							throw new FormatException("Invalid root element name.");
@@ -761,9 +755,9 @@ namespace Deveel.Data.Net.Client {
 		protected override void Serialize(Message message, TextWriter writer) {
 			XmlTextWriter xmlWriter = new XmlTextWriter(writer);
 
-			if (message is IMessageStream) {
+			if (message is MessageStream) {
 				xmlWriter.WriteStartDocument(true);
-				IMessageStream stream = (IMessageStream)message;
+				MessageStream stream = (MessageStream)message;
 				xmlWriter.WriteStartElement("messageStream");
 				foreach (Message streamedMessage in stream) {
 					xmlWriter.WriteStartElement("message");
