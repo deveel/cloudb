@@ -15,9 +15,6 @@
 	<property name="package" value="all" />
 	<property name="package.name" value="" />
 	<property name="standalone" value="true" />
-		
-	<property name="nant.settings.currentframework" value="net-2.0" readonly="true" />
-                            
 	
 	<target name="-build-kernel">
 	  <nant buildfile="../cloudb/default.build" target="build" inheritall="false">

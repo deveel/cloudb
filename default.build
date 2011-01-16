@@ -123,17 +123,6 @@
 	</target>
 	<target name="logger-log4net" depends="kernel">
 		<echo message="Building CloudB log4net logger component" />
-		<csc output="${build.output}" target="library" define="${build.define}" keyfile="cloudb-log4net\cloudb-log4net.pfx">
-			<references>
-				<include name="System.dll" />
-				<include name="${build.output}/cloudb.dll" />
-				<include name="libs/log4net.dll" />
-			</references>
-			<sources>
-				<include name="cloudb-log4net/Properties/AssemblyInfo.cs" />
-				<include name="cloudb-log4net/Deveel.Data.Diagnostics/*.cs" />
-			</sources>
-		</csc>
 	</target>
 	<target name="json" depends="kernel" />
 	<target name="mnode" depends="kernel">
