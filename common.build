@@ -5,44 +5,53 @@
 	<property name="sign" value="False" />
 	<property name="sources" value="." />
 	<property name="define" value="TRACE" />
-	<property name="output" value="./build" />
+	<property name="output" value="./bin" />
+	<property name="libs" value="../libs"/>
+	<property name="kernel" value="false" />
 	<property name="debug" value="false" />
 	<property name="dist-path" value="./dist" />
-	<property name="platform" value="windows" />
+	<property name="platform" value="anycpu" />
 	<property name="notest" value="true" />
 	<property name="package" value="all" />
 	<property name="package.name" value="" />
+	<property name="standalone" value="true" />
+		
+	<property name="nant.settings.currentframework" value="net-2.0" readonly="true" />
+                            
 	
 	<target name="-build-kernel">
-	  <nant buildfile="../cloudb/default.build" target="all" inheritall="false">
-	    <property name="output" value="${path::get-full-path(output)}" readonly="True" />
-	    <property name="dist-path" value="${path::get-full-path(dist-path)}" readonly="True" />
-	    <property name="kernel" value="${path::get-full-path(kernel)}" readonly="True" />
-	    <property name="libs" value="${path::get-full-path(libs)}" readonly="True" />	
-	    <property name="platform" value="${platform}" readonly="True" />
-	    <property name="notest" value="${notest}" readonly="True" />
-	    <property name="package" value="${package}" readonly="True" />
-	    <property name="sign" value="${sign}" readonly="True" />
+	  <nant buildfile="../cloudb/default.build" target="build" inheritall="false">
+	    <properties>
+	      <property name="output" value="${path::get-full-path(output)}" readonly="True" />
+	      <property name="dist-path" value="${path::get-full-path(dist-path)}" readonly="True" />
+        <property name="kernel" value="${path::get-full-path(kernel)}" readonly="True" />
+	      <property name="libs" value="${path::get-full-path(libs)}" readonly="True" />	
+	      <property name="platform" value="${platform}" readonly="True" />
+	      <property name="notest" value="${notest}" readonly="True" />
+	      <property name="package" value="${package}" readonly="True" />
+	      <property name="sign" value="${sign}" readonly="True" />
+	    </properties>
 	  </nant>
+	  <property name="kernel" value="true" />
 	</target>
 	
 	<target name="package">
 	  <choose>
 	    <when test="${package == 'src'}">
 	      <if test="${package.name == ''}">
-	          <property name="package.name" value="${project::get-name()}-${version}-src" />
+	          <property name="package.name" value="${project::get-name()}-${version}-${platform}-src" />
 	      </if>
 	      <call target="-package-src" />
 	    </when>
 	    <when test="${package == 'bin'}">
 	      <if test="${package.name == ''}">
-	          <property name="package.name" value="${project::get-name()}-${version}-bin" />
+	          <property name="package.name" value="${project::get-name()}-${version}-${platform}-bin" />
 	      </if>
 	      <call target="-package-bin" />
 	    </when>
 	    <otherwise>
 	      <if test="${package.name == ''}">
-	          <property name="package.name" value="${project::get-name()}-${version}" />
+	          <property name="package.name" value="${project::get-name()}-${version}-${platform}" />
 	      </if>
 	      <call target="-package-all" />
 	    </otherwise>

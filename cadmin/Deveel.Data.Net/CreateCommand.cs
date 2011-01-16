@@ -18,7 +18,7 @@ namespace Deveel.Data.Net {
 		}
 
 		public override string Name {
-			get { throw new NotImplementedException(); }
+			get { return "create"; }
 		}
 	}
 }

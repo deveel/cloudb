@@ -1,0 +1,76 @@
+CloudB
+Author: Antonello Provenzano <antonello@deveel.com>
+----------------------------------------------------
+
+Description
+===========
+
+
+
+License
+=======
+
+CloudB is released under the LGPL version 3 open source license.
+See COPYING for details of the license. If the license is not
+present go to http://www.gnu.org/licenses/lgpl-3.0.txt to receive 
+a copy of the license.
+
+
+Requirements
+============
+
+CloudB requires .NET 2.0 (or higher) or Mono 1.9 (or higher)
+to run and build. External libraries are requirements to the
+components of CloudB and are provided into this package.
+
+External libraries required by evenry component:
+- mnode: deveel-cli
+- cadmin: deveel-cli, deveelrl, shellapp
+- cloudb-log4net: log4net
+
+
+
+Included in this release
+========================
+
+Depending on the kind of package you have received, the contents
+may vary accordingly.
+
+If the package was suffixed by 'src':
+
+cadmin/           a command line tool used to administer the
+                  network instance
+cloudb/           the kernel library of the application (used
+                  by all components)
+cloudbase/      
+cloudb-log4net/   
+cloudb-nunit/
+COPYING
+COPYING.LESSER
+COPYING.HEADER
+default.build
+README
+
+
+If the package was suffixed by 'bin':
+
+
+
+If the package was suffixed by 'all':
+
+
+
+
+Installing and Using CloudB
+===========================
+
+
+
+Building CloudB
+===============
+
+CloudB requires Nant build tool (http://nant.sourceforge.net/) 
+to compile the sources provided in this package: a version of 
+the tool is provided in the folder "libs/nant".
+
+To build the entire set of components of the application

@@ -36,6 +36,7 @@
     <AllowUnsafeBlocks>False</AllowUnsafeBlocks>
     <NoStdLib>False</NoStdLib>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <AssemblyOriginatorKeyFile>cloudb-nunit.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -94,6 +95,7 @@
     <Compile Include="Deveel.Data.Diagnostics\LoggerTest.cs" />
     <Compile Include="Deveel.Data.Configuration\ConfigSourceTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <None Include="cloudb-nunit.snk" />
     <None Include="default.build" />
   </ItemGroup>
   <ItemGroup>

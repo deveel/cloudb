@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
-<project default="build" name="kernel">
+<project default="build" name="kernel" xmlns="http://nant.sf.net/release/0.91-alpha2/nant.xsd">
   <include buildfile="../common.build"/>
 	<target name="build">
 		<echo message="building cloudb core component to ${path::get-full-path(output)}/cloudb.dll from sources ${path::get-full-path(sources)} ..." />
-		<csc debug="${debug}" optimize="${not debug}" output="${output}/cloudb.dll" target="library" define="${define}" verbose="${verbose}">
+		<csc debug="${debug}" optimize="${not debug}" output="${output}/cloudb.dll" target="library" define="${define}">
 			<references>
 				<include name="System.dll" />
 			</references>
@@ -24,7 +24,7 @@
 			<call target="-core-test" />
 		</if>
 	</target>
-	<target name="test" unless="${notest}" depends="all">
+	<target name="test" unless="${notest}" depends="build">
 		<call target="-core-test" />
 	</target>
 	<target name="-core-test">
@@ -44,19 +44,6 @@
 		<nunit2>
 			<test assemblyname="${output}\cloudb-nunit.dll" />
 		</nunit2>
-	</target>
-	<target name="package" depends="all">
-		<choose>
-			<when test="${package == 'bin'}">
-				<call target="-package-bin" />
-			</when>
-			<when test="${package == 'src'}">
-				<call target="-package-src" />
-			</when>
-			<otherwise>
-				<call target="-package-all" />
-			</otherwise>
-		</choose>
 	</target>
 	<target name="-package-all" depends="build">
 		<tar destfile="${package.name}.tar.gz" compression="GZip">
@@ -80,7 +67,7 @@
 		</tar>
 		<zip zipfile="${dist-path}/${package.name}.zip" />
 	</target>
-	<target name="-package-bin" depends="all">
+	<target name="-package-bin" depends="build">
 		<tar destfile="${dist-path}/cloudb-${version}-bin.tar.gz">
 			<fileset basedir="${output}">
 				<include name="cloudb.dll" />
@@ -89,7 +76,7 @@
 		<zip zipfile="${dist-path}/cloudb-${version}-bin.zip" />
 	</target>
 	<target name="-package-src">
-		<tar destfile="${dist-path}/${package.name}.tar.gz" compression="GZip" verbose="${verbose}">
+		<tar destfile="${dist-path}/${package.name}.tar.gz" compression="GZip">
 			<fileset basedir="${sources}">
 				<include name="ComponentAce.Compression.Libs.zlib/*.cs" />
 				<include name="Deveel.Data/*.cs" />
