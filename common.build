@@ -2,7 +2,6 @@
 <project name="common">
 	<property name="version" value="1.0b" />
 	<property name="document" value="" />
-	<property name="sign" value="False" />
 	<property name="sources" value="." />
 	<property name="define" value="TRACE" />
 	<property name="output" value="./bin" />
