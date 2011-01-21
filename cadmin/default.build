@@ -10,7 +10,7 @@
 	  
 	  <echo message="building component cadmin to ${path::get-full-path(output)}; libraries from ${path::get-full-path(libs)} ..." />
 	  
-	  <csc output="${output}/cadmin.exe" target="exe" platform="${platform}">
+	  <csc output="${output}/cadmin.exe" target="exe" platform="${platform}" keyfile="cadmin.snk" debug="${debug}" optimize="${not debug}">
 			<references>
 			  <include name="System.dll" />
 				<include name="${libs}/deveel-cli.dll" />
@@ -24,13 +24,10 @@
 				<include name="Properties/AssemblyInfo.cs" />
 			</sources>
 		</csc>
-		<if test="${standalone}">
-		  <echo message="standalone build: copying the references to the output path" />
+		<echo message="standalone build: copying the references to the output path" />
 		  <copy file="${libs}/deveel-cli.dll" todir="${output}" overwrite="true"/>
 		  <copy file="${libs}/deveelrl.dll" todir="${output}" overwrite="true"/>
 		  <copy file="${libs}/shellapp.dll" todir="${output}" overwrite="true"/>
-		  <copy file="${output}/cloudb.dll" todir="${output}" overwrite="true"/>
-		</if>
 	</target>
 	<target name="-package-all" depends="build">
 		<tar destfile="${dist-path}/${package.name}.tar.gz" compression="GZip">

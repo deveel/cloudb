@@ -4,7 +4,6 @@
   
   <target name="build">
   	<if test="${not kernel}">
-  	  <echo message="the path to the kernel library was not specified or the assembly was not found: we will generate one" />
 	    <call target="-build-kernel"/>
 	  </if>
 	  <if test="${standalone}">
@@ -13,8 +12,8 @@
 	  
 	  <echo message="building component log4net to ${path::get-full-path(output)}; libraries from ${path::get-full-path(libs)} ..." />
 	  
-    <csc target="library" output="${output}/cloudb-log4net.dll" debug="${debug}" define="${define}" optimize="${not debug}" platform="${platform}">
-    	<sources basedir="${sources}">
+    <csc target="library" output="${output}/cloudb-log4net.dll" debug="${debug}" define="${define}" optimize="${not debug}" platform="${platform}" keyfile="cloudb-log4net.snk">
+    	<sources>
 				<include name="Properties/AssemblyInfo.cs" />
 				<include name="Deveel.Data.Diagnostics/*.cs" />
 			</sources>
@@ -24,6 +23,7 @@
 				<include name="${libs}/log4net.dll" />
 			</references>
     </csc>
+    <copy file="${libs}/log4net.dll" todir="${output}" overwrite="true" />
   </target>
   
   <target name="-package-src">

@@ -4,7 +4,6 @@
   
   <target name="build">
   	<if test="${not kernel}">
-  	  <echo message="the path to the kernel library was not specified or the assembly was not found: we will generate one" />
 	    <call target="-build-kernel"/>
 	  </if>
 	  <if test="${standalone}">
@@ -13,7 +12,7 @@
 	  
 	  <echo message="building application mnode to ${path::get-full-path(output)}; libraries from ${path::get-full-path(libs)} ..." />
 	  
-    <csc target="exe" output="${output}/mnode.exe" debug="${debug}" define="${define}" optimize="${not debug}" platform="${platform}">
+    <csc target="exe" output="${output}/mnode.exe" debug="${debug}" define="${define}" optimize="${not debug}" platform="${platform}" keyfile="mnode.snk">
     	<sources basedir="${sources}">
 				<include name="Properties/AssemblyInfo.cs" />
 				<include name="Deveel.Data.Net/*.cs" />
@@ -26,11 +25,7 @@
 				<include name="${libs}/deveel-cli.dll" />
 			</references>
     </csc>
-    <if test="${standalone}">
-		  <echo message="standalone build: copying the references to the output path" />
 		  <copy file="${libs}/deveel-cli.dll" todir="${output}" overwrite="true"/>
-		  <copy file="${output}/cloudb.dll" todir="${output}" overwrite="true"/>
-		</if>
   </target>
   
   <target name="-package-bin" depends="build">

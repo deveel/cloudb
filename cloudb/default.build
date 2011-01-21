@@ -3,7 +3,7 @@
   <include buildfile="../common.build"/>
 	<target name="build">
 		<echo message="building cloudb core component to ${path::get-full-path(output)}/cloudb.dll from sources ${path::get-full-path(sources)} ..." />
-		<csc debug="${debug}" optimize="${not debug}" output="${output}/cloudb.dll" target="library" define="${define}">
+		<csc debug="${debug}" optimize="${not debug}" output="${output}/cloudb.dll" target="library" define="${define}" keyfile="cloudb.snk">
 			<references>
 				<include name="System.dll" />
 			</references>

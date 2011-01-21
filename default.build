@@ -82,6 +82,13 @@
 	  <delete dir="${temp-path2}"/>
 	</target>
 	<target name="-package-bin" depends="all">
+	  <tar destfile="${dist-path}/${package.name}.tar.gz" compression="gzip">
+	    <fileset basedir="${output}">
+	    	<include name="*"/>
+	    </fileset>
+	    <fileset basedir="./test">
+	    </fileset>
+	  </tar>
 	</target>
 	<target name="-package-all" depends="all">
 	</target>
@@ -89,12 +96,14 @@
 		<echo message="Building all components" />
 		<call target="kernel"/>
 		<call target="cadmin"/>
+		<call target="log4net" />
+		<call target="mnode" />
+		<call target="cloudbase"/>
 	</target>
 	<target name="kernel">
 		<echo message="Building the kernel library" />	
 		<nant buildfile="./cloudb/default.build" target="build" inheritall="false">
 			<properties>
-				<property name="sign" value="${sign}" readonly="true" />
 				<property name="notest" value="${notest}" readonly="true" />
 				<property name="output" value="${path::get-full-path(output)}" readonly="True" />
 				<property name="sources" value="${path::get-full-path('./cloudb')}" readonly="True" />
@@ -103,28 +112,79 @@
 				<property name="platform" value="${platform}" readonly="true" />
 			</properties>
 		</nant>
+		<property name="kernel" value="true"/>
 	</target>
-	<target name="cadmin" depends="kernel">
+	<target name="cadmin">
+	  <if test="${not kernel}">
+	    <call target="kernel" />
+	  </if>
 	  <nant buildfile="./cadmin/default.build" target="build" inheritall="false">
 	    <properties>
-	      <property name="sign" value="${sign}" readonly="true" />
 				<property name="notest" value="${notest}" readonly="true" />
 				<property name="output" value="${path::get-full-path(output)}" readonly="True" />
-				<property name="sources" value="${path::get-full-path('./cloudb')}" readonly="True" />
+				<property name="sources" value="${path::get-full-path('./cadmin')}" readonly="True" />
 				<property name="define" value="${define}" readonly="true" />
 				<property name="debug" value="${debug}" readonly="true" />
 				<property name="platform" value="${platform}" readonly="true" />
-				<property name="kernel" value="false" readonly="True" />
 				<property name="standalone" value="false" readonly="True" />
 				<property name="libs" value="${path::get-full-path('./libs')}" readonly="true" />
 				<property name="kernel" value="true" readonly="true" />
 	    </properties>
 	  </nant>
 	</target>
-	<target name="logger-log4net" depends="kernel">
+	<target name="log4net">
+	  <if test="${not kernel}">
+	    <call target="kernel" />
+	  </if>
 		<echo message="Building CloudB log4net logger component" />
+		<nant buildfile="./cloudb-log4net/default.build" target="build" inheritall="false">
+		  <properties>
+				<property name="notest" value="${notest}" readonly="true" />
+				<property name="output" value="${path::get-full-path(output)}" readonly="True" />
+				<property name="sources" value="${path::get-full-path('./cloudb-log4net')}" readonly="True" />
+				<property name="define" value="${define}" readonly="true" />
+				<property name="debug" value="${debug}" readonly="true" />
+				<property name="platform" value="${platform}" readonly="true" />
+				<property name="standalone" value="false" readonly="True" />
+				<property name="libs" value="${path::get-full-path('./libs')}" readonly="true" />
+				<property name="kernel" value="true" readonly="true" />
+		  </properties>
+		</nant>
 	</target>
-	<target name="json" depends="kernel" />
-	<target name="mnode" depends="kernel">
+	<target name="mnode">
+	  <if test="${not kernel}">
+	    <call target="kernel" />
+	  </if>
+	  <nant buildfile="./mnode/default.build" target="build" inheritall="false">
+		  <properties>
+				<property name="notest" value="${notest}" readonly="true" />
+				<property name="output" value="${path::get-full-path(output)}" readonly="True" />
+				<property name="sources" value="${path::get-full-path('./mnode')}" readonly="True" />
+				<property name="define" value="${define}" readonly="true" />
+				<property name="debug" value="${debug}" readonly="true" />
+				<property name="platform" value="${platform}" readonly="true" />
+				<property name="standalone" value="false" readonly="True" />
+				<property name="libs" value="${path::get-full-path('./libs')}" readonly="true" />
+				<property name="kernel" value="true" readonly="true" />
+		  </properties>
+		</nant>
+	</target>
+	<target name="cloudbase">
+	  <if test="${not kernel}">
+	    <call target="kernel" />
+	  </if>
+	  <nant buildfile="./cloudbase/default.build" target="build" inheritall="false">
+		  <properties>
+				<property name="notest" value="${notest}" readonly="true" />
+				<property name="output" value="${path::get-full-path(output)}" readonly="True" />
+				<property name="sources" value="${path::get-full-path('./cloudbase')}" readonly="True" />
+				<property name="define" value="${define}" readonly="true" />
+				<property name="debug" value="${debug}" readonly="true" />
+				<property name="platform" value="${platform}" readonly="true" />
+				<property name="standalone" value="false" readonly="True" />
+				<property name="libs" value="${path::get-full-path('./libs')}" readonly="true" />
+				<property name="kernel" value="true" readonly="true" />
+		  </properties>
+		</nant>
 	</target>
 </project>

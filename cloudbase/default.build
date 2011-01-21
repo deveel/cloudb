@@ -4,7 +4,6 @@
   
 	<target name="build">
   	<if test="${not kernel}">
-  	  <echo message="the path to the kernel library was not specified or the assembly was not found: we will generate one" />
 	    <call target="-build-kernel"/>
 	  </if>
 	  <if test="${standalone}">
@@ -12,11 +11,10 @@
 	  </if>
 	  
 		<echo message="building cloudb base to ${output}..." />
-		<csc target="library" output="${output}/cloudbase.dll" debug="${debug}" define="${define}" optmize="${not debug}">
+		<csc target="library" output="${output}/cloudbase.dll" debug="${debug}" define="${define}" optimize="${not debug}" keyfile="cloudbase.snk">
 			<sources basedir="${sources}">
 				<include name="Properties/AssemblyInfo.cs" />
 				<include name="Deveel.Data/*.cs" />
-				<include name="default.build" />
 			</sources>
 			<references>
 				<include name="System.dll" />
@@ -30,6 +28,7 @@
 	    <fileset basedir="${sources}">
 	      <include name="Properties/AssemblyInfo.cs"/>
 	      <include name="Deveel.Data/*.cs"/>
+	      <include name="default.build" />
 	    </fileset>
 	  </tar>
 	</target>
