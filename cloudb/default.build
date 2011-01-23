@@ -95,10 +95,6 @@
 		<zip zipfile="${dist-path}/${package.name}.zip" />
 	</target>
 	<target name="clean">
-		<delete>
-			<fileset basedir="${output}">
-				<include name="cloudb.dll" if="${file::exists(path::combine(output, 'cloudb.dll'))}" />
-			</fileset>
-		</delete>
+		<delete file="${output}/cloudb.dll"/>
 	</target>
 </project>

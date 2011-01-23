@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<project name="document" default="doc" xmlns="http://nant.sf.net/release/0.91-alpha2/nant.xsd">
+  <include buildfile="./default.build"/>
+  <target name="doc">
+    <if test="${doc == ''}">
+      <property name="doc" value="ndoc"/>
+    </if>
+    <choose>
+      <when test="${doc == 'ndoc'}">
+        <call target="-doc-ndoc"/>
+      </when>
+      <when test="${doc == 'mdoc'}">
+        <call target="-doc-mdoc"/>
+      </when>
+    </choose>
+  </target>
+  <target name="-doc-ndoc" depends="all">
+    <ndoc>
+      <assemblies basedir="${output}">
+        <include name="cloudb.dll"/>
+        <include name="cloudbase.dll"/>
+        <include name="cloudb-log4net.dll"/>
+      </assemblies>
+      <documenters>
+        <documenter name="MSDN">
+          <property name="OutputDirectory" value="${doc.output}\MSDN" />
+          <property name="HtmlHelpName" value="CloudB" />
+          <property name="HtmlHelpCompilerFilename" value="${libs}/help/hhc.exe" />
+          <property name="IncludeFavorites" value="False" />
+          <property name="Title" value="DeveelDB in the Cloud" />
+          <property name="SplitTOCs" value="False" />
+          <property name="DefaulTOC" value="" />
+          <property name="ShowVisualBasic" value="True" />
+          <property name="ShowMissingSummaries" value="True" />
+          <property name="ShowMissingRemarks" value="True" />
+          <property name="ShowMissingParams" value="True" />
+          <property name="ShowMissingReturns" value="True" />
+          <property name="ShowMissingValues" value="True" />
+          <property name="DocumentInternals" value="False" />
+          <property name="DocumentProtected" value="True" />
+          <property name="DocumentPrivates" value="False" />
+          <property name="DocumentEmptyNamespaces" value="False" />
+          <property name="IncludeAssemblyVersion" value="False" />
+          <property name="CopyrightText" value="(C) 2010-2011 Deveel" />
+          <property name="CopyrightHref" value="http://db.deveel.com" />
+       </documenter>
+      </documenters>
+    </ndoc>
+  </target>
+</project>

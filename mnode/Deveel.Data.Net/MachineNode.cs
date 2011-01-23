@@ -21,7 +21,7 @@ namespace Deveel.Data.Net {
 	public static class MachineNode {
 		private static TcpAdminService service = null;
 
-#if WIN32
+#if WINDOWS
 		private static HandlerRoutine ExitCallback;
 #endif
 
@@ -63,7 +63,7 @@ namespace Deveel.Data.Net {
 		}
 		
 		private static void SetEventHandlers() {
-#if WIN32
+#if WINDOWS
 			ExitCallback = new HandlerRoutine(ConsoleCtrlCheck);
 			SetConsoleCtrlHandler(ExitCallback, true);
 #elif UNIX			
@@ -261,7 +261,7 @@ namespace Deveel.Data.Net {
 			installer.Uninstall(state);
 		}
 		
-#if WIN32
+#if WINDOWS
 		[DllImport("kernel32")]
 		private static extern bool SetConsoleCtrlHandler(HandlerRoutine Handler, bool Add);
 		

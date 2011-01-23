@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<project name="common">
+<project name="common" xmlns="http://nant.sf.net/release/0.91-alpha2/nant.xsd">
 	<property name="version" value="1.0b" />
 	<property name="document" value="" />
 	<property name="sources" value="." />
@@ -14,6 +14,9 @@
 	<property name="package" value="all" />
 	<property name="package.name" value="" />
 	<property name="standalone" value="true" />
+	<property name="system" value="windows"/>
+	<property name="doc.output" value="./output"/>
+	<property name="doc" value="ndoc"/>
 	
 	<target name="-build-kernel">
 	  <echo message="the kernel library was not built or the assembly was not found: we will generate one" />
@@ -25,6 +28,7 @@
 	      <property name="platform" value="${platform}" readonly="True" />
 	      <property name="notest" value="${notest}" readonly="True" />
 	      <property name="package" value="${package}" readonly="True" />
+	      <property name="doc.output" value="${doc.output}" readonly="true"/>
 	    </properties>
 	  </nant>
 	  <property name="kernel" value="true" />
@@ -38,19 +42,25 @@
 	  <choose>
 	    <when test="${package == 'src'}">
 	      <if test="${package.name == ''}">
-	          <property name="package.name" value="${project::get-name()}-${version}-${platform}-src" />
+	          <property name="package.name" value="${project::get-name()}-${version}-${system}-${platform}-src" />
 	      </if>
 	      <call target="-package-src" />
 	    </when>
 	    <when test="${package == 'bin'}">
 	      <if test="${package.name == ''}">
-	          <property name="package.name" value="${project::get-name()}-${version}-${platform}-bin" />
+	          <property name="package.name" value="${project::get-name()}-${version}-${system}-${platform}-bin" />
 	      </if>
 	      <call target="-package-bin" />
 	    </when>
+	    <when test="${package == 'doc'}">
+	      <if test="${package.name == ''}">
+	        <property name="package.name" value="${project::get-name()}-${version}-doc"/>
+	      </if>
+	      <call target="-package-doc"/>
+	    </when>
 	    <otherwise>
 	      <if test="${package.name == ''}">
-	          <property name="package.name" value="${project::get-name()}-${version}-${platform}" />
+	          <property name="package.name" value="${project::get-name()}-${version}-${system}-${platform}" />
 	      </if>
 	      <call target="-package-all" />
 	    </otherwise>

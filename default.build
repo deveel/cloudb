@@ -78,6 +78,9 @@
 	      <include name="libs/shellapp.dll"/>
 	      <include name="libs/log4net.dll"/>
 	    </fileset>
+	    <fileset>
+	      <include name="conf/**"/>
+	    </fileset>
 	  </tar>
 	  <delete dir="${temp-path2}"/>
 	</target>
@@ -86,11 +89,42 @@
 	    <fileset basedir="${output}">
 	    	<include name="*"/>
 	    </fileset>
-	    <fileset basedir="./test">
+	    <fileset basedir="./conf">
+	      <include name="*.conf"/>
 	    </fileset>
 	  </tar>
 	</target>
 	<target name="-package-all" depends="all">
+	  <property name="package.name.bak" value="${package.name}"/>
+	  <property name="package.name" value="src-temp" />
+	  <call target="-package-src"/>
+	  <untar src="${dist-path}/${package.name}.tar.gz" dest="${dist-path}/src" compression="gzip"/>
+	  <delete file="${dist-path}/${package.name}.tar.gz"/>
+	  
+	  <property name="package.name" value="${package.name.bak}" />
+	  <tar destfile="${dist-path}/${package.name}.tar.gz">
+	    <fileset basedir="${output}" prefix="bin">
+	      <include name="*" />
+	    </fileset>
+	    <fileset basedir="${dist-path}/src" prefix="src">
+	      <include name="**" />
+	      <exclude name="README"/>
+	      <exclude name="COPYING"/>
+	      <exclude name="COPYING.HEADER"/>
+	      <exclude name="COPYING.LESSER"/>
+	    </fileset>
+	    <fileset basedir="${dist-path}/src">
+	      <include name="README"/>
+	      <include name="COPYING"/>
+	      <include name="COPYING.HEADER"/>
+	      <include name="COPYING.LESSER"/>
+	    </fileset>
+	  </tar>
+	  <delete dir="${dist-path}/src"/>
+	</target>
+	<target name="-package-doc" depends="all">
+	  <nant buildfile="./document.build" inheritall="false">
+	  </nant>
 	</target>
 	<target name="all">
 		<echo message="Building all components" />

@@ -9,6 +9,14 @@
 	  <if test="${standalone}">
 	    <property name="libs" value="../libs" />
 	  </if>
+	  <choose>
+	    <when test="${system == 'unix'}">
+	      <property name="define" value="${define};UNIX"/>
+	    </when>
+	    <otherwise>
+	      <property name="define" value="${define};WINDOWS"/>
+	    </otherwise>
+	  </choose>
 	  
 	  <echo message="building application mnode to ${path::get-full-path(output)}; libraries from ${path::get-full-path(libs)} ..." />
 	  
