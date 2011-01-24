@@ -268,7 +268,7 @@ namespace Deveel.Data.Diagnostics {
 			ILogger log = logger;
 			if (logger is ICloneable)
 				log = (ILogger)((ICloneable)logger).Clone();
-			return new Logger(name, log, (ConfigSource) config.Clone());
+			return new Logger(name, log, config == null ? null : (ConfigSource) config.Clone());
 		}
 		
 		public static Logger GetLogger(string logName) {
@@ -287,10 +287,9 @@ namespace Deveel.Data.Diagnostics {
 				if (loggerConfig.Parent == null)
 					loggerConfig = config.GetChild("logger");
 				
-				if (loggerConfig == null || loggerConfig.Name != "logger")
-					throw new ArgumentException("The configuration is invalid.");
-				
-				if (loggerConfig.ChildCount == 0)
+				// if we haven't found any 'logger' or if the element has no
+				// children, simply return and get empty loggers ...
+				if (loggerConfig == null ||  loggerConfig.ChildCount == 0)
 					return;
 				
 				List<ILogger> composites = new List<ILogger>();

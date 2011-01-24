@@ -17,7 +17,7 @@
 	<property name="system" value="windows"/>
 	<property name="doc.output" value="./output"/>
 	<property name="doc" value="ndoc"/>
-	<property name="conf" value="./conf"/>
+	<property name="conf" value="../conf"/>
 	
 	<target name="-build-kernel">
 	  <echo message="the kernel library was not built or the assembly was not found: we will generate one" />
