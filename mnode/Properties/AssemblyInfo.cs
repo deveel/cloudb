@@ -6,12 +6,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("CloudB Machine Node")]
-[assembly: AssemblyDescription("Exposes the administration functions of a service " + 
-	"within a network.")]
+[assembly: AssemblyDescription("Represents a single node within a CloudB network.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Deveel")]
 [assembly: AssemblyProduct("mnode")]
-[assembly: AssemblyCopyright("Copyright © Deveel 2009-2010")]
+[assembly: AssemblyCopyright("Copyright © Deveel 2010-2011")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -33,5 +32,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("0.0.3.1")]
+[assembly: AssemblyVersion("0.0.7.3")]
 [assembly: AssemblyFileVersion("1.0.0.0")]

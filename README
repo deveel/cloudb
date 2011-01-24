@@ -4,7 +4,12 @@ Author: Antonello Provenzano <antonello@deveel.com>
 
 Description
 ===========
-
+CloudB (working name) is a distributed database management
+system, that aims to let corporates or single developers to
+storage and retrieve data across networks. Among its features
+also the possibility for users to implement their own data
+models with ease and benefit from the provided distribution
+mechanism of parallelization of data computing and storage.
 
 
 License

@@ -23,20 +23,23 @@
 				<include name="Properties/AssemblyInfo.cs" />
 			</sources>
 		</csc>
-		<echo message="standalone build: copying the references to the output path" />
 		<copy file="${libs}/deveel-cli.dll" todir="${output}" overwrite="true"/>
 		<copy file="${libs}/deveelrl.dll" todir="${output}" overwrite="true"/>
 		<copy file="${libs}/shellapp.dll" todir="${output}" overwrite="true"/>
+		<copy file="${conf}/client.conf" todir="${output}" overwrite="true"/>
 	</target>
 	<target name="-package-all" depends="build">
 		<tar destfile="${dist-path}/${package.name}.tar.gz" compression="GZip">
 			<fileset prefix="bin" basedir="${output}">
 				<include name="cadmin.exe" />
 				<include name="deveel-cli.exe"/>
-				<include name="deveel-rl.exe" />
+				<include name="deveelrl.exe" />
 				<include name="shellapp.dll" />
 				<include name="cloudb.dll"/>
 			</fileset>
+	    <fileset basedir="${conf}" prefix="bin">
+	      <include name="client.conf"/>
+	    </fileset>
 			<fileset prefix="src" basedir=".">
 			  <include name="Deveel.Daata/*.cs"/>
 			  <include name="Deveel.Daata.Net/*.cs"/>
@@ -61,6 +64,9 @@
 				<include name="shellapp.dll"/>
 				<include name="cloudb.dll"/>
 	    </fileset>
+	    <fileset basedir="${conf}">
+	      <include name="client.conf"/>
+	    </fileset>
 	  </tar>
 	</target>
 	<target name="-package-src">
@@ -80,6 +86,9 @@
 	    </fileset>
 	    <fileset prefix="libs" basedir="${output}">
 	      <include name="cloudb.dll" if="${standalone}" />
+	    </fileset>
+	    <fileset prefix="conf" basedir="${conf}">
+	      <include name="client.conf" if="${standalone}"/>
 	    </fileset>
 	  </tar>
 	</target>

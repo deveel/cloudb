@@ -30,7 +30,7 @@
 	<target name="-core-test">
 		<csc output="${output}\cloudb-nunit.dll" target="library" define="${define}">
 			<references>
-				<include name="${sources}\..\libs\nunit\framework\nunit.framework.dll" />
+				<include name="${libs}/nunit/framework/nunit.framework.dll" />
 				<include name="${output}\cloudb.dll" />
 			</references>
 			<sources basedir="${sources}\..\cloudb-nunit">
@@ -41,9 +41,8 @@
 				<include name="Deveel.Data.Net.Client\*.cs" />
 			</sources>
 		</csc>
-		<nunit2>
-			<test assemblyname="${output}\cloudb-nunit.dll" />
-		</nunit2>
+		<copy file="${libs}/nunit/framework/nunit.framework.dll" todir="${output}"/>
+		<exec program="${libs}/nunit/nunit-console.exe" commandline="${output}/cloudb-nunit.dll /nologo"/>
 	</target>
 	<target name="-package-all" depends="build">
 		<tar destfile="${package.name}.tar.gz" compression="GZip">
@@ -96,5 +95,9 @@
 	</target>
 	<target name="clean">
 		<delete file="${output}/cloudb.dll"/>
+		<if test="${not notest}">
+		  <delete file="${output}/cloudb-nunit.dll"/>
+		  <delete dir="${output}/test-results"/>
+		</if>
 	</target>
 </project>

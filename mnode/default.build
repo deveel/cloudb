@@ -34,6 +34,8 @@
 			</references>
     </csc>
 		  <copy file="${libs}/deveel-cli.dll" todir="${output}" overwrite="true"/>
+		  <copy file="${conf}/node.conf" todir="${output}" overwrite="true"/>
+		  <copy file="${conf}/network.conf" todir="${output}" overwrite="true"/>
   </target>
   
   <target name="-package-bin" depends="build">

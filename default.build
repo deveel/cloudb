@@ -163,6 +163,7 @@
 				<property name="standalone" value="false" readonly="True" />
 				<property name="libs" value="${path::get-full-path('./libs')}" readonly="true" />
 				<property name="kernel" value="true" readonly="true" />
+				<property name="conf" value="${path::get-full-path('./conf')}" readonly="true"/>
 	    </properties>
 	  </nant>
 	</target>
@@ -200,6 +201,7 @@
 				<property name="standalone" value="false" readonly="True" />
 				<property name="libs" value="${path::get-full-path('./libs')}" readonly="true" />
 				<property name="kernel" value="true" readonly="true" />
+				<property name="conf" value="${path::get-full-path('./conf')}" readonly="true"/>
 		  </properties>
 		</nant>
 	</target>
