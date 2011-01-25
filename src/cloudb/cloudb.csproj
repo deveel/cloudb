@@ -284,7 +284,6 @@
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <None Include="cloudb.snk" />
-    <None Include="default.build" />
     <None Include="Deveel.Data.Net\ChangeLog" />
   </ItemGroup>
   <ItemGroup>

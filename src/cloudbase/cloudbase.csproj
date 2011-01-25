@@ -72,7 +72,6 @@
     <Compile Include="Deveel.Data\Directory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <None Include="cloudbase.snk" />
-    <None Include="default.build" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">

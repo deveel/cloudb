@@ -102,7 +102,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="cadmin.snk" />
-    <None Include="default.build" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Framework.2.0">
