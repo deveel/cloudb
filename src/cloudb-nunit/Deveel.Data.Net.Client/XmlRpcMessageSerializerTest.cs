@@ -104,6 +104,7 @@ namespace Deveel.Data.Net.Client {
 		}
 
 		[Test]
+		[Category("KnownUnstable")]
 		public void MethodCallWithStructDeserialize() {
 			StringBuilder sb = new StringBuilder();
 			sb.Append("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>");
