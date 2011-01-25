@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<project name="cloudb-log4net" default="build" xmlns="http://nant.sf.net/release/0.91-alpha2/nant.xsd">
+	<include buildfile="../common.build"/>
+	<target name="build">
+		<if test="${not kernel}">
+			<call target="-build-kernel"/>
+		</if>
+		<if test="${standalone}">
+			<property name="libs" value="../libs"/>
+		</if>
+		<echo message="building component log4net to ${path::get-full-path(output)}; libraries from ${path::get-full-path(libs)} ..."/>
+		<csc target="library" output="${output}/cloudb-log4net.dll" debug="${debug}" define="${define}" optimize="${not debug}" platform="${platform}" keyfile="cloudb-log4net.snk">
+			<sources>
+				<include name="Properties/AssemblyInfo.cs"/>
+				<include name="Deveel.Data.Diagnostics/*.cs"/>
+			</sources>
+			<references>
+				<include name="System.dll"/>
+				<include name="${output}/cloudb.dll"/>
+				<include name="${libs}/log4net.dll"/>
+			</references>
+		</csc>
+		<copy file="${libs}/log4net.dll" todir="${output}" overwrite="true"/>
+	</target>
+	<target name="-package-src">
+		<tar destfile="${dist-path}/${package.name}.tar.gz" compression="GZip">
+			<fileset basedir="${sources}">
+				<include name="Properties/AssemblyInfo.cs"/>
+				<include name="Deveel.Data.Diagnostics/*.cs"/>
+				<include name="default.build"/>
+			</fileset>
+		</tar>
+	</target>
+	<target name="-package-bin" depends="build">
+  </target>
+  <target name="clean">
+	  <delete file="${output}/cloudb-log4net.dll"/>
+	  <delete file="${output}/log4net.dll"/>
+  </target>
+</project>
