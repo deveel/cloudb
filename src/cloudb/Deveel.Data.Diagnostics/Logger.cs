@@ -29,6 +29,9 @@ namespace Deveel.Data.Diagnostics {
 		private static readonly object logSyncLock = new object();
 		private static bool initid;
 
+		private static readonly Logger empty = new Logger(null, new EmptyLogger(), null);
+		private static Logger fallback = empty;
+
 		public const string NetworkLoggerName = "network";
 		public const string StoreLoggerName = "store";
 		public const string ClientLoggerName = "client";
@@ -42,6 +45,15 @@ namespace Deveel.Data.Diagnostics {
 
 		public static Logger Client {
 			get { return GetLogger(ClientLoggerName); }
+		}
+
+		public static Logger Fallback {
+			get { return fallback; }
+			set {
+				if (value == null)
+					value = empty;
+				fallback = value;
+			}
 		}
 
 		public string Name {
@@ -78,6 +90,13 @@ namespace Deveel.Data.Diagnostics {
 
 		void ILogger.Init(ConfigSource config) {
 			throw new InvalidOperationException();
+		}
+
+		public static void Clear() {
+			lock (logSyncLock) {
+				loggers.Clear();
+				initid = false;
+			}
 		}
 		
 		private Type GetLoggingType() {
@@ -272,10 +291,52 @@ namespace Deveel.Data.Diagnostics {
 		}
 		
 		public static Logger GetLogger(string logName) {
+			if (String.IsNullOrEmpty(logName))
+				return GetLogger();
+
 			Logger logger;
 			if (!loggers.TryGetValue(logName, out logger))
 				logger = new Logger(logName, new EmptyLogger(), null);
 			return logger;
+		}
+
+		public static Logger GetLogger() {
+			if (loggers.Count == 0)
+				return Fallback;
+
+			foreach (KeyValuePair<string, Logger> pair in loggers) {
+				return pair.Value;
+			}
+
+			// Should never come to this point!
+			return Fallback;
+		}
+
+		private static void DoInit(string loggerName, ConfigSource config, List<ILogger> composites) {
+			string loggerTypeString = config.GetString("type");
+			if (String.IsNullOrEmpty(loggerTypeString))
+				loggerTypeString = "default";
+
+			Type loggerType = GetLoggerType(loggerTypeString);
+			if (loggerType == null || !typeof(ILogger).IsAssignableFrom(loggerType))
+				return;
+
+			try {
+				ILogger logger = (ILogger)Activator.CreateInstance(loggerType, true);
+				if (logger is CompositeLogger) {
+					if (composites == null)
+						return;
+
+					// composite loggers are processed with a later bound call
+					composites.Add(logger);
+				} else {
+					logger.Init(config);
+				}
+
+				loggers[loggerName] = new Logger(loggerName, logger, config);
+			} catch {
+				return;
+			}
 		}
 		
 		public static void Init(ConfigSource config) {
@@ -289,42 +350,27 @@ namespace Deveel.Data.Diagnostics {
 				
 				// if we haven't found any 'logger' or if the element has no
 				// children, simply return and get empty loggers ...
-				if (loggerConfig == null ||  loggerConfig.ChildCount == 0)
+				if (loggerConfig == null)
 					return;
-				
-				List<ILogger> composites = new List<ILogger>();
-				
-				foreach(ConfigSource child in loggerConfig.Children) {
-					string loggerTypeString = child.GetString("type");
-					if (String.IsNullOrEmpty(loggerTypeString))
-						loggerTypeString = "default";
-					
-					Type loggerType = GetLoggerType(loggerTypeString);
-					if (loggerType == null || !typeof(ILogger).IsAssignableFrom(loggerType))
-						continue;
-						
-					try {
-						ILogger logger = (ILogger) Activator.CreateInstance(loggerType, true);
-						if (logger is CompositeLogger) {
-							// composite loggers are processed with a later bound call
-							composites.Add(logger);
-						} else {
-							logger.Init(child);
+
+				// this means there's just one logger and its children are config...
+				if (loggerConfig.ChildCount == 0) {
+					DoInit(String.Empty, loggerConfig, null);
+				} else {
+					List<ILogger> composites = new List<ILogger>();
+					foreach (ConfigSource child in loggerConfig.Children) {
+						DoInit(child.Name, child, composites);
+					}
+
+					// let's late process the composite loggers found
+					if (composites.Count > 0) {
+						for (int i = 0; i < composites.Count; i++) {
+							composites[i].Init(config);
 						}
-						
-						loggers[child.Name] = new Logger(child.Name, logger, config);
-					} catch {
-						continue;
 					}
 				}
-				
-				// let's late process the composite loggers found
-				if (composites.Count > 0) {
-					for (int i = 0; i < composites.Count; i++) {
-						composites[i].Init(config);
-					}
-				}
-				
+
+
 				initid = true;
 			}
 		}

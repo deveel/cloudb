@@ -7,6 +7,11 @@ using NUnit.Framework;
 namespace Deveel.Data.Diagnostics {
 	[TestFixture]
 	public class LoggerTest {
+		[TearDown]
+		public void TearDown() {
+			Logger.Clear();
+		}
+
 		[Test]
 		public void ConfigureDefaultDebugger() {
 			ConfigSource config = new ConfigSource();
@@ -51,6 +56,17 @@ namespace Deveel.Data.Diagnostics {
 			Assert.IsInstanceOf(typeof(CompositeLogger), logger.BaseLogger);
 			
 			logger.Info("Print a simple message that must be written in the console twice");
+		}
+
+		[Test]
+		public void DefaultWithoutExplicitSpec() {
+			ConfigSource config = new ConfigSource();
+			config.SetValue("logger.format", "[{Time}] - {Source} - {Message]");
+
+			Logger.Init(config);
+			Logger logger = Logger.GetLogger();
+			Assert.IsInstanceOf(typeof(DefaultLogger), logger.BaseLogger);
+			Assert.AreEqual("[{Time}] - {Source} - {Message]", logger.Config.GetString("format"));
 		}
 	}
 }

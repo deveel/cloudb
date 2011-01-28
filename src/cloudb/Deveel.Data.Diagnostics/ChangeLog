@@ -1,0 +1,3 @@
+﻿2011-28-01  Antonello Provenzano  <antonello@deveel.com>
+
+	* Logger.cs: support for root logger configuration
