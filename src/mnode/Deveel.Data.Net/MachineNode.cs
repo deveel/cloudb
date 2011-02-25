@@ -67,17 +67,28 @@ namespace Deveel.Data.Net {
 			ExitCallback = new HandlerRoutine(ConsoleCtrlCheck);
 			SetConsoleCtrlHandler(ExitCallback, true);
 #elif UNIX			
-			System.Threading.Thread signalThread = new System.Threading.Thread(CheckSignal);
+			Thread signalThread = new Thread(CheckSignal);
 			signalThread.Start();
 #endif
 		}
 
+		private static string NormalizeFilePath(string fileName) {
+			if (String.IsNullOrEmpty(fileName))
+				return null;
+
+			if (fileName[0] == '.')
+				fileName = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName));
+
+			return fileName;
+		}
+
 		[STAThread]
 		private static int Main(string[] args) {
+			AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(OnUnhandledException);
 			SetEventHandlers();
-			
-			ProductInfo libInfo = ProductInfo.GetProductInfo(typeof(TcpAdminService));
-			ProductInfo nodeInfo = ProductInfo.GetProductInfo(typeof(MachineNode));
+
+			ProductInfo libInfo = ProductInfo.GetProductInfo(typeof (TcpAdminService));
+			ProductInfo nodeInfo = ProductInfo.GetProductInfo(typeof (MachineNode));
 
 			Console.Out.WriteLine("{0} {1} ( {2} )", nodeInfo.Title, nodeInfo.Version, nodeInfo.Copyright);
 			Console.Out.WriteLine(nodeInfo.Description);
@@ -98,29 +109,31 @@ namespace Deveel.Data.Net {
 				ICommandLineParser parser = new GnuParser(options);
 				commandLine = parser.Parse(args);
 
-				nodeConfig = commandLine.GetOptionValue("nodeconfig", "node.conf");
-				netConfig = commandLine.GetOptionValue("netconfig", "network.conf");
+				nodeConfig = commandLine.GetOptionValue("nodeconfig", "./node.conf");
+				netConfig = commandLine.GetOptionValue("netconfig", "./network.conf");
 				hostArg = commandLine.GetOptionValue("host");
 				portArg = commandLine.GetOptionValue("port");
-			} catch(ParseException) {
+			} catch (ParseException) {
 				wout.WriteLine("Error parsing arguments.");
 				failed = true;
 			}
 
-			if (commandLine.HasOption("install")) {
-				try {
-					Install(commandLine.GetOptionValue("user"), commandLine.GetOptionValue("password"));
-				} catch(Exception e) {
-					Console.Error.WriteLine("Error installing service: " + e.Message);
-					return 1;
-				}
-			} else if (commandLine.HasOption("uninstall")) {
-				try {
-					Uninstall();
-					return 0;
-				} catch(Exception e) {
-					Console.Error.WriteLine("Error uninstalling service: " + e.Message);
-					return 1;
+			if (commandLine != null) {
+				if (commandLine.HasOption("install")) {
+					try {
+						Install(commandLine.GetOptionValue("user"), commandLine.GetOptionValue("password"));
+					} catch (Exception e) {
+						Console.Error.WriteLine("Error installing service: " + e.Message);
+						return 1;
+					}
+				} else if (commandLine.HasOption("uninstall")) {
+					try {
+						Uninstall();
+						return 0;
+					} catch (Exception e) {
+						Console.Error.WriteLine("Error uninstalling service: " + e.Message);
+						return 1;
+					}
 				}
 			}
 
@@ -137,12 +150,29 @@ namespace Deveel.Data.Net {
 				failed = true;
 			}
 
+			if (!failed) {
+				//TODO: support for remote (eg. HTTP, FTP, TCP/IP) configurations)
+
+				nodeConfig = NormalizeFilePath(nodeConfig);
+				netConfig = NormalizeFilePath(netConfig);
+
+				if (!File.Exists(nodeConfig)) {
+					wout.WriteLine("Error, node configuration file not found ({0}).", nodeConfig);
+					failed = true;
+				} else if (!File.Exists(netConfig)) {
+					wout.WriteLine("Error, node configuration file not found ({0}).", netConfig);
+					failed = true;
+				}
+			}
+
 			wout.Flush();
 
 			// If failed,
 			if (failed) {
 				HelpFormatter formatter = new HelpFormatter();
-				formatter.Width = Console.WindowWidth;
+				if (!IsConsoleRedirected()) {
+					formatter.Width = Console.WindowWidth;
+				}
 				formatter.CommandLineSyntax = "mnode";
 				formatter.Options = options;
 				formatter.PrintHelp();
@@ -150,8 +180,12 @@ namespace Deveel.Data.Net {
 				Console.Out.WriteLine(wout.ToString());
 				return 1;
 			}
-			
+
 			try {
+#if DEBUG
+				Console.Out.WriteLine("Retrieving node configuration from {0}", nodeConfig);
+#endif
+
 				// Get the node configuration file,
 				ConfigSource nodeConfigSource = new ConfigSource();
 				using (FileStream fin = new FileStream(nodeConfig, FileMode.Open, FileAccess.Read, FileShare.None)) {
@@ -159,9 +193,13 @@ namespace Deveel.Data.Net {
 					nodeConfigSource.LoadProperties(new BufferedStream(fin));
 				}
 
+#if DEBUG
+				Console.Out.WriteLine("Retrieving network configuration from {0}", netConfig);
+#endif
+
 				// Parse the network configuration string,
 				NetworkConfigSource netConfigSource;
-				using(FileStream stream = new FileStream(netConfig, FileMode.Open, FileAccess.Read, FileShare.None)) {
+				using (FileStream stream = new FileStream(netConfig, FileMode.Open, FileAccess.Read, FileShare.None)) {
 					netConfigSource = new NetworkConfigSource();
 					//TODO: make it configurable ...
 					netConfigSource.LoadProperties(stream);
@@ -199,14 +237,14 @@ namespace Deveel.Data.Net {
 				}
 
 				int port;
-				if (!Int32.TryParse(portArg, out  port)) {
+				if (!Int32.TryParse(portArg, out port)) {
 					Console.Out.WriteLine("Error: couldn't parse port argument: " + portArg);
 					return 1;
 				}
-				
+
 				string storage = commandLine.GetOptionValue("storage", null);
 				IServiceFactory serviceFactory = GetServiceFactory(storage, nodeConfigSource);
-				
+
 				Console.Out.WriteLine("Machine Node, " + host + " : " + port);
 				service = new TcpAdminService(serviceFactory, host, port, password);
 				service.Config = netConfigSource;
@@ -214,7 +252,7 @@ namespace Deveel.Data.Net {
 
 				waitHandle = new AutoResetEvent(false);
 				waitHandle.WaitOne();
-			} catch(Exception e) {
+			} catch (Exception e) {
 				Console.Out.WriteLine(e.Message);
 				Console.Out.WriteLine(e.StackTrace);
 				return 1;
@@ -224,6 +262,20 @@ namespace Deveel.Data.Net {
 			}
 
 			return 0;
+		}
+
+		private static bool IsConsoleRedirected() {
+			try {
+				int dummy = Console.WindowWidth;
+				return false;
+			} catch (IOException) {
+				return true;
+			}
+		}
+
+		static void OnUnhandledException(object sender, UnhandledExceptionEventArgs e) {
+			Console.Error.WriteLine("Unhandled exception: {0}", e.ExceptionObject);
+			Environment.Exit(1);
 		}
 
 		private static void Install(string user, string password) {
