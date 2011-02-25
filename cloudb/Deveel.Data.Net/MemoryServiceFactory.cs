@@ -9,7 +9,7 @@ namespace Deveel.Data.Net {
 			if (serviceType == ServiceType.Manager)
 				return new MemoryManagerService(connector, serviceAddress);
 			if (serviceType == ServiceType.Root)
-				return new MemoryRootService(connector);
+				return new MemoryRootService(connector, serviceAddress);
 			if (serviceType == ServiceType.Block)
 				return new MemoryBlockService(connector);
 

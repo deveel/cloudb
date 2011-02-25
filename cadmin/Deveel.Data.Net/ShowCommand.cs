@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
+
 using Deveel.Collections;
 using Deveel.Console;
 using Deveel.Console.Commands;
@@ -21,8 +23,6 @@ namespace Deveel.Data.Net {
 		}
 		
 		private void ShowNetwork(NetworkContext context) {
-			MachineProfile[] profiles = context.Network.MachineProfiles;
-
 			int managerCount = 0;
 			int rootCount = 0;
 			int blockCount = 0;
@@ -34,6 +34,8 @@ namespace Deveel.Data.Net {
 			
 			TableRenderer table = new TableRenderer(columns, Out);
 			context.Network.Refresh();
+
+			MachineProfile[] profiles = context.Network.MachineProfiles;
 
 			foreach (MachineProfile p in profiles) {
 				if (p.HasError) {
@@ -97,7 +99,7 @@ namespace Deveel.Data.Net {
 			
 			Out.WriteLine();
 		}
-				
+
 		private CommandResultCode ShowPaths(NetworkContext context) {
 			MachineProfile[] roots = context.Network.RootServers;
 			if (roots.Length == 0) {
@@ -113,33 +115,57 @@ namespace Deveel.Data.Net {
 				Out.Write("Root server: ");
 				Out.WriteLine(rootService.ToString());
 				Out.WriteLine();
-				
-				PathProfile[] paths = context.Network.GetPathsFromRoot(rootService);
 
-				if (paths.Length == 0) {
+				string[] pathNames = context.Network.GetPathNames();
+
+				if (pathNames.Length == 0) {
 					Out.WriteLine("  [No paths on this root server]");
 					Out.WriteLine();
 				} else {
 					ColumnDesign[] columns = new ColumnDesign[3];
 					columns[0] = new ColumnDesign("Name", ColumnAlignment.Right);
 					columns[1] = new ColumnDesign("Type", ColumnAlignment.Center);
-					columns[2] = new ColumnDesign("Status", ColumnAlignment.Center);
-					
+					columns[2] = new ColumnDesign("Roots", ColumnAlignment.Left);
+					columns[3] = new ColumnDesign("Status", ColumnAlignment.Center);
+
 					TableRenderer table = new TableRenderer(columns, Out);
-					foreach (PathProfile p in paths) {
-						ColumnValue[] row = new ColumnValue[3];
-						row[0] = new ColumnValue(p.Path);
+					for (int i = 0; i < pathNames.Length; i++) {
+						string pathName = pathNames[i];
+						PathInfo p = context.Network.GetPathInfo(pathName);
+
+						ColumnValue[] row = new ColumnValue[4];
+
+						row[0] = new ColumnValue(p.PathName);
 						row[1] = new ColumnValue(p.PathType);
-						
+
+						IServiceAddress leader = p.RootLeader;
+						IServiceAddress[] srvs = p.RootServers;
+						StringBuilder sb = new StringBuilder();
+						for (int j = 0; j < srvs.Length; j++) {
+							IServiceAddress address = srvs[j];
+							bool isLLeader = false;
+							if (address.Equals(leader))
+								isLLeader = true;
+							if (isLLeader)
+								sb.Append("[");
+							sb.Append(address.ToString());
+							if (isLLeader)
+								sb.Append("*]");
+							if (j < srvs.Length - 1)
+								sb.Append(" ");
+						}
+
+						row[2] = new ColumnValue(sb.ToString());
+
 						try {
-							string stats = context.Network.GetPathStats(p.RootAddress, p.Path);
+							string stats = context.Network.GetPathStats(p);
 							if (stats != null)
-								row[2] = new ColumnValue(stats);
-						} catch (NetworkAdminException e) {
-							row[2] = new ColumnValue("ERROR RETRIEVING");
+								row[3] = new ColumnValue(stats);
+						} catch (NetworkAdminException) {
+							row[3] = new ColumnValue("ERROR RETRIEVING");
 						}
 					}
-					
+
 					table.CloseTable();
 				}
 			}
@@ -159,20 +185,22 @@ namespace Deveel.Data.Net {
 
 			IDictionary<IServiceAddress, string> status_info = null;
 			// Manager servers status,
-			MachineProfile manager = context.Network.ManagerServer;
-			if (manager != null) {
-				ColumnValue[] row = new ColumnValue[3];
-				row[0] = new ColumnValue("UP");
-				row[1] = new ColumnValue("Manager");
-				row[2] = new ColumnValue(manager.Address.ToString());
+			MachineProfile[] managers = context.Network.ManagerServers;
+			if (managers != null && managers.Length > 0) {
+				for (int i = 0; i < managers.Length; i++) {
+					ColumnValue[] row = new ColumnValue[3];
+					row[0] = new ColumnValue("UP");
+					row[1] = new ColumnValue("Manager");
+					row[2] = new ColumnValue(managers[i].Address.ToString());
 
-				try {
-					status_info = context.Network.GetBlocksStatus();
-				} catch (NetworkAdminException e) {
-					Error.WriteLine("Error retrieving manager status info: " + e.Message);
+					try {
+						status_info = context.Network.GetBlocksStatus();
+					} catch (NetworkAdminException e) {
+						Error.WriteLine("Error retrieving manager status info: " + e.Message);
+					}
+
+					table.AddRow(row);
 				}
-				
-				table.AddRow(row);
 			} else {
 				Error.WriteLine("! Manager server not available");
 			}

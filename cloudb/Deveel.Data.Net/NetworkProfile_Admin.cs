@@ -63,16 +63,16 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		private void ChangeRole(MachineProfile machine, string status, String role_type) {
-			RequestMessage msg_out = new RequestMessage(status);
-			msg_out.Arguments.Add(role_type);
-			Message m = Command(machine.Address, ServiceType.Admin, msg_out);
+		private void ChangeRole(MachineProfile machine, string status, string roleType) {
+			RequestMessage request = new RequestMessage(status);
+			request.Arguments.Add(roleType);
+			Message m = Command(machine.Address, ServiceType.Admin, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 
 			// Update the network profile,
 			if (status.Equals("init")) {
-				ServiceType type = (ServiceType)Enum.Parse(typeof(ServiceType), role_type, true);
+				ServiceType type = (ServiceType)Enum.Parse(typeof(ServiceType), roleType, true);
 				machine.ServiceType |= type;
 			}
 		}
@@ -101,9 +101,8 @@ namespace Deveel.Data.Net {
 			// Check machine is in the schema,
 			MachineProfile machine_p = CheckMachineInNetwork(machine);
 			if (serviceType == ServiceType.Manager) {
-				MachineProfile current_manager = ManagerServer;
-				if (current_manager != null)
-					throw new NetworkAdminException("Manager already assigned on machine " + current_manager);
+				if (machine_p.IsManager)
+					throw new NetworkAdminException("Manager already assigned on machine " + machine_p);
 			}
 
 			if ((machine_p.ServiceType & serviceType) != 0)

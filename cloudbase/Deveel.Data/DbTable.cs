@@ -6,6 +6,7 @@ using System.IO;
 using Deveel.Data.Store;
 
 namespace Deveel.Data {
+	[DbTrusted]
 	public sealed class DbTable : IEnumerable<DbRow> {
 		private readonly int id;
 		private readonly string name;
@@ -132,10 +133,7 @@ namespace Deveel.Data {
 		}
 
 		private static void CopyDataFile(DataFile s, DataFile d) {
-			d.Delete();
-			s.Position = 0;
-			d.Position = 0;
-			s.CopyTo(d, s.Length);
+			s.ReplicateTo(d);
 		}
 
 		internal long UniqueId() {
@@ -319,38 +317,13 @@ namespace Deveel.Data {
 				index.Insert(columnValue, rowid, index_collator);
 			}
 		}
-		
-		  internal void DeleteFully() {
-			DataFile df;
-			
-			// Get the index list,
-			string[] cols = schema.IndexedColumns;
-			// Delete all the indexes,
-			foreach (String col in cols) {
-				long columnid = schema.GetColumnId(col);
-				df = GetFile(GetIndexIdKey(columnid));
-				df.Delete();
-			}
-			
-			// Delete all the rows in reverse,
-			foreach (DbRow row in this) {
-				long rowid = row.RowId;
-				df = GetFile(GetRowIdKey(rowid));
-				df.Delete();
-			}
-			
-			// Delete the main index,
-			df = GetFile(RowIndexKey);
-			df.Delete();
-			
-			// Delete the transaction info,
-			df = GetFile(AddLogKey);
-			df.Delete();
-			df = GetFile(RemoveLogKey);
-			df.Delete();
+
+		internal void DeleteFully() {
+			// Get the range of keys stored for this table, and delete it.
+			transaction.Parent.GetRange(new Key(1, id, 0), new Key(1, id, Int64.MaxValue)).Delete();
 		}
 
-		
+
 		public DbRow NewRow() {
 			if (newRow != null)
 				throw new ApplicationException("Another row has been created and not committed.");

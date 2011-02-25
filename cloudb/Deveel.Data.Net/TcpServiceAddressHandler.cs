@@ -19,10 +19,10 @@ namespace Deveel.Data.Net {
 		}
 		
 		public IServiceAddress FromBytes(byte[] bytes) {
-			short length = Util.ByteBuffer.ReadInt2(bytes, 0);
+			short length = ByteBuffer.ReadInt2(bytes, 0);
 			byte[] address = new byte[length];
 			Array.Copy(bytes, 2, address, 0, length);
-			int port = Util.ByteBuffer.ReadInt4(bytes, length + 2);
+			int port = ByteBuffer.ReadInt4(bytes, length + 2);
 			return new TcpServiceAddress(address, port);
 		}
 		
@@ -35,9 +35,9 @@ namespace Deveel.Data.Net {
 			
 			int length = tcpAddress.IsIPv4 ? 4 : 16;
 			byte[] buffer = new byte[length + 2 + 4];
-			Util.ByteBuffer.WriteInt2((short)length, buffer, 0);
+			ByteBuffer.WriteInt2((short)length, buffer, 0);
 			Array.Copy(tcpAddress.Address, 0, buffer, 2, length);
-			Util.ByteBuffer.WriteInt4(tcpAddress.Port, buffer, length + 2);
+			ByteBuffer.WriteInt4(tcpAddress.Port, buffer, length + 2);
 			return buffer;
 		}
 	}

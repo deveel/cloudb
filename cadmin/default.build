@@ -1,29 +1,21 @@
 <?xml version="1.0"?>
-<project name="cadmin" default="build">
+<project name="cadmin" default="build" xmlns="http://nant.sf.net/release/0.91-alpha2/nant.xsd">
   <include buildfile="../common.build" />
+
 	<target name="build">
-  	<if test="${kernel == ''}">
-  	  <echo message="the path to the kernel library was not specified or the assembly was not found: we will generate one" />
-	    <nant buildfile="../cloudb/default.build" target="all" inheritall="false">
-        <properties>
-          <property name="output" value="${path::get-full-path(output)}" readonly="True" />
-          <property name="dist-path" value="${path::get-full-path(dist-path)}" readonly="True" />
-          <property name="kernel" value="${path::get-full-path(kernel)}" readonly="True" />
-          <property name="libs" value="${path::get-full-path(libs)}" readonly="True" />
-          <property name="platform" value="${platform}" readonly="True" />
-          <property name="notest" value="${notest}" readonly="True" />
-          <property name="package" value="${package}" readonly="True" />
-          <property name="sign" value="${sign}" readonly="True" />
-        </properties>
-	    </nant>
+  	<if test="${not kernel}">
+	    <call target="-build-kernel"/>
 	  </if>
-	  <csc output="${output}/cadmin.exe" target="exe">
+	  
+	  <echo message="building component cadmin to ${path::get-full-path(output)}; libraries from ${path::get-full-path(libs)} ..." />
+	  
+	  <csc output="${output}/cadmin.exe" target="exe" platform="${platform}" keyfile="cadmin.snk" debug="${debug}" optimize="${not debug}">
 			<references>
 			  <include name="System.dll" />
 				<include name="${libs}/deveel-cli.dll" />
 				<include name="${libs}/deveelrl.dll" />
 				<include name="${libs}/shellapp.dll" />
-				<include name="${kernel}/cloudb.dll" />
+				<include name="${output}/cloudb.dll" />
 			</references>
 			<sources basedir=".">
 				<include name="Deveel.Data/*.cs" />
@@ -31,27 +23,35 @@
 				<include name="Properties/AssemblyInfo.cs" />
 			</sources>
 		</csc>
-		<if test="${standalone}">
-		  <echo message="standalone build: copying the references to the output path" />
-		  <copy file="${libs}/deveel-cli.dll" todir="${output}" overwrite="true"/>
-		  <copy file="${libs}/deveelrl.dll" todir="${output}" overwrite="true"/>
-		  <copy file="${libs}/shellapp.dll" todir="${output}" overwrite="true"/>
-		  <copy file="${kernel}/cloudb.dll" todir="${output}" overwrite="true"/>
-		</if>
+		<copy file="${libs}/deveel-cli.dll" todir="${output}" overwrite="true"/>
+		<copy file="${libs}/deveelrl.dll" todir="${output}" overwrite="true"/>
+		<copy file="${libs}/shellapp.dll" todir="${output}" overwrite="true"/>
+		<copy file="${conf}/client.conf" todir="${output}" overwrite="true"/>
 	</target>
 	<target name="-package-all" depends="build">
 		<tar destfile="${dist-path}/${package.name}.tar.gz" compression="GZip">
 			<fileset prefix="bin" basedir="${output}">
 				<include name="cadmin.exe" />
 				<include name="deveel-cli.exe"/>
-				<include name="deveel-rl.exe" />
+				<include name="deveelrl.exe" />
 				<include name="shellapp.dll" />
+				<include name="cloudb.dll"/>
 			</fileset>
-			<fileset prefix="bin" basedir="${kernel}">
-			  <include name="cloudb.dll"/>
+	    <fileset basedir="${conf}" prefix="bin">
+	      <include name="client.conf"/>
+	    </fileset>
+			<fileset prefix="src" basedir=".">
+			  <include name="Deveel.Daata/*.cs"/>
+			  <include name="Deveel.Daata.Net/*.cs"/>
+			  <include name="Properties/AssemblyInfo.cs" />
+			  <include name="default.build"/>
+			  <include name="cadmin.csproj"/>
+			  <include name="cadmin.snk"/>
 			</fileset>
-			<fileset prefix="src" basedir="${sources}">
-			  <include name=""/>
+			<fileset prefix="src">
+			  <include name="${libs}/deveel-cli.dll"/>
+			  <include name="${libs}/deveelrl.dll"/>
+			  <include name="${libs}/shellapp.dll"/>
 			</fileset>
 		</tar>
 	</target>
@@ -59,12 +59,14 @@
 		  <tar destfile="${dist-path}/${package.name}.tar.gz" compression="GZip">
 	    <fileset basedir="${output}">
 	      <include name="cadmin.exe" />
-				<include name="deveel-cli.exe"/>
-				<include name="deveel-rl.exe" />
+				<include name="deveel-cli.dll"/>
+				<include name="deveel-rl.dll" />
+				<include name="shellapp.dll"/>
+				<include name="cloudb.dll"/>
 	    </fileset>
-	    <fileset basedir="${kernel}">
-			  <include name="cloudb.dll"/>
-			</fileset>
+	    <fileset basedir="${conf}">
+	      <include name="client.conf"/>
+	    </fileset>
 	  </tar>
 	</target>
 	<target name="-package-src">
@@ -74,6 +76,19 @@
 	      <include name="Deveel.Data.Net/*.cs"/>
 	      <include name="Properties/AssemblyInfo.cs"/>
 	      <include name="cadmin.csproj"/>
+	      <exclude name="default.build"/>
+	      <include name="cadmin.snk"/>
+	    </fileset>
+	    <fileset basedir="${libs}" prefix="libs">
+	      <include name="deveel-cli.dll" if="${standalone}" />
+				<include name="deveelrl.dll" if="${standalone}" />
+				<include name="shellapp.dll" if="${standalone}" />
+	    </fileset>
+	    <fileset prefix="libs" basedir="${output}">
+	      <include name="cloudb.dll" if="${standalone}" />
+	    </fileset>
+	    <fileset prefix="conf" basedir="${conf}">
+	      <include name="client.conf" if="${standalone}"/>
 	    </fileset>
 	  </tar>
 	</target>

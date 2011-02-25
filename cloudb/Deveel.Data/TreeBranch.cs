@@ -2,12 +2,12 @@
 
 namespace Deveel.Data {
 	public class TreeBranch : ITreeNode {
-		private readonly long id;
+		private readonly NodeId id;
 		private int childCount;
 		private readonly long[] children;
 
-		public TreeBranch(long id, int maxChildCount) {
-			if (id >= 0)
+		public TreeBranch(NodeId id, int maxChildCount) {
+			if (!id.IsInMemory)
 				throw new ArgumentException("Only heap node permitted.", "id");
 			if ((maxChildCount % 2) != 0)
 				throw new ArgumentException("The number of maximum children must be a multiple of 2.", "maxChildCount");
@@ -17,24 +17,24 @@ namespace Deveel.Data {
 				throw new ArgumentException("The number of maximum children must be greater or equal to 6.", "maxChildCount");
 
 			this.id = id;
-			// f(1) = 2, f(2) = 6, f(3) = 10, f(4) = 14, f(5) = 18
-			children = new long[(maxChildCount * 4) - 2];
+			
+			children = new long[(maxChildCount * 5) - 2];
 			childCount = 0;
 		}
 
-		public TreeBranch(long id, TreeBranch branch, int maxChildCount)
+		public TreeBranch(NodeId id, TreeBranch branch, int maxChildCount)
 			: this(id, maxChildCount) {
 			Array.Copy(branch.children, 0, children, 0, Math.Min(branch.children.Length, children.Length));
 			childCount = branch.childCount;
 		}
 
-		public TreeBranch(long id, long[] children, int node_data_size) {
-			if (id < 0)
-				throw new ArgumentException("id < 0.  Only store nodes permitted.");
+		public TreeBranch(NodeId id, long[] children, int node_data_size) {
+			if (id.IsInMemory)
+				throw new ArgumentException("Only store nodes permitted.");
 
 			this.id = id;
 			this.children = children;
-			childCount = (node_data_size + 2) / 4;
+			childCount = (node_data_size + 2) / 5;
 		}
 
 		public int ChildCount {
@@ -42,11 +42,11 @@ namespace Deveel.Data {
 		}
 
 		public int MaxSize {
-			get { return (children.Length + 2)/4; }
+			get { return (children.Length + 2)/5; }
 		}
 
 		public bool IsReadOnly {
-			get { return id > 0; }
+			get { return id.IsInMemory; }
 		}
 
 		public bool IsEmpty {
@@ -73,12 +73,16 @@ namespace Deveel.Data {
 		}
 
 		public int DataSize {
-			get { return (childCount*4) - 2; }
+			get { return (childCount*5) - 2; }
 		}
 
 		private void CheckReadOnly() {
 			if (IsReadOnly)
 				throw new ApplicationException("Node is read-only.");
+		}
+
+		private long InternalGetChildSize(int p) {
+			return children[p + 2];
 		}
 
 		#region Implementation of IDisposable
@@ -90,7 +94,7 @@ namespace Deveel.Data {
 
 		#region Implementation of ITreeNode
 
-		public long Id {
+		public NodeId Id {
 			get { return id; }
 		}
 
@@ -100,91 +104,107 @@ namespace Deveel.Data {
 
 		public long LeafElementCount {
 			get {
-				// Add up all the elements of the children
-				long leaf_element_count = 0;
-				int end = (childCount*4) - 2;
-				for (int i = 1; i < end; i += 4)
-					leaf_element_count += children[i];
-				return leaf_element_count;
+				int elements = childCount;
+				long size = 0;
+				int p = 0;
+				for (; elements > 0; --elements) {
+					size += children[p + 2];
+					p += 5;
+				}
+				return size;
 			}
 		}
 
 		#endregion
 
-		internal void SetKeyValueToLeft(long key_v1, long key_v2, int child_i) {
-			CheckReadOnly();
-			children[(child_i * 4) - 2] = key_v1;
-			children[(child_i * 4) - 1] = key_v2;
+		internal void SetKeyValueToLeft(KeyBase key, int child_i) {
+			if (child_i >= ChildCount)
+				throw new ArgumentOutOfRangeException("child_i", "Key request out of bounds.");
+
+			children[(child_i * 5) - 2] = key.GetEncoded(1);
+			children[(child_i * 5) - 1] = key.GetEncoded(2);
 		}
 
-		internal void SetKeyValueToLeft(Key k, int child_i) {
-			SetKeyValueToLeft(k.GetEncoded(1), k.GetEncoded(2), child_i);
-		}
+		//internal void SetKeyValueToLeft(Key k, int child_i) {
+		//    SetKeyValueToLeft(k.GetEncoded(1), k.GetEncoded(2), child_i);
+		//}
 
-		internal void SetChildOverride(int index, long value) {
-			children[index * 4] = value;
+		internal void SetChildOverride(int index, NodeId value) {
+			children[(index * 5) + 0] = value.High;
+			children[(index * 5) + 1] = value.Low;
 		}
 
 		internal void SetChildLeafElementCount(int childIndex, long count) {
 			CheckReadOnly();
-			children[(childIndex * 4) + 1] = count;
+			if (childIndex >= ChildCount)
+				throw new ArgumentOutOfRangeException("childIndex", "Child request out of bounds.");
+			children[(childIndex * 5) + 2] = count;
 		}
 
 		internal void RemoveChild(int index) {
 			CheckReadOnly();
 			if (index == 0) {
-				Array.Copy(children, 4, children, 0, children.Length - 4);
+				Array.Copy(children, 5, children, 0, children.Length - 5);
 			} else if (index + 1 < childCount) {
-				int p1 = (index * 4) + 2;
-				Array.Copy(children, p1, children, p1 - 4, children.Length - p1);
+				int p1 = (index * 5) + 3;
+				Array.Copy(children, p1, children, p1 - 5, children.Length - p1);
 			}
 			--childCount;
 		}
 
-		public long GetChild(int index) {
-			return children[index * 4];
+		public NodeId GetChild(int index) {
+			if (index >= ChildCount)
+				throw new ArgumentOutOfRangeException("index", "Child request out of bounds.");
+
+			int p = (index*5);
+			return new NodeId(children[p], children[p + 1]);
 		}
 
-		public void SetChild(int index, long value) {
+		public void SetChild(int index, NodeId value) {
 			CheckReadOnly();
 			SetChildOverride(index, value);
 		}
 
 		public Key GetKey(int index) {
-			long v1 = children[(index * 4) - 2];
-			long v2 = children[(index * 4) - 1];
+			if (index >= ChildCount)
+				throw new ArgumentOutOfRangeException("index", "Key request out of bounds.");
+
+			long v1 = children[(index * 5) - 2];
+			long v2 = children[(index * 5) - 1];
 			return new Key(v1, v2);
 		}
 
-		public void Set(long child1, long child1_count, long key1,
-						long key2, long child2, long child2_count) {
+		public void Set(NodeId child1, long child1Count, Key key, NodeId child2, long child2Count) {
 			CheckReadOnly();
 
 			// Set the values
-			children[0] = child1;
-			children[1] = child1_count;
-			children[2] = key1;
-			children[3] = key2;
-			children[4] = child2;
-			children[5] = child2_count;
+			children[0] = child1.High;
+			children[1] = child1.Low;
+			children[2] = child1Count;
+			children[3] = key.GetEncoded(1);
+			children[4] = key.GetEncoded(2);
+			children[5] = child2.High;
+			children[6] = child2.Low;
+			children[7] = child2Count;
 			// Increase the child count.
 			childCount += 2;
 		}
 
-		public void Insert(long child1, long child1_count, long key1, 
-						   long key2, long child2, long child2_count, int n) {
+		public void Insert(NodeId child1, long child1Count, Key key, NodeId child2, long child2Count, int index) {
 			CheckReadOnly();
-			// Shift the array by 4
-			int p1 = (n * 4) + 2;
-			int p2 = (n * 4) + 6;
+			// Shift the array by 5
+			int p1 = (index * 5) + 3;
+			int p2 = (index * 5) + 8;
 			Array.Copy(children, p1, children, p2, children.Length - p2);
 			// Insert the values
-			children[p1 - 2] = child1;
-			children[p1 - 1] = child1_count;
-			children[p1 + 0] = key1;
-			children[p1 + 1] = key2;
-			children[p1 + 2] = child2;
-			children[p1 + 3] = child2_count;
+			children[p1 - 3] = child1.High;
+			children[p1 - 2] = child1.Low;
+			children[p1 - 1] = child1Count;
+			children[p1 + 0] = key.GetEncoded(1);
+			children[p1 + 1] = key.GetEncoded(2);
+			children[p1 + 2] = child2.High;
+			children[p1 + 3] = child2.Low;
+			children[p1 + 4] = child2Count;
 			// Increase the child count.
 			++childCount;
 		}
@@ -294,14 +314,16 @@ namespace Deveel.Data {
 
 		public long GetChildOffset(int index) {
 			long offset = 0;
-			for (int i = 0; i < index; ++i) {
-				offset += children[(i * 4) + 1];
+			int p = 0;
+			for (; index > 0; --index) {
+				offset += InternalGetChildSize(p);
+				p += 5;
 			}
 			return offset;
 		}
 
 		public long GetChildLeafElementCount(int index) {
-			return children[(index * 4) + 1];
+			return InternalGetChildSize(index * 5);
 		}
 
 		public int GetSibling(int index) {
@@ -310,18 +332,18 @@ namespace Deveel.Data {
 			return index - 1;
 		}
 
-		public Key MergeLeft(TreeBranch right, Key mid_value, int count) {
+		public Key MergeLeft(TreeBranch right, Key midValue, int count) {
 			// Check mutable
 			CheckReadOnly();
 
 			// If we moving all from right,
 			if (count == right.ChildCount) {
 				// Move all the elements into this node,
-				int dest_p = childCount * 4;
-				int right_len = (right.childCount * 4) - 2;
-				Array.Copy(right.children, 0, children, dest_p, right_len);
-				children[dest_p - 2] = mid_value.GetEncoded(1);
-				children[dest_p - 1] = mid_value.GetEncoded(2);
+				int destPoint = childCount * 5;
+				int rightLength = (right.childCount * 5) - 2;
+				Array.Copy(right.children, 0, children, destPoint, rightLength);
+				children[destPoint - 2] = midValue.GetEncoded(1);
+				children[destPoint - 1] = midValue.GetEncoded(2);
 				// Update children_count
 				childCount += right.childCount;
 
@@ -332,24 +354,24 @@ namespace Deveel.Data {
 
 				// Shift elements from right to left
 				// The amount to move that will leave the right node at min threshold
-				int dest_p = ChildCount * 4;
-				int right_len = (count * 4) - 2;
-				Array.Copy(right.children, 0, children, dest_p, right_len);
+				int destPoint = ChildCount * 5;
+				int rightLength = (count * 5) - 2;
+				Array.Copy(right.children, 0, children, destPoint, rightLength);
 				// Redistribute the right elements
-				int right_redist = (count * 4);
+				int rightRedist = (count * 5);
 				// The midpoint value becomes the extent shifted off the end
-				long new_midpoint_value1 = right.children[right_redist - 2];
-				long new_midpoint_value2 = right.children[right_redist - 1];
+				long newMidpointValue1 = right.children[rightRedist - 2];
+				long newMidpointValue2 = right.children[rightRedist - 1];
 				// Shift the right child
-				Array.Copy(right.children, right_redist, right.children, 0,
-								 right.children.Length - right_redist);
-				children[dest_p - 2] = mid_value.GetEncoded(1);
-				children[dest_p - 1] = mid_value.GetEncoded(2);
+				Array.Copy(right.children, rightRedist, right.children, 0,
+								 right.children.Length - rightRedist);
+				children[destPoint - 2] = midValue.GetEncoded(1);
+				children[destPoint - 1] = midValue.GetEncoded(2);
 				childCount += count;
 				right.childCount -= count;
 
 				// Return the new midpoint value
-				return new Key(new_midpoint_value1, new_midpoint_value2);
+				return new Key(newMidpointValue1, newMidpointValue2);
 			}
 			
 			throw new ArgumentException("count > right.size()");
@@ -360,73 +382,73 @@ namespace Deveel.Data {
 			right.CheckReadOnly();
 
 			// How many elements in total?
-			int total_elements = ChildCount + right.ChildCount;
+			int totalElements = ChildCount + right.ChildCount;
 			// If total elements is smaller than max size,
-			if (total_elements <= MaxSize) {
+			if (totalElements <= MaxSize) {
 				// Move all the elements into this node,
-				int dest_p = childCount * 4;
-				int right_len = (right.childCount * 4) - 2;
-				Array.Copy(right.children, 0, children, dest_p, right_len);
-				children[dest_p - 2] = midValue.GetEncoded(1);
-				children[dest_p - 1] = midValue.GetEncoded(2);
+				int destPoint = childCount * 5;
+				int rightLength = (right.childCount * 5) - 2;
+				Array.Copy(right.children, 0, children, destPoint, rightLength);
+				children[destPoint - 2] = midValue.GetEncoded(1);
+				children[destPoint - 1] = midValue.GetEncoded(2);
 				// Update children_count
 				childCount += right.childCount;
 				right.childCount = 0;
 				return null;
 			} else {
-				long new_midpoint_value1, new_midpoint_value2;
+				long newMidpointValue1, newMidpointValue2;
 
 				// Otherwise distribute between the nodes,
-				int max_shift = (MaxSize + right.MaxSize) - total_elements;
-				if (max_shift <= 2) {
+				int maxShift = (MaxSize + right.MaxSize) - totalElements;
+				if (maxShift <= 2) {
 					return midValue;
 				}
-				int min_threshold = MaxSize / 2;
-				//      final int half_total_elements = total_elements / 2;
+				int minThreshold = MaxSize / 2;
+				//      int half_total_elements = total_elements / 2;
 				if (ChildCount < right.ChildCount) {
 					// Shift elements from right to left
 					// The amount to move that will leave the right node at min threshold
-					int count = Math.Min(right.ChildCount - min_threshold, max_shift);
-					int dest_p = ChildCount * 4;
-					int right_len = (count * 4) - 2;
-					Array.Copy(right.children, 0, children, dest_p, right_len);
+					int count = Math.Min(right.ChildCount - minThreshold, maxShift);
+					int destPoint = ChildCount * 5;
+					int right_len = (count * 5) - 2;
+					Array.Copy(right.children, 0, children, destPoint, right_len);
 					// Redistribute the right elements
-					int right_redist = (count * 4);
+					int right_redist = (count * 5);
 					// The midpoint value becomes the extent shifted off the end
-					new_midpoint_value1 = right.children[right_redist - 2];
-					new_midpoint_value2 = right.children[right_redist - 1];
+					newMidpointValue1 = right.children[right_redist - 2];
+					newMidpointValue2 = right.children[right_redist - 1];
 					// Shift the right child
 					Array.Copy(right.children, right_redist, right.children, 0,
 									 right.children.Length - right_redist);
-					children[dest_p - 2] = midValue.GetEncoded(1);
-					children[dest_p - 1] = midValue.GetEncoded(2);
+					children[destPoint - 2] = midValue.GetEncoded(1);
+					children[destPoint - 1] = midValue.GetEncoded(2);
 					childCount += count;
 					right.childCount -= count;
 
 				} else {
 					// Shift elements from left to right
 					// The amount to move that will leave the left node at min threshold
-					int count = Math.Min(MaxSize - min_threshold, max_shift);
-					//        int count = Math.min(half_total_elements - right.size(), max_shift);
+					int count = Math.Min(MaxSize - minThreshold, maxShift);
+					//        int count = Math.Min(half_total_elements - right.ChildCount, max_shift);
 
 					// Make room for these elements
-					int right_redist = (count * 4);
-					Array.Copy(right.children, 0, right.children, right_redist,
-									 right.children.Length - right_redist);
-					int src_p = (ChildCount - count) * 4;
-					int left_len = (count * 4) - 2;
-					Array.Copy(children, src_p, right.children, 0, left_len);
-					right.children[right_redist - 2] = midValue.GetEncoded(1);
-					right.children[right_redist - 1] = midValue.GetEncoded(2);
+					int rightRedist = (count * 5);
+					Array.Copy(right.children, 0, right.children, rightRedist,
+									 right.children.Length - rightRedist);
+					int srcPoint = (ChildCount - count) * 5;
+					int leftLength = (count * 5) - 2;
+					Array.Copy(children, srcPoint, right.children, 0, leftLength);
+					right.children[rightRedist - 2] = midValue.GetEncoded(1);
+					right.children[rightRedist - 1] = midValue.GetEncoded(2);
 					// The midpoint value becomes the extent shifted off the end
-					new_midpoint_value1 = children[src_p - 2];
-					new_midpoint_value2 = children[src_p - 1];
+					newMidpointValue1 = children[srcPoint - 2];
+					newMidpointValue2 = children[srcPoint - 1];
 					// Update children counts
 					childCount -= count;
 					right.childCount += count;
 				}
 
-				return new Key(new_midpoint_value1, new_midpoint_value2);
+				return new Key(newMidpointValue1, newMidpointValue2);
 			}
 		}
 

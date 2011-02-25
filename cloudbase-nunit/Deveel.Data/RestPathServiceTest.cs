@@ -190,7 +190,7 @@ namespace Deveel.Data.Net {
 			networkProfile.RegisterBlock(Local);
 
 			// Add the path ...
-			networkProfile.AddPath(Local, PathName, PathTypeName);
+			networkProfile.AddPath(PathName, PathTypeName, Local, new IServiceAddress[] {Local});
 			networkProfile.Refresh();
 
 			SetUpPath();

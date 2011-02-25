@@ -31,10 +31,10 @@ namespace Deveel.Data.Net {
 			// 1. The manager can not be relieved until all block and root servers have
 			//    been.
 
-			MachineProfile currentManager = context.Network.ManagerServer;
+			MachineProfile[] currentManagers = context.Network.ManagerServers;
 			MachineProfile[] currentRoots = context.Network.RootServers;
 			MachineProfile[] currentBlocks = context.Network.BlockServers;
-			if (role.Equals("manager")) {
+			if (role.Equals("manager") && currentManagers.Length == 1) {
 				if (currentRoots.Length > 0 ||
 					currentBlocks.Length > 0) {
 					Error.WriteLine("Error: Can not relieve manager role when there are existing block and root assignments.");
@@ -43,7 +43,7 @@ namespace Deveel.Data.Net {
 			}
 
 			// Check that the machine is performing the role,
-			bool isPerforming = false;
+			bool isPerforming;
 			if (role.Equals("block")) {
 				isPerforming = p.IsBlock;
 			} else if (role.Equals("manager")) {
@@ -65,6 +65,7 @@ namespace Deveel.Data.Net {
 				context.Network.DeregisterBlock(address);
 				context.Network.StopService(address, ServiceType.Block);
 			} else if (role.Equals("manager")) {
+				context.Network.DeregisterManager(address);
 				context.Network.StopService(address, ServiceType.Manager);
 			} else if (role.Equals("root")) {
 				context.Network.DeregisterRoot(address);

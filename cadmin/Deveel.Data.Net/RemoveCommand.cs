@@ -21,16 +21,18 @@ namespace Deveel.Data.Net {
 			IServiceAddress address;
 			// If machine is null, we need to find the machine the path is on,
 			if (String.IsNullOrEmpty(rootAddress)) {
-				address = context.Network.GetRoot(pathName);
-				if (address == null) {
-					Error.WriteLine("error: unable to find path " + pathName);
+				PathInfo pathInfo = context.Network.GetPathInfo(pathName);
+				if (pathInfo == null) {
+					Error.WriteLine("path " + pathName + " was not found in the network");
 					return CommandResultCode.ExecutionFailed;
 				}
+
+				address = pathInfo.RootLeader;
 			} else {
 				address = ServiceAddresses.ParseString(rootAddress);
 			}
 			
-			Out.WriteLine("removing path " + pathName + " from root " + address.ToString());
+			Out.WriteLine("removing path " + pathName + " from root " + address);
 
 			MachineProfile p = context.Network.GetMachineProfile(address);
 			if (p == null) {
@@ -43,7 +45,7 @@ namespace Deveel.Data.Net {
 			}
 
 			// Remove the path,
-			context.Network.RemovePath(address, pathName);
+			context.Network.RemovePath(pathName, address);
 			Out.WriteLine("done.");
 			return CommandResultCode.Success;
 		}

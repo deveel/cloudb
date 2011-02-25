@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 
 namespace Deveel.Data {
+	[DbTrusted]
 	public sealed class DbRowCursor : IEnumerator<DbRow> {
 		private readonly DbTable table;
 		private readonly long tableVersion;

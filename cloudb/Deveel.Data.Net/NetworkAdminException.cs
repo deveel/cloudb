@@ -14,7 +14,7 @@ namespace Deveel.Data.Net {
 		}
 
 		public override string StackTrace {
-			get { return stackTrace != null ? stackTrace : base.StackTrace; }
+			get { return stackTrace ?? base.StackTrace; }
 		}
 	}
 }

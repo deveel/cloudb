@@ -29,15 +29,16 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		public MachineProfile ManagerServer {
+		public MachineProfile[] ManagerServers {
 			get {
 				InspectNetwork();
 
+				List<MachineProfile> managers = new List<MachineProfile>();
 				foreach (MachineProfile machine in machine_profiles) {
 					if (machine.IsManager)
-						return machine;
+						managers.Add(machine);
 				}
-				return null;
+				return managers.ToArray();
 			}
 		}
 
@@ -94,6 +95,17 @@ namespace Deveel.Data.Net {
 			}
 
 			throw new NetworkAdminException("Machine '" + machine + "' is not in the network schema");
+		}
+
+		private static bool IsConnectionFailure(Message m) {
+			MessageError et = m.Error;
+			// If it's a connect exception,
+			string exType = et.Source;
+			if (exType.Equals("System.Net.Sockets.SocketException"))
+				return true;
+			if (exType.Equals("Deveel.Data.Net.ServiceNotConnectedException"))
+				return true;
+			return false;
 		}
 
 		public void Refresh() {

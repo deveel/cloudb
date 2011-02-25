@@ -31,16 +31,20 @@ namespace Deveel.Data {
 			this.maxMemoryLimit = maxMemoryLimit;
 		}
 
-		private int CalcHashValue(long p) {
-			int pp = ((int)-p & 0x0FFFFFFF);
-			return pp % hash.Length;
+		private int CalcHashValue(NodeId id) {
+			int hc = id.GetHashCode();
+			if (hc < 0) {
+				hc = -hc;
+			}
+			return hc % hash.Length;
 		}
 
 		private void HashNode(IHashNode node) {
-			int hash_index = CalcHashValue(node.Id);
-			IHashNode old_node = hash[hash_index];
-			hash[hash_index] = node;
-			node.NextHash = old_node;
+			NodeId nodeId = node.Id;
+			int hashIndex = CalcHashValue(nodeId);
+			IHashNode oldNode = hash[hashIndex];
+			hash[hashIndex] = node;
+			node.NextHash = oldNode;
 
 			// Add it to the start of the linked list,
 			if (hashStart != null) {
@@ -61,61 +65,65 @@ namespace Deveel.Data {
 			}
 		}
 
-		private long NextNodeId() {
+		private NodeId NextNodeId() {
 			long p = nodeIdSeq;
 			++nodeIdSeq;
+			// ISSUE: What happens if the node id sequence overflows?
+			//   The boundary is large enough that if we were to create a billion
+			//   nodes a second continuously, it would take 18 years to overflow.
 			nodeIdSeq = nodeIdSeq & 0x0FFFFFFFFFFFFFFFL;
-			return -p;
+
+			return NodeId.CreateInMemoryNode(p);
 		}
 
 		internal void Flush() {
-			List<IHashNode> to_flush = null;
+			List<IHashNode> toFlush = null;
 			int all_node_count = 0;
 			// If the memory use is above some limit then we need to flush out some
 			// of the nodes,
 			if (memoryUsed > maxMemoryLimit) {
 				all_node_count = totalBranchNodeCount + totalLeafNodeCount;
 				// The number to clean,
-				int to_clean = (int)(all_node_count * 0.30);
+				int toClean = (int)(all_node_count * 0.30);
 
 				// Make an array of all nodes to flush,
-				to_flush = new List<IHashNode>(to_clean);
+				toFlush = new List<IHashNode>(toClean);
 				// Pull them from the back of the list,
 				IHashNode node = hashEnd;
-				while (to_clean > 0 && node != null) {
-					to_flush.Add(node);
+				while (toClean > 0 && node != null) {
+					toFlush.Add(node);
 					node = node.Previous;
-					--to_clean;
+					--toClean;
 				}
 			}
 
 			// If there are nodes to flush,
-			if (to_flush != null) {
+			if (toFlush != null) {
 				// Read each group and call the node flush routine,
 
 				// The mapping of transaction to node list
-				Dictionary<ITransaction, List<long>> tran_map = new Dictionary<ITransaction, List<long>>();
+				Dictionary<ITransaction, List<NodeId>> tran_map = new Dictionary<ITransaction, List<NodeId>>();
 				// Read the list backwards,
-				for (int i = to_flush.Count - 1; i >= 0; --i) {
-					IHashNode node = to_flush[i];
+				for (int i = toFlush.Count - 1; i >= 0; --i) {
+					IHashNode node = toFlush[i];
 					// Get the transaction of this node,
 					ITransaction tran = node.Transaction;
 					// Find the list of this transaction,
-					List<long> node_list;
+					List<NodeId> node_list;
 					if (!tran_map.TryGetValue(tran, out node_list)) {
-						node_list = new List<long>(to_flush.Count);
+						node_list = new List<NodeId>(toFlush.Count);
 						tran_map[tran] = node_list;
 					}
 					// Add to the list
 					node_list.Add(node.Id);
 				}
 				// Now read the key and dispatch the clean up to the transaction objects,
-				foreach(KeyValuePair<ITransaction, List<long>> pair in tran_map) {
+				foreach(KeyValuePair<ITransaction, List<NodeId>> pair in tran_map) {
 					ITransaction tran = pair.Key;
-					List<long> node_list = pair.Value;
+					List<NodeId> node_list = pair.Value;
 					// Convert to a 'long[]' array,
 					int sz = node_list.Count;
-					long[] refs = new long[sz];
+					NodeId[] refs = new NodeId[sz];
 					for (int i = 0; i < sz; ++i) {
 						refs[i] = node_list[i];
 					}
@@ -128,38 +136,34 @@ namespace Deveel.Data {
 			}
 		}
 
-		public ITreeNode FetchNode(long id) {
+		public ITreeNode FetchNode(NodeId id) {
 			// Fetches the node out of the heap hash array.
 			int hashIndex = CalcHashValue(id);
-			IHashNode hash_node = hash[hashIndex];
-			while (hash_node != null &&
-				   hash_node.Id != id) {
-				hash_node = hash_node.NextHash;
+			IHashNode hashNode = hash[hashIndex];
+			while (hashNode != null && !hashNode.Id.Equals(id)) {
+				hashNode = hashNode.NextHash;
 			}
 
-			return hash_node;
+			return hashNode;
 		}
 
 		public TreeBranch CreateBranch(ITransaction tran, int maxBranchChildren) {
-			long p = NextNodeId();
+			NodeId p = NextNodeId();
 			HeapTreeBranch node = new HeapTreeBranch(tran, p, maxBranchChildren);
 			HashNode(node);
 			return node;
 		}
 
 		public TreeLeaf CreateLeaf(ITransaction tran, Key key, int maxLeafSize) {
-			long p = NextNodeId();
+			NodeId p = NextNodeId();
 			HeapTreeLeaf node = new HeapTreeLeaf(tran, p, maxLeafSize);
 			HashNode(node);
 			return node;
 		}
 
-		public ITreeNode Copy(ITreeNode nodeToCopy, int maxBranchSize, int maxLeafSize, ITransaction tran, bool locked) {
+		public ITreeNode Copy(ITreeNode nodeToCopy, int maxBranchSize, int maxLeafSize, ITransaction tran) {
 			// Create a new pointer for the copy
-			long p = NextNodeId();
-			if (locked) {
-				p = (long)((ulong)p & 0x0DFFFFFFFFFFFFFFFL);
-			}
+			NodeId p = NextNodeId();
 			IHashNode node;
 			if (nodeToCopy is TreeLeaf) {
 				node = new HeapTreeLeaf(tran, p, (TreeLeaf)nodeToCopy, maxLeafSize);
@@ -172,12 +176,12 @@ namespace Deveel.Data {
 			return node;
 		}
 
-		public void Delete(long id) {
+		public void Delete(NodeId id) {
 			int hash_index = CalcHashValue(id);
 			IHashNode hash_node = hash[hash_index];
 			IHashNode previous = null;
 			while (hash_node != null &&
-			       hash_node.Id != id) {
+			       !hash_node.Id.Equals(id)) {
 				previous = hash_node;
 				hash_node = hash_node.NextHash;
 			}
@@ -238,12 +242,12 @@ namespace Deveel.Data {
 
 			private readonly ITransaction tran;
 
-			internal HeapTreeBranch(ITransaction tran, long nodeId, int maxChildren)
+			internal HeapTreeBranch(ITransaction tran, NodeId nodeId, int maxChildren)
 				: base(nodeId, maxChildren) {
 				this.tran = tran;
 			}
 
-			internal HeapTreeBranch(ITransaction tran, long nodeId, TreeBranch branch, int maxChildren)
+			internal HeapTreeBranch(ITransaction tran, NodeId nodeId, TreeBranch branch, int maxChildren)
 				: base(nodeId, branch, maxChildren) {
 				this.tran = tran;
 			}
@@ -282,22 +286,21 @@ namespace Deveel.Data {
 
 			private readonly byte[] data;
 
-			private long nodeId;
+			private NodeId nodeId;
 			private int size;
 
 
-			internal HeapTreeLeaf(ITransaction tran, long nodeId, int maxCapacity) {
-				this.nodeId = nodeId;
-				this.size = 0;
+			internal HeapTreeLeaf(ITransaction tran, NodeId nodeId, int maxCapacity) {
 				this.tran = tran;
-				this.data = new byte[maxCapacity];
+				this.nodeId = nodeId;
+				size = 0;
+				data = new byte[maxCapacity];
 			}
 
-			internal HeapTreeLeaf(ITransaction tran, long nodeId, TreeLeaf toCopy, int maxCapacity)
-				: base() {
-				this.nodeId = nodeId;
-				this.size = toCopy.Length;
+			internal HeapTreeLeaf(ITransaction tran, NodeId nodeId, TreeLeaf toCopy, int maxCapacity) {
 				this.tran = tran;
+				this.nodeId = nodeId;
+				size = toCopy.Length;
 				// Copy the data into an array in this leaf.
 				data = new byte[maxCapacity];
 				toCopy.Read(0, data, 0, size);
@@ -305,7 +308,7 @@ namespace Deveel.Data {
 
 			// ---------- Implemented from TreeLeaf ----------
 
-			public override long Id {
+			public override NodeId Id {
 				get { return nodeId; }
 			}
 

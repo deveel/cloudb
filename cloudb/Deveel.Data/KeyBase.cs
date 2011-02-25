@@ -80,10 +80,10 @@ namespace Deveel.Data {
 			// on the key values,
 
 			// Compare secondary keys
-			int c = (secondary - key.secondary);
+		    int c = secondary < key.secondary ? -1 : (secondary == key.secondary ? 0 : 1);
 			if (c == 0) {
 				// Compare types
-				c = (type - key.type);
+			    c = type < key.type ? -1 : (type == key.type ? 0 : 1);
 				if (c == 0) {
 					// Compare primary keys
 					if (primary > key.primary)

@@ -25,7 +25,11 @@ namespace Deveel.Data {
 		/// Gets the maximum size of the local transaction node heaps.
 		/// </summary>
 		long NodeHeapMaxSize { get; }
-		
+
+		/// <summary>
+		/// 
+		/// </summary>
+		bool NotifyForAllNodes { get; }
 
 		/// <summary>
 		/// Flushes all data stored in the local cache of the system
@@ -41,7 +45,7 @@ namespace Deveel.Data {
 		/// <returns>
 		/// Returns a list of <see cref="ITreeNode"/> of the nodes fetched.
 		/// </returns>
-		IList<ITreeNode> FetchNodes(long[] nids);
+		IList<ITreeNode> FetchNodes(NodeId[] nids);
 
 		/// <summary>
 		/// Checks if a node with the given identifier is cached.
@@ -51,13 +55,13 @@ namespace Deveel.Data {
 		/// Returns <b>true</b> if the node identified was stored in the
 		/// local cache, ot <b>false</b> otherwise.
 		/// </returns>
-		bool IsNodeAvailable(long nodeId);
+		bool IsNodeAvailable(NodeId nodeId);
 		
 		/// <summary>
 		/// Creates a shadow link to the leaf identified.
 		/// </summary>
 		/// <param name="key"></param>
-		/// <param name="reference"></param>
+		/// <param name="id"></param>
 		/// <remarks>
 		/// A shadow link is a reference from a branch to a leaf that
 		/// is already linked by another branch.
@@ -71,7 +75,7 @@ namespace Deveel.Data {
 		/// Returns <b>true</b> if establishing the shadow link was successful, 
 		/// othrwise <b>false</b> if the shadow link was not possible.
 		/// </returns>
-		bool LinkLeaf(Key key, long reference);
+		bool LinkLeaf(Key key, NodeId id);
 
 		/// <summary>
 		/// Disposes a node that was created or linked to the system.
@@ -82,7 +86,7 @@ namespace Deveel.Data {
 		/// this method decrements the number of references to the node, untill
 		/// total removal from the cache.
 		/// </remarks>
-		void DisposeNode(long nid);
+		void DisposeNode(NodeId nid);
 
 		/// <summary>
 		/// Sets the current state of the tree in error.
@@ -110,6 +114,6 @@ namespace Deveel.Data {
 		/// Returns a list of node identifiers for every node written to the 
 		/// backing storage on the completion of the process.
 		/// </returns>
-		IList<long> Persist(TreeWrite write);
+		IList<NodeId> Persist(TreeWrite write);
 	}
 }

@@ -18,9 +18,11 @@ namespace Deveel.Data.Net {
 		}
 
 		private void RollbackPathToTime(NetworkContext context, string pathName, DateTime time) {
-			IServiceAddress address = context.Network.GetRoot(pathName);
-			if (address == null)
+			PathInfo pathInfo = context.Network.GetPathInfo(pathName);
+			if (pathInfo == null)
 				throw new ApplicationException("path '" + pathName + "' was not found.");
+
+			IServiceAddress address = pathInfo.RootLeader;
 
 			Out.WriteLine("Reverting path " + pathName + " to " + time);
 

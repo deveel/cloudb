@@ -4,15 +4,15 @@ using System.Collections.Generic;
 
 namespace Deveel.Data.Net {
 	public sealed class SingleNodeSet : NodeSet {
-		internal SingleNodeSet(long blockId, int dataId, byte[] buffer)
-			: base(new long[] { new DataAddress(blockId, dataId).Value}, buffer) {
+		internal SingleNodeSet(BlockId blockId, int dataId, byte[] buffer)
+			: base(new NodeId[] { new DataAddress(blockId, dataId).Value}, buffer) {
 		}
 
-		internal SingleNodeSet(long nodeId, byte[] buffer)
-			: base(new long[] { nodeId}, buffer) {
+		internal SingleNodeSet(NodeId nodeId, byte[] buffer)
+			: base(new NodeId[] { nodeId}, buffer) {
 		}
 
-		internal SingleNodeSet(long[] nodeIds, byte[] buffer)
+		internal SingleNodeSet(NodeId[] nodeIds, byte[] buffer)
 			: base(nodeIds, buffer) {
 		}
 

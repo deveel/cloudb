@@ -5,15 +5,15 @@ using System.IO;
 
 namespace Deveel.Data.Net {
 	public abstract class NodeSet : IEnumerable<Node> {
-		protected NodeSet(long[] nodeIds, byte[] buffer) {
+		protected NodeSet(NodeId[] nodeIds, byte[] buffer) {
 			this.nodeIds = nodeIds;
 			this.buffer = buffer;
 		}
 
-		private readonly long[] nodeIds;
+		private readonly NodeId[] nodeIds;
 		private readonly byte[] buffer;
 
-		public long [] NodeIds {
+		public NodeId [] NodeIds {
 			get { return nodeIds; }
 		}
 
@@ -25,7 +25,9 @@ namespace Deveel.Data.Net {
 			BinaryWriter writer = new BinaryWriter(output);
 			writer.Write(nodeIds.Length);
 			for (int i = 0; i < nodeIds.Length; ++i) {
-				writer.Write(nodeIds[i]);
+				NodeId nodeId = nodeIds[i];
+				writer.Write(nodeId.High);
+				writer.Write(nodeId.Low);
 			}
 
 			writer.Write(buffer.Length);

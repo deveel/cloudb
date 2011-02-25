@@ -59,20 +59,26 @@ namespace Deveel.Data {
 
 		[Test]
 		public void TestAddPath() {
-			networkProfile.AddPath(FakeServiceAddress.Local, PathName, PathTypeName);
+			networkProfile.AddPath(PathName, PathTypeName, FakeServiceAddress.Local,
+			                       new IServiceAddress[] {FakeServiceAddress.Local});
 			networkProfile.Refresh();
 
-			PathProfile[] pathProfiles = networkProfile.GetPathsFromRoot(FakeServiceAddress.Local);
-			Assert.IsTrue(Array.Exists(pathProfiles, PathProfileExists));
+			PathInfo pathInfo = networkProfile.GetPathInfo(PathName);
+			Assert.IsNotNull(pathInfo);
+			Assert.Contains(FakeServiceAddress.Local, pathInfo.RootServers);
+			Assert.AreEqual(FakeServiceAddress.Local, pathInfo.RootLeader);
 		}
 
 		[Test]
 		public void TestConnectAndDisconnectClient() {
-			networkProfile.AddPath(FakeServiceAddress.Local, PathName, PathTypeName);
+			networkProfile.AddPath(PathName, PathTypeName, FakeServiceAddress.Local,
+			                       new IServiceAddress[] {FakeServiceAddress.Local});
 			networkProfile.Refresh();
 
-			PathProfile[] pathProfiles = networkProfile.GetPathsFromRoot(FakeServiceAddress.Local);
-			Assert.IsTrue(Array.Exists(pathProfiles, PathProfileExists));
+			PathInfo pathInfo = networkProfile.GetPathInfo(PathName);
+			Assert.IsNotNull(pathInfo);
+			Assert.Contains(FakeServiceAddress.Local, pathInfo.RootServers);
+			Assert.AreEqual(FakeServiceAddress.Local, pathInfo.RootLeader);
 
 			NetworkClient client = new NetworkClient(FakeServiceAddress.Local, new FakeServiceConnector(adminService));
 			client.Connect();
@@ -84,11 +90,14 @@ namespace Deveel.Data {
 
 		[Test]
 		public void TestCreateTransaction() {
-			networkProfile.AddPath(FakeServiceAddress.Local, PathName, PathTypeName);
+			networkProfile.AddPath(PathName, PathTypeName, FakeServiceAddress.Local,
+			                       new IServiceAddress[] {FakeServiceAddress.Local});
 			networkProfile.Refresh();
 
-			PathProfile[] pathProfiles = networkProfile.GetPathsFromRoot(FakeServiceAddress.Local);
-			Assert.IsTrue(Array.Exists(pathProfiles, PathProfileExists));
+			PathInfo pathInfo = networkProfile.GetPathInfo(PathName);
+			Assert.IsNotNull(pathInfo);
+			Assert.Contains(FakeServiceAddress.Local, pathInfo.RootServers);
+			Assert.AreEqual(FakeServiceAddress.Local, pathInfo.RootLeader);
 
 			NetworkClient client = new NetworkClient(FakeServiceAddress.Local, new FakeServiceConnector(adminService));
 			client.Connect();
@@ -101,11 +110,15 @@ namespace Deveel.Data {
 
 		[Test]
 		public void TestCreateTable() {
-			networkProfile.AddPath(FakeServiceAddress.Local, PathName, PathTypeName);
+			networkProfile.AddPath(PathName, PathTypeName, FakeServiceAddress.Local,
+								   new IServiceAddress[] { FakeServiceAddress.Local });
 			networkProfile.Refresh();
 
-			PathProfile[] pathProfiles = networkProfile.GetPathsFromRoot(FakeServiceAddress.Local);
-			Assert.IsTrue(Array.Exists(pathProfiles, PathProfileExists));
+			PathInfo pathInfo = networkProfile.GetPathInfo(PathName);
+			Assert.IsNotNull(pathInfo);
+			Assert.Contains(FakeServiceAddress.Local, pathInfo.RootServers);
+			Assert.AreEqual(FakeServiceAddress.Local, pathInfo.RootLeader);
+
 
 			NetworkClient client = new NetworkClient(FakeServiceAddress.Local, new FakeServiceConnector(adminService));
 			client.Connect();
@@ -145,11 +158,15 @@ namespace Deveel.Data {
 
 		[Test]
 		public void TestCreateTableAndInsertData() {
-			networkProfile.AddPath(FakeServiceAddress.Local, PathName, PathTypeName);
+			networkProfile.AddPath(PathName, PathTypeName, FakeServiceAddress.Local,
+								   new IServiceAddress[] { FakeServiceAddress.Local });
 			networkProfile.Refresh();
 
-			PathProfile[] pathProfiles = networkProfile.GetPathsFromRoot(FakeServiceAddress.Local);
-			Assert.IsTrue(Array.Exists(pathProfiles, PathProfileExists));
+			PathInfo pathInfo = networkProfile.GetPathInfo(PathName);
+			Assert.IsNotNull(pathInfo);
+			Assert.Contains(FakeServiceAddress.Local, pathInfo.RootServers);
+			Assert.AreEqual(FakeServiceAddress.Local, pathInfo.RootLeader);
+
 
 			NetworkClient client = new NetworkClient(FakeServiceAddress.Local, new FakeServiceConnector(adminService));
 			client.Connect();
@@ -244,11 +261,14 @@ namespace Deveel.Data {
 		
 		[Test]
 		public void TestCreateTableAndInsertDataInSameTransaction() {
-			networkProfile.AddPath(FakeServiceAddress.Local, PathName, PathTypeName);
+			networkProfile.AddPath(PathName, PathTypeName, FakeServiceAddress.Local,
+								   new IServiceAddress[] { FakeServiceAddress.Local });
 			networkProfile.Refresh();
 
-			PathProfile[] pathProfiles = networkProfile.GetPathsFromRoot(FakeServiceAddress.Local);
-			Assert.IsTrue(Array.Exists(pathProfiles, PathProfileExists));
+			PathInfo pathInfo = networkProfile.GetPathInfo(PathName);
+			Assert.IsNotNull(pathInfo);
+			Assert.Contains(FakeServiceAddress.Local, pathInfo.RootServers);
+			Assert.AreEqual(FakeServiceAddress.Local, pathInfo.RootLeader);
 
 			NetworkClient client = new NetworkClient(FakeServiceAddress.Local, new FakeServiceConnector(adminService));
 			client.Connect();
@@ -322,11 +342,14 @@ namespace Deveel.Data {
 		
 		[Test]
 		public void TestInsertAndQueryData() {
-			networkProfile.AddPath(FakeServiceAddress.Local, PathName, PathTypeName);
+			networkProfile.AddPath(PathName, PathTypeName, FakeServiceAddress.Local,
+								   new IServiceAddress[] { FakeServiceAddress.Local });
 			networkProfile.Refresh();
 
-			PathProfile[] pathProfiles = networkProfile.GetPathsFromRoot(FakeServiceAddress.Local);
-			Assert.IsTrue(Array.Exists(pathProfiles, PathProfileExists));
+			PathInfo pathInfo = networkProfile.GetPathInfo(PathName);
+			Assert.IsNotNull(pathInfo);
+			Assert.Contains(FakeServiceAddress.Local, pathInfo.RootServers);
+			Assert.AreEqual(FakeServiceAddress.Local, pathInfo.RootLeader);
 
 			NetworkClient client = new NetworkClient(FakeServiceAddress.Local, new FakeServiceConnector(adminService));
 			client.Connect();
@@ -417,11 +440,14 @@ namespace Deveel.Data {
 		
 		[Test]
 		public void TestInsertAndUpdateData() {
-			networkProfile.AddPath(FakeServiceAddress.Local, PathName, PathTypeName);
+			networkProfile.AddPath(PathName, PathTypeName, FakeServiceAddress.Local,
+								   new IServiceAddress[] { FakeServiceAddress.Local });
 			networkProfile.Refresh();
 
-			PathProfile[] pathProfiles = networkProfile.GetPathsFromRoot(FakeServiceAddress.Local);
-			Assert.IsTrue(Array.Exists(pathProfiles, PathProfileExists));
+			PathInfo pathInfo = networkProfile.GetPathInfo(PathName);
+			Assert.IsNotNull(pathInfo);
+			Assert.Contains(FakeServiceAddress.Local, pathInfo.RootServers);
+			Assert.AreEqual(FakeServiceAddress.Local, pathInfo.RootLeader);
 
 			NetworkClient client = new NetworkClient(FakeServiceAddress.Local, new FakeServiceConnector(adminService));
 			client.Connect();
@@ -509,11 +535,14 @@ namespace Deveel.Data {
 
 		[Test]
 		public void DeleteSingleRow() {
-			networkProfile.AddPath(FakeServiceAddress.Local, PathName, PathTypeName);
+			networkProfile.AddPath(PathName, PathTypeName, FakeServiceAddress.Local,
+								   new IServiceAddress[] { FakeServiceAddress.Local });
 			networkProfile.Refresh();
 
-			PathProfile[] pathProfiles = networkProfile.GetPathsFromRoot(FakeServiceAddress.Local);
-			Assert.IsTrue(Array.Exists(pathProfiles, PathProfileExists));
+			PathInfo pathInfo = networkProfile.GetPathInfo(PathName);
+			Assert.IsNotNull(pathInfo);
+			Assert.Contains(FakeServiceAddress.Local, pathInfo.RootServers);
+			Assert.AreEqual(FakeServiceAddress.Local, pathInfo.RootLeader);
 
 			NetworkClient client = new NetworkClient(FakeServiceAddress.Local, new FakeServiceConnector(adminService));
 			client.Connect();
@@ -594,14 +623,6 @@ namespace Deveel.Data {
 			}
 
 			Assert.AreEqual(1, deleteCount);
-		}
-
-		private static bool PathProfileExists(PathProfile profile) {
-			if (profile.Path != PathName)
-				return false;
-			if (profile.PathType != PathTypeName)
-				return false;
-			return true;
 		}
 	}
 }

@@ -259,17 +259,5 @@ namespace Deveel.Data {
 		public TreeGraph CreateGraph() {
 			return treeSystem.CreateGraph();
 		}
-
-		public static void CopyData(ITransaction source, ITransaction destination) {
-			// The transaction in this object,
-			TreeSystemTransaction sourcet = (TreeSystemTransaction)source;
-			foreach(Key key in sourcet.Keys) {
-				// Get the source and destination files
-				DataFile sourceFile = sourcet.GetFile(key, FileAccess.ReadWrite);
-				DataFile destFile = destination.GetFile(key, FileAccess.Write);
-				// Copy the data
-				sourceFile.CopyTo(destFile, sourceFile.Length);
-			}
-		}
 	}
 }

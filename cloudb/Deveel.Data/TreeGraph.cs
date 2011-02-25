@@ -13,6 +13,11 @@ namespace Deveel.Data {
 			Init(nodeName, areaRef);
 		}
 
+		public TreeGraph(string nodeName, NodeId areaRef)
+			: this() {
+			Init(nodeName, areaRef);
+		}
+
 
 		private readonly Dictionary<string, string> properties;
 		private readonly List<TreeGraph> children;
@@ -20,6 +25,11 @@ namespace Deveel.Data {
 		public void Init(string nodeName, long areaRef) {
 			SetProperty("name", nodeName);
 			SetProperty("ref", areaRef);
+		}
+
+		public void Init(string nodeName, NodeId areaRef) {
+			SetProperty("name", nodeName);
+			SetProperty("ref", areaRef.ToString());
 		}
 
 		public void SetProperty(string key, string value) {

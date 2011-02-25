@@ -1,0 +1,37 @@
+2011-01-08  Antonello Provenzano  <antonello@deveel.com>
+	* IDataRange.cs: added to support access to sets of
+	DataFile objects.
+	* ITransaction.cs: added methods GetRange to return
+	a set of Datafile objects.
+	* DataFile.cs: 
+		- moved to parent namespace
+		- added method ReplicateTo
+	* TreeBranch.cs: 
+		- Id property now returns an object NodeId
+		- SetKeyValueToLeft overload removed
+		- GetChild method returns NodeId object
+	* ITreeSystem.cs:
+		- methods now accept NodeId arguments
+		- added property NotifyForAllNodes
+	* TreeSystemTransaction.cs:
+		- long integer references to nodes replaced 
+		by NodeId objects
+		- RootNodeId is now internally settable
+		- added properties TreeSystem and TreeHeight
+	* FileSystemDatabase.cs: removed method CopyData
+	
+2011-01-07  Antonello Provenzano  <antonello@deveel.com>
+	* KeyBase.cs: comparison method optimized
+	* ByteBuffer.cs: 
+		- moved to Deveel.Data namespace;
+		- implements IComparable interface
+		- equality comparison
+		- added a read-only flag (and checking)
+	* ByteBufferStream.cs: implemented to support
+	streaming data from a ByteBuffer object
+	* Quadruple.cs: introduced to support 128-bit
+	integer support.
+	* NodeReference.cs:
+	* ITreeNode.cs: type of property Id replaced to NodeId.
+	* TreeLeaf.cs: type of property Id replaced to NodeId.
+	* SparseLeafNode.cs: moved as inner class to NodeId

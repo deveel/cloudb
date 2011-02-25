@@ -13,7 +13,7 @@ namespace Deveel.Data {
 	/// on a <see cref="IStore"/>.
 	/// </summary>
 	public sealed class StoreTreeSystem : ITreeSystem {
-		private volatile ErrorStateException errorState = null;
+		private volatile ErrorStateException errorState;
 
 		private readonly List<VersionInfo> versions;
 		private readonly long nodeHeapMaxSize;
@@ -38,7 +38,7 @@ namespace Deveel.Data {
 			this.maxLeafByteSize = maxLeafByteSize;
 			this.store = store;
 			this.nodeHeapMaxSize = nodeMaxCacheMemory;
-			this.versions = new List<VersionInfo>();
+			versions = new List<VersionInfo>();
 
 			// Allocate some values for the branch cache,
 			long branchSizeEstimate = (maxBranchSize * 24) + 64;
@@ -48,7 +48,7 @@ namespace Deveel.Data {
 			// Find a close prime to this
 			int branch_prime = Cache.ClosestPrime(branchCacheElements + 20);
 			// Allocate the cache
-			this.branchCache = new MemoryCache(branch_prime, branchCacheElements, 20);
+			branchCache = new MemoryCache(branch_prime, branchCacheElements, 20);
 
 			initialized = false;
 		}
@@ -65,18 +65,28 @@ namespace Deveel.Data {
 			get { return nodeHeapMaxSize; }
 		}
 
-		private long WriteVersionInfo(long versionId, long rootNodeId, IList<long> deletedRefs) {
+		public bool NotifyForAllNodes {
+			get {
+				// All nodes must be accounted for in this implementation,
+				return true;
+			}
+		}
+
+		private long WriteVersionInfo(long versionId, NodeId rootNodeId, IList<NodeId> deletedRefs) {
 			int delRefCount = deletedRefs.Count;
 
 			// Write the version info and the deleted refs to a new area,
-			IAreaWriter area = store.CreateArea(4 + 4 + 8 + 8 + 4 + (delRefCount * 8));
+			IAreaWriter area = store.CreateArea(4 + 4 + 8 + 8 + 8 + 4 + (delRefCount * 16));
 			area.WriteInt4(0x04EA23);
 			area.WriteInt4(1);
 			area.WriteInt8(versionId);
-			area.WriteInt8(rootNodeId);
+			area.WriteInt8(rootNodeId.High);
+			area.WriteInt8(rootNodeId.Low);
 			area.WriteInt4(delRefCount);
 			for (int i = 0; i < delRefCount; ++i) {
-				area.WriteInt8(deletedRefs[i]);
+				NodeId deletedNode = deletedRefs[i];
+				area.WriteInt8(deletedNode.High);
+				area.WriteInt8(deletedNode.Low);
 			}
 			area.Finish();
 
@@ -88,7 +98,9 @@ namespace Deveel.Data {
 			int magic = verArea.ReadInt4();
 			int version = verArea.ReadInt4();
 			long versionId = verArea.ReadInt8();
-			long rootNodeId = verArea.ReadInt8();
+			long rniHigh = verArea.ReadInt8();
+			long rniLow = verArea.ReadInt8();
+			NodeId rootNodeId = new NodeId(rniHigh, rniLow);
 
 			if (magic != 0x04EA23)
 				throw new IOException("Incorrect magic value.");
@@ -101,19 +113,19 @@ namespace Deveel.Data {
 		[MethodImpl(MethodImplOptions.Synchronized)]
 		private long WriteVersionsList(long versionId, TreeSystemTransaction tran) {
 			// Write the version info and the deleted refs to a new area,
-			long rootNodeId = tran.RootNodeId;
-			if (rootNodeId < 0)
-				throw new ApplicationException("Assertion failed, root_node is on heap.");
+			NodeId rootNodeId = tran.RootNodeId;
+			if (rootNodeId.IsInMemory)
+				throw new ApplicationException("Assertion failed, root node is on heap.");
 
 			// Get the list of all nodes deleted in the transaction
-			IList<long> deletedNodes = tran.DeletedNodes;
+			IList<NodeId> deletedNodes = tran.DeletedNodes;
 
 			// Sort it
-			((List<long>)deletedNodes).Sort();
+			((List<NodeId>)deletedNodes).Sort();
 
 			// Check for any duplicate entries (we shouldn't double delete stuff).
 			for (int i = 1; i < deletedNodes.Count; ++i) {
-				if (deletedNodes[i - 1] == deletedNodes[i]) {
+				if (deletedNodes[i - 1].Equals(deletedNodes[i])) {
 					// Oops, duplicated delete
 					throw new ApplicationException("Duplicate records in delete list.");
 				}
@@ -155,10 +167,10 @@ namespace Deveel.Data {
 			return verId;
 		}
 
-		private ITreeNode FetchNode(long nodeId) {
+		private ITreeNode FetchNode(NodeId nodeId) {
 			// Is it a special static node?
-			if ((nodeId & 0x01000000000000000L) != 0)
-				return SparseLeafNode.Create(nodeId);
+			if (nodeId.IsSpecial)
+				return nodeId.CreateSpecialTreeNode();
 
 			// Is this a branch node in the cache?
 			TreeBranch branch;
@@ -172,7 +184,7 @@ namespace Deveel.Data {
 			// create the node type.
 
 			// Get the area for the node
-			IArea nodeArea = store.GetArea(nodeId);
+			IArea nodeArea = store.GetArea(ToInt64StoreAddress(nodeId));
 			// Wrap around a BinaryReader for reading values from the store.
 			BinaryReader reader = new BinaryReader(new AreaInputStream(nodeArea, 256));
 
@@ -187,7 +199,8 @@ namespace Deveel.Data {
 				// Return a leaf that's mapped to the data in the store
 				nodeArea.Position = 0;
 				return new AreaTreeLeaf(nodeId, leafSize, nodeArea);
-			} else if (nodeType == BranchType) {
+			} 
+			if (nodeType == BranchType) {
 				// Note that the entire branch is loaded into memory now,
 				reader.ReadInt16();  // version
 				int childDataSize = reader.ReadInt32();
@@ -224,13 +237,13 @@ namespace Deveel.Data {
 			throw new ApplicationException("Unable to find version to unlock: " + versionId);
 		}
 
-		private void DoDisposeNode(long nodeId) {
+		private void DoDisposeNode(NodeId nodeId) {
 			// If the node is a special node, then we don't dispose it
-			if ((nodeId & 0x01000000000000000L) != 0)
+			if (nodeId.IsSpecial)
 				return;
 
 			// Is it a leaf node?
-			IMutableArea nodeArea = store.GetMutableArea(nodeId);
+			IMutableArea nodeArea = store.GetMutableArea(ToInt64StoreAddress(nodeId));
 			nodeArea.Position = 0;
 			int nodeType = nodeArea.ReadInt2();
 			if (nodeType == LeafType) {
@@ -264,7 +277,7 @@ namespace Deveel.Data {
 			}
 
 			// Delete the area
-			store.DeleteArea(nodeId);
+			store.DeleteArea(ToInt64StoreAddress(nodeId));
 		}
 
 		private void DisposeOldVersions() {
@@ -347,15 +360,18 @@ namespace Deveel.Data {
 								throw new ApplicationException("Magic value for version area is incorrect.");
 
 							version_area.ReadInt8();		// version id
-							version_area.ReadInt8();		// root node id
+							version_area.ReadInt8();		// node root high
+							version_area.ReadInt8();		// node root low
 
 							int nodeCount = version_area.ReadInt4();
 							// For each node,
 							for (int n = 0; n < nodeCount; ++n) {
 								// Read the next area
-								long delNodeRef = version_area.ReadInt8();
+								long drnHigh = version_area.ReadInt8();
+								long drnLow = version_area.ReadInt8();
+								NodeId delNodeId = new NodeId(drnHigh, drnLow);
 								// Cleanly disposes the node
-								DoDisposeNode(delNodeRef);
+								DoDisposeNode(delNodeId);
 							}
 
 							// Delete the node header,
@@ -372,12 +388,12 @@ namespace Deveel.Data {
 			return new TreeSystemTransaction(this, vinfo.VersionId, vinfo.RootNodeId, false);
 		}
 
-		private TreeGraph CreateRootGraph(Key leftKey, long reference) {
+		private TreeGraph CreateRootGraph(Key leftKey, NodeId reference) {
 			// The node being returned
 			TreeGraph graph;
 
 			// Open the area
-			IArea area = store.GetArea(reference);
+			IArea area = store.GetArea(ToInt64StoreAddress(reference));
 			// What type of node is this?
 			short nodeType = area.ReadInt2();
 			// The version
@@ -411,16 +427,16 @@ namespace Deveel.Data {
 				graph.SetProperty("branch_size", branch.ChildCount);
 				// Recursively add each child into the tree
 				for (int i = 0; i < branch.ChildCount; ++i) {
-					long child_ref = branch.GetChild(i);
+					NodeId childId = branch.GetChild(i);
 					// If the ref is a special node, skip it
-					if ((child_ref & 0x01000000000000000L) != 0) {
+					if (childId.IsSpecial) {
 						// Should we record special nodes?
 					} else {
 						Key newLeftKey = (i > 0) ? branch.GetKey(i) : leftKey;
 						TreeGraph bn = new TreeGraph("child_meta", reference);
 						bn.SetProperty("extent", branch.GetChildLeafElementCount(i));
 						graph.AddChild(bn);
-						graph.AddChild(CreateRootGraph(newLeftKey, child_ref));
+						graph.AddChild(CreateRootGraph(newLeftKey, childId));
 					}
 				}
 			} else {
@@ -451,21 +467,18 @@ namespace Deveel.Data {
 			TreeWrite treeWrite = new TreeWrite();
 			treeWrite.NodeWrite(headLeaf);
 			treeWrite.NodeWrite(tailLeaf);
-			IList<long> refs = Persist(treeWrite);
+			IList<NodeId> refs = Persist(treeWrite);
 
 			// Create a branch,
 			TreeBranch rootBranch = nodeHeap.CreateBranch(null, MaxBranchSize);
-			rootBranch.Set(refs[0], 4,
-			               Key.Tail.GetEncoded(1),
-			               Key.Tail.GetEncoded(2),
-			               refs[1], 4);
+			rootBranch.Set(refs[0], 4, Key.Tail, refs[1], 4);
 
 			treeWrite = new TreeWrite();
 			treeWrite.NodeWrite(rootBranch);
 			refs = Persist(treeWrite);
 
 			// The written root node reference,
-			long rootId = refs[0];
+			NodeId rootId = refs[0];
 
 			// Delete the head and tail leaf, and the root branch
 			nodeHeap.Delete(headLeaf.Id);
@@ -473,7 +486,7 @@ namespace Deveel.Data {
 			nodeHeap.Delete(rootBranch.Id);
 
 			// Write this version info to the store,
-			long versionId = WriteVersionInfo(1, rootId, new List<long>(0));
+			long versionId = WriteVersionInfo(1, rootId, new List<NodeId>(0));
 
 			// Make a first version
 			versions.Add(new VersionInfo(1, rootId, versionId));
@@ -500,6 +513,14 @@ namespace Deveel.Data {
 			initialized = true;
 			// And return the header reference
 			return headerId;
+		}
+
+		private static NodeId FromInt64StoreAddress(long ref64bit) {
+			return new NodeId(0, ref64bit);
+		}
+
+		private static long ToInt64StoreAddress(NodeId nodeId) {
+			return nodeId.Low;
 		}
 
 		public void Init(long headerId) {
@@ -555,7 +576,7 @@ namespace Deveel.Data {
 			}
 		}
 
-		public IList<ITreeNode> FetchNodes(long[] nids) {
+		public IList<ITreeNode> FetchNodes(NodeId[] nids) {
 			int sz = nids.Length;
 			List<ITreeNode> nodes = new List<ITreeNode>(sz);
 			for (int i = 0; i < sz; ++i) {
@@ -564,24 +585,24 @@ namespace Deveel.Data {
 			return nodes;
 		}
 
-		public bool IsNodeAvailable(long node_ref) {
+		public bool IsNodeAvailable(NodeId nodeId) {
 			// Special node ref,
-			if ((node_ref & 0x01000000000000000L) != 0)
+			if (nodeId.IsSpecial)
 				return true;
 			// Otherwise return true (all data for store backed tree systems is local),
 			return true;
 		}
 
-		public bool LinkLeaf(Key key, long reference) {
+		public bool LinkLeaf(Key key, NodeId nodeId) {
 			// If the node is a special node, then we don't need to reference count it.
-			if ((reference & 0x01000000000000000L) != 0)
+			if (nodeId.IsSpecial)
 				return true;
 
 			try {
 				store.LockForWrite();
 
 				// Get the area as a MutableArea object
-				IMutableArea leafArea = store.GetMutableArea(reference);
+				IMutableArea leafArea = store.GetMutableArea(ToInt64StoreAddress(nodeId));
 
 				// We synchronize over a reference count lock
 				// (Pending: should we lock by area instead?  Not sure it will be
@@ -611,7 +632,7 @@ namespace Deveel.Data {
 			}
 		}
 
-		public void DisposeNode(long nodeId) {
+		public void DisposeNode(NodeId nodeId) {
 			try {
 				store.LockForWrite();
 				DoDisposeNode(nodeId);
@@ -717,7 +738,7 @@ namespace Deveel.Data {
 			}
 		}
 
-		public IList<long> Persist(TreeWrite write) {
+		public IList<NodeId> Persist(TreeWrite write) {
 			try {
 				store.LockForWrite();
 
@@ -730,7 +751,7 @@ namespace Deveel.Data {
 				// The list of nodes to be allocated,
 				int sz = nodes.Count;
 				// The list of allocated referenced for the nodes,
-				long[] refs = new long[sz];
+				NodeId[] refs = new NodeId[sz];
 				// The list of area writers,
 				IAreaWriter[] areas = new IAreaWriter[sz];
 
@@ -747,7 +768,7 @@ namespace Deveel.Data {
 						areas[i] = store.CreateArea(12 + lfsz);
 					}
 					// Set the reference,
-					refs[i] = areas[i].Id;
+					refs[i] = FromInt64StoreAddress(areas[i].Id);
 				}
 
 				// Now write out the data,
@@ -762,8 +783,8 @@ namespace Deveel.Data {
 						// For each child, if it's a heap node, look up the child id and
 						// reference map in the sequence and set the reference accordingly,
 						for (int o = 0; o < chsz; ++o) {
-							long childId = branch.GetChild(o);
-							if (childId < 0) {
+							NodeId childId = branch.GetChild(o);
+							if (childId.IsInMemory) {
 								// The ref is currently on the heap, so adjust accordingly
 								int refId = write.LookupRef(i, o);
 								branch.SetChild(o, refs[refId]);
@@ -845,7 +866,9 @@ namespace Deveel.Data {
 				int magic = vInfoArea.ReadInt4();
 				int ver = vInfoArea.ReadInt4();
 				long versionId = vInfoArea.ReadInt8();
-				long rootNodeRef = vInfoArea.ReadInt8();
+				long rniHigh = vInfoArea.ReadInt8();
+				long rniLow = vInfoArea.ReadInt8();
+				NodeId rootNodeId = new NodeId(rniHigh, rniLow);
 				vInfoGraph.SetProperty("magic", magic);
 				vInfoGraph.SetProperty("ver", ver);
 				vInfoGraph.SetProperty("version_id", versionId);
@@ -853,13 +876,16 @@ namespace Deveel.Data {
 				int deleted_area_count = vInfoArea.ReadInt4();
 				if (deleted_area_count > 0) {
 					for (int n = 0; n < deleted_area_count; ++n) {
-						long delNodeRef = vInfoArea.ReadInt8();
-						vInfoGraph.AddChild(new TreeGraph("delete", delNodeRef));
+						long delnHigh = vInfoArea.ReadInt8();
+						long delnLow = vInfoArea.ReadInt8();
+						NodeId delNodeId = new NodeId(delnHigh, delnLow);
+
+						vInfoGraph.AddChild(new TreeGraph("delete", delNodeId));
 					}
 				}
 
 				// Add the child node (the root node of the version graph).
-				vInfoGraph.AddChild(CreateRootGraph(Key.Head, rootNodeRef));
+				vInfoGraph.AddChild(CreateRootGraph(Key.Head, rootNodeId));
 
 				// Add this to the version list node
 				versions_node.AddChild(vInfoGraph);
@@ -874,11 +900,11 @@ namespace Deveel.Data {
 
 		public sealed class VersionInfo {
 			private readonly long versionId;
-			private readonly long rootNodeId;
+			private readonly NodeId rootNodeId;
 			internal readonly long versionInfoRef;
 			private int lockCount;
 
-			public VersionInfo(long versionId, long rootNodeId, long versionInfoRef) {
+			public VersionInfo(long versionId, NodeId rootNodeId, long versionInfoRef) {
 				this.versionId = versionId;
 				this.rootNodeId = rootNodeId;
 				this.versionInfoRef = versionInfoRef;
@@ -888,7 +914,7 @@ namespace Deveel.Data {
 				get { return versionId; }
 			}
 
-			public long RootNodeId {
+			public NodeId RootNodeId {
 				get { return rootNodeId; }
 			}
 
@@ -909,7 +935,7 @@ namespace Deveel.Data {
 			public override bool Equals(object ob) {
 				VersionInfo dest_v = (VersionInfo)ob;
 				return (dest_v.versionId == versionId &&
-				        dest_v.rootNodeId == rootNodeId);
+				        dest_v.rootNodeId.Equals(rootNodeId));
 			}
 
 			public override int GetHashCode() {
@@ -923,22 +949,21 @@ namespace Deveel.Data {
 
 		class AreaTreeLeaf : TreeLeaf {
 			private readonly IArea area;
-			private readonly int leaf_size;
-			private readonly long node_ref;
+			private readonly int leafSize;
+			private readonly NodeId nodeId;
 
-			public AreaTreeLeaf(long nodeId, int leafSize, IArea area)
-				: base() {
-				this.node_ref = nodeId;
-				this.leaf_size = leafSize;
+			public AreaTreeLeaf(NodeId nodeId, int leafSize, IArea area) {
+				this.nodeId = nodeId;
+				this.leafSize = leafSize;
 				this.area = area;
 			}
 
-			public override long Id {
-				get { return node_ref; }
+			public override NodeId Id {
+				get { return nodeId; }
 			}
 
 			public override int Length {
-				get { return leaf_size; }
+				get { return leafSize; }
 			}
 
 			public override int Capacity {

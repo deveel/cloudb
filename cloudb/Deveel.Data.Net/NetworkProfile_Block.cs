@@ -40,23 +40,26 @@ namespace Deveel.Data.Net {
 			return (long[])m.Arguments[1].Value;
 		}
 
-		public void ProcessSendBlock(long block_id, IServiceAddress source_block_server, IServiceAddress dest_block_server, long dest_server_sguid) {
+		public void ProcessSendBlock(long blockId, IServiceAddress sourceBlockServer, IServiceAddress destBlockServer, long destServerSguid) {
 			InspectNetwork();
 
 			// Get the current manager server,
-			MachineProfile man = ManagerServer;
-			if (man == null)
+			MachineProfile[] man = ManagerServers;
+			if (man == null || man.Length == 0)
 				throw new NetworkAdminException("No manager server found");
 
-			IServiceAddress manager_server = man.Address;
+			IServiceAddress[] managerServers = new IServiceAddress[man.Length];
+			for (int i = 0; i < man.Length; i++) {
+				managerServers[i] = man[i].Address;
+			}
 
 			RequestMessage request = new RequestMessage("sendBlockTo");
-			request.Arguments.Add(block_id);
-			request.Arguments.Add(dest_block_server);
-			request.Arguments.Add(dest_server_sguid);
-			request.Arguments.Add(manager_server);
+			request.Arguments.Add(blockId);
+			request.Arguments.Add(destBlockServer);
+			request.Arguments.Add(destServerSguid);
+			request.Arguments.Add(managerServers);
 
-			Message m = Command(source_block_server, ServiceType.Block, request);
+			Message m = Command(sourceBlockServer, ServiceType.Block, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 		}

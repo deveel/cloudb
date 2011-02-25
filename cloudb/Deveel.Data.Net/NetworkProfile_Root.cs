@@ -1,153 +1,128 @@
 ﻿using System;
-using System.Collections.Generic;
 
 using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
 	public sealed partial class NetworkProfile {
-		public void AddPath(IServiceAddress root, string pathName, string pathType) {
-			InspectNetwork();
+		private void SendAllRootServers(IServiceAddress[] roots, string function_name, params object[] args) {
+			RequestMessage request = new RequestMessage(function_name);
+			foreach (object obj in args) {
+				request.Arguments.Add(obj);
+			}
 
-			// Check machine is in the schema,
-			MachineProfile machineProfile = CheckMachineInNetwork(root);
-			if (!machineProfile.IsRoot)
-				throw new NetworkAdminException("Machine '" + root + "' is not a root");
+			// Send the command to all the root servers,
+			Message lastError = null;
+			Message[] responses = new Message[roots.Length];
 
-			// Get the current manager server,
-			MachineProfile man = ManagerServer;
-			if (man == null)
-				throw new NetworkAdminException("No manager server found");
+			for (int i = 0; i < roots.Length; ++i) {
+				IServiceAddress rootServer = roots[i];
+				IMessageProcessor proc = connector.Connect(rootServer, ServiceType.Root);
+				responses[i] = proc.Process(request);
+			}
 
-			// Check with the root server that the class instantiates,
-			Message outputStream = new RequestMessage("checkPathType");
-			outputStream.Arguments.Add(pathType);
+			int successCount = 0;
+			foreach (Message response in responses) {
+				if (response.HasError) {
+					if (!IsConnectionFailure(response)) {
+						throw new NetworkAdminException(response.ErrorMessage);
+					}
+					lastError = response;
+				} else {
+					++successCount;
+				}
+			}
 
-			Message m = Command(root, ServiceType.Root, outputStream);
-			if (m.HasError)
-				throw new NetworkAdminException("Type '" + pathType + "' doesn't instantiate on the root");
-
-			IServiceAddress managerServer = man.Address;
-
-			// Create a new empty database,
-			NetworkClient client = new NetworkClient(managerServer, connector);
-			client.Connect();
-			DataAddress dataAddress = client.CreateEmptyDatabase();
-			client.Disconnect();
-
-			// Perform the command,
-			outputStream = new MessageStream(MessageType.Request);
-			RequestMessage request = new RequestMessage("addPath");
-			request.Arguments.Add(pathName);
-			request.Arguments.Add(pathType);
-			request.Arguments.Add(dataAddress);
-			((MessageStream)outputStream).AddMessage(request);
-
-			request = new RequestMessage("initPath");
-			request.Arguments.Add(pathName);
-			((MessageStream)outputStream).AddMessage(request);
-
-			Message message = Command(root, ServiceType.Root, outputStream);
-			if (message.HasError)
-				throw new NetworkAdminException(message.ErrorMessage);
-
-			// Tell the manager server about this path,
-			outputStream = new RequestMessage("addPathRootMapping");
-			outputStream.Arguments.Add(pathName);
-			outputStream.Arguments.Add(root);
-
-			message = Command(managerServer, ServiceType.Manager, outputStream);
-			if (message.HasError)
-				throw new NetworkAdminException(message.ErrorMessage);
+			// Any one root failed,
+			if (successCount != roots.Length) {
+				throw new NetworkAdminException(lastError.ErrorMessage);
+			}
 		}
 
-		public void RemovePath(IServiceAddress root, string path_name) {
-			InspectNetwork();
+		private void SendRootServer(IServiceAddress root, string function_name, params object[] args) {
+			RequestMessage request = new RequestMessage(function_name);
+			foreach (object obj in args) {
+				request.Arguments.Add(obj);
+			}
 
-			MachineProfile machine_p = CheckMachineInNetwork(root);
-			if (!machine_p.IsRoot)
-				throw new NetworkAdminException("Machine '" + root + "' is not a root");
+			// Send the command to all the root servers,
+			Message error = null;
 
-			// Get the current manager server,
-			MachineProfile man = ManagerServer;
-			if (man == null)
-				throw new NetworkAdminException("No manager server found");
+			IMessageProcessor proc = connector.Connect(root, ServiceType.Root);
+			Message response = proc.Process(request);
 
-			IServiceAddress manager_server = man.Address;
+			if (response.HasError) {
+				if (!IsConnectionFailure(response))
+					throw new NetworkAdminException(response.ErrorMessage);
 
-			// Perform the command,
-			RequestMessage request = new RequestMessage("removePath");
-			request.Arguments.Add(path_name);
+				error = response;
+			}
 
-			Message m = Command(root, ServiceType.Root, request);
-			if (m.HasError)
-				throw new NetworkAdminException(m.ErrorMessage);
-
-			// Tell the manager server to remove this path association,
-			request = new RequestMessage("removePathRootMapping");
-			request.Arguments.Add(path_name);
-
-			m = Command(manager_server, ServiceType.Manager, request);
-			if (m.HasError)
-				throw new NetworkAdminException(m.ErrorMessage);
+			// Any one root failed,
+			if (error != null)
+				throw new NetworkAdminException(error.ErrorMessage);
 		}
 
-		public String GetPathStats(IServiceAddress root, string pathName) {
+		public void AddPath(string pathName, string pathType, IServiceAddress rootLeader, IServiceAddress[] rootServers) {
 			InspectNetwork();
 
+			// Send the add path command to the first available manager server.
+			SendManagerCommand("addPathToNetwork", pathName, pathType, rootLeader, rootServers);
+
+			// Fetch the path info from the manager cluster,
+			PathInfo path_info = (PathInfo) SendManagerFunction("getPathInfoForPath", pathName);
+
+			// Send command to all the root servers,
+			SendAllRootServers(rootServers, "internalSetPathInfo", pathName, path_info.Version, path_info);
+			SendAllRootServers(rootServers, "loadPathInfo", path_info);
+
+			// Initialize the path on the leader,
+			SendRootServer(rootLeader, "initialize", path_info.PathName, path_info.Version);
+		}
+
+		public void RemovePath(string pathName, IServiceAddress rootServer) {
+			InspectNetwork();
+
+			// Send the remove path command to the first available manager server.
+			SendManagerCommand("removePathFromNetwork", pathName, rootServer);
+		}
+
+		public string GetPathStats(PathInfo pathInfo) {
+			InspectNetwork();
+
+			IServiceAddress rootLeader = pathInfo.RootLeader;
+
 			// Check machine is in the schema,
-			MachineProfile machine_p = CheckMachineInNetwork(root);
+			MachineProfile machine_p = CheckMachineInNetwork(rootLeader);
 			// Check it's root,
-			if (!machine_p.IsRoot)
-				throw new NetworkAdminException("Machine '" + root + "' is not a root");
+			if (!machine_p.IsRoot) {
+				throw new NetworkAdminException("Machine '" + rootLeader + "' is not a root");
+			}
 
 			// Perform the command,
 			RequestMessage request = new RequestMessage("getPathStats");
-			request.Arguments.Add(pathName);
+			request.Arguments.Add(pathInfo.PathName);
+			request.Arguments.Add(pathInfo.Version);
 
-			Message m = Command(root, ServiceType.Root, request);
-			if (m.HasError)
+			Message m = Command(rootLeader, ServiceType.Root, request);
+			if (m.HasError) {
 				throw new NetworkAdminException(m.ErrorMessage);
+			}
 
 			// Return the stats string for this path
 			return m.Arguments[0].ToString();
 		}
 
-		public PathProfile[] GetPathsFromRoot(IServiceAddress root) {
+		public string [] GetPathNames() {
 			InspectNetwork();
-
-			// Check machine is in the schema,
-			MachineProfile machine_p = CheckMachineInNetwork(root);
-
-			RequestMessage request = new RequestMessage("pathReport");
-			Message m = Command(root, ServiceType.Root, request);
-			if (m.HasError)
-				throw new NetworkAdminException(m.ErrorMessage);
-
-			string[] paths = (string[])m.Arguments[0].Value;
-			string[] funs = (string[])m.Arguments[1].Value;
-
-			PathProfile[] list = new PathProfile[paths.Length];
-			for (int i = 0; i < paths.Length; ++i) {
-				list[i] = new PathProfile(root, paths[i], funs[i]);
-			}
-
-			return list;
+			// The list of all paths,
+			return (string[])SendManagerFunction("getAllPaths");
 		}
 
-		public PathProfile[] GetPaths() {
-			InspectNetwork();
-
-			List<PathProfile> fullList = new List<PathProfile>();
-			MachineProfile[] allRoots = RootServers;
-
-			foreach (MachineProfile root in allRoots) {
-				PathProfile[] list = GetPathsFromRoot(root.Address);
-				fullList.AddRange(list);
-			}
-
-			// Return the full list as an array
-			return fullList.ToArray();
+		public PathInfo GetPathInfo(string pathName) {
+			// Query the manager cluster for the PathInfo
+			return (PathInfo) SendManagerFunction("getPathInfoForPath", pathName);
 		}
+
 
 		public DataAddress[] GetHistoricalPathRoots(IServiceAddress root, string pathName, DateTime time, int maxCount) {
 			InspectNetwork();

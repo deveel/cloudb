@@ -54,7 +54,7 @@ namespace Deveel.Data {
 				BinaryReader din = new BinaryReader(new DataFileStream(df), Encoding.Unicode);
 				return din.ReadString();
 			} catch (IOException e) {
-				throw new ApplicationException(e.Message);
+				throw new ApplicationException(e.Message, e);
 			}
 		}
 
@@ -136,7 +136,7 @@ namespace Deveel.Data {
 			// an optimization to improve queries that want to only find the size of
 			// the file without touching the data.
 			
-			int headerSize = 0;
+			int headerSize;
 			try {
 				MemoryStream stream = new MemoryStream(64);
 				BinaryWriter reader = new BinaryWriter(stream, Encoding.Unicode);
@@ -167,11 +167,13 @@ namespace Deveel.Data {
 
 			// Add the item to the destination directory set
 			Key destKey = dest.CreateFile(name);
+			if (destKey == null)
+				throw new ApplicationException("Destination file '" + name + "' not found.");
+
 			DataFile destFile = dest.GetFile(destKey);
-			destFile.Delete();
 
 			// Copy the data,
-			sourceFile.CopyTo(destFile, sourceFile.Length);
+			sourceFile.ReplicateTo(destFile);
 		}
 		
 		#region FileList
@@ -179,19 +181,18 @@ namespace Deveel.Data {
 		private class FileList : IList<String> {
 			private readonly Directory ds;
 			private readonly SortedIndex list;
-
-			private long local_dir_version;
+			private readonly long localDirVersion;
 
 			internal FileList(Directory ds, SortedIndex list) {
 				this.ds = ds;
-				this.local_dir_version = ds.version;
+				localDirVersion = ds.version;
 				this.list = list;
 			}
 
 			private void VerifyModifications() {
 				// If the directory set changed while this list in use, generate an
 				// error.
-				if (local_dir_version != ds.version)
+				if (localDirVersion != ds.version)
 					throw new InvalidOperationException("Directory changed while enumerating");
 			}
 
@@ -221,12 +222,6 @@ namespace Deveel.Data {
 
 			public void Insert(int index, string item) {
 				throw new NotSupportedException();
-			}
-
-			public int LastIndexOf(string o) {
-				// We know there are no duplicates so the result will be the same as a
-				// call to 'indexOf'
-				return IndexOf(o);
 			}
 
 			public int Count {
@@ -351,49 +346,95 @@ namespace Deveel.Data {
 		
 		#region SubDataFile
 
+		[DbTrusted]
 #if DEBUG
-		public 
+		public
 #endif
-		class SubDataFile : DataFile {
+ class SubDataFile : DataFile {
 			private readonly DataFile file;
 			private readonly long start;
-			
+
 			public SubDataFile(DataFile file, long start) {
 				this.file = file;
 				this.start = start;
 			}
-			
+
 			public override long Length {
 				get { return file.Length - start; }
 			}
-			
+
 			public override long Position {
 				get { return file.Position - start; }
 				set { file.Position = value + start; }
 			}
-			
+
 			public override int Read(byte[] buffer, int offset, int count) {
 				return file.Read(buffer, offset, count);
 			}
-			
+
 			public override void Write(byte[] buffer, int offset, int count) {
 				file.Write(buffer, offset, count);
 			}
-			
+
 			public override void SetLength(long value) {
 				file.SetLength(value + start);
 			}
-			
+
 			public override void Shift(long offset) {
 				file.Shift(offset);
 			}
-			
+
 			public override void Delete() {
 				file.SetLength(start);
 			}
-			
+
 			public override void CopyTo(DataFile destFile, long size) {
 				file.CopyTo(destFile, size);
+			}
+
+			public override void ReplicateTo(DataFile target) {
+				// This is a little complex. If 'target' is an instance of SubDataFile
+				// we use the raw 'ReplicateTo' method on the data files and preserve
+				// the header on the target by making a copy of it before the ReplicateTo
+				// function.
+				// Otherwise, we use a 'CopyTo' implementation.
+
+				// If replicating to a SubDataFile
+				if (target is SubDataFile) {
+					// Preserve the header of the target
+					SubDataFile target_file = (SubDataFile)target;
+					long header_size = target_file.start;
+					if (header_size <= 8192) {
+						DataFile target_df = target_file.file;
+						// Make a copy of the header in the target,
+						int ihead_size = (int)header_size;
+						byte[] header = new byte[ihead_size];
+						target_df.Position = 0;
+						target_df.Read(header, 0, ihead_size);
+
+						// Replicate the bases
+						file.ReplicateTo(target_df);
+
+						// Now 'target_df' will be a replica of this, so we need to copy
+						// the previous header back on the target.
+						// Remove the replicated header on the target and copy the old one
+						// back.
+						target_df.Position = start;
+						target_df.Shift(ihead_size - start);
+						target_df.Position = 0;
+						target_df.Write(header, 0, ihead_size);
+						// Set position per spec
+						target_df.Position = target_df.Length;
+						// Done.
+						return;
+					}
+				}
+
+				// Fall back to a copy-to implementation
+				target.Delete();
+				target.Position = 0;
+				file.Position = start;
+				file.CopyTo(target, file.Length - start);
 			}
 		}
 		

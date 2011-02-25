@@ -24,7 +24,7 @@ namespace Deveel.Data {
 			get { return address.DataId; }
 		}
 
-		public long BlockId {
+		public BlockId BlockId {
 			get { return address.BlockId; }
 		}
 	}

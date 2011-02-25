@@ -10,10 +10,10 @@ namespace Deveel.Data.Net {
 	public abstract class BlockService : Service {
 		private long serverGuid;
 		private volatile int blockCount;
-		private long lastBlockId = -1;
+		private readonly Dictionary<int, BlockId> maxKnownBlockId = new Dictionary<int, BlockId>(16);
 		private readonly IServiceConnector connector;
 		
-		private readonly Dictionary<long, BlockContainer> blockContainerCache;
+		private readonly Dictionary<BlockId, BlockContainer> blockContainerCache;
 		private readonly LinkedList<BlockContainer> blockContainerAccessList;
 		private readonly LinkedList<BlockContainer> blocksPendingFlush;
 		private Timer blockFlushTimer;
@@ -27,17 +27,13 @@ namespace Deveel.Data.Net {
 		protected BlockService(IServiceConnector connector) {
 			this.connector = connector;
 			
-			blockContainerCache = new Dictionary<long, BlockContainer>(5279);
+			blockContainerCache = new Dictionary<BlockId, BlockContainer>(5279);
 			blockContainerAccessList = new LinkedList<BlockContainer>();
 			blocksPendingFlush = new LinkedList<BlockContainer>();
 		}
 		
 		public override ServiceType ServiceType {
 			get { return ServiceType.Block; }
-		}
-
-		protected long LastBlockId {
-			get { return lastBlockId; }
 		}
 		
 		public int BlockCount {
@@ -48,7 +44,7 @@ namespace Deveel.Data.Net {
 			get { return blockUploadLock; }
 		}
 				
-		private BlockContainer FetchBlockContainer(long block_id) {
+		private BlockContainer FetchBlockContainer(BlockId blockId) {
 			// Check for stop state,
 			CheckErrorState();
 
@@ -57,10 +53,10 @@ namespace Deveel.Data.Net {
 			lock (pathLock) {
 				// Look up the block container in the map,
 				// If the container not in the map, create it and put it in there,
-				if (!blockContainerCache.TryGetValue(block_id, out container)) {
-					container = LoadBlock(block_id);
+				if (!blockContainerCache.TryGetValue(blockId, out container)) {
+					container = LoadBlock(blockId);
 					// Put it in the map,
-					blockContainerCache[block_id] = container;
+					blockContainerCache[blockId] = container;
 				}
 
 				// We manage a small list of containers that have been accessed ordered
@@ -124,7 +120,7 @@ namespace Deveel.Data.Net {
 			}
 		}
 		
-		private void WriteBlockPart(long blockId, long pos, int storeType, byte[] buffer, int length) {
+		private void WriteBlockPart(BlockId blockId, long pos, int storeType, byte[] buffer, int length) {
 			// Make sure this process is exclusive
 			lock (blockUploadLock) {
 				try {
@@ -136,7 +132,7 @@ namespace Deveel.Data.Net {
 
 		}
 		
-		private void CompleteBlockWrite(long blockId, int storeType) {
+		private void CompleteBlockWrite(BlockId blockId, int storeType) {
 			// Make sure this process is exclusive
 			lock (blockUploadLock) {
 				OnCompleteBlockWrite(blockId, storeType);
@@ -146,9 +142,6 @@ namespace Deveel.Data.Net {
 			lock (pathLock) {
 				BlockContainer container = LoadBlock(blockId);
 				blockContainerCache[blockId] = container;
-				if (blockId > lastBlockId) {
-					lastBlockId = blockId;
-				}
 				++blockCount;
 			}
 
@@ -156,10 +149,46 @@ namespace Deveel.Data.Net {
 		
 		private void CloseContainers() {
 			lock(pathLock) {
-				foreach(KeyValuePair<long, BlockContainer> pair in blockContainerCache) {
+				foreach(KeyValuePair<BlockId, BlockContainer> pair in blockContainerCache) {
 					pair.Value.BlockStore.Close();
 				}
 			}
+		}
+
+		private void NotifyCurrentBlockId(BlockId block_id) {
+			// Extract the low byte out of the block_id, which is a key for the manager
+			// server that generated this block chain.
+			int manager_key = ((int) block_id.Low & 0x0FF);
+
+			// Update the map for this key,
+			lock (maxKnownBlockId) {
+				maxKnownBlockId[manager_key] = block_id;
+			}
+		}
+
+		protected bool IsKnownStaticBlock(BlockContainer block) {
+			// If the block was written to less than 3 minutes ago, return false
+			if (block.LastWriteTime > DateTime.Now.AddMinutes(-3)) {
+				return false;
+			}
+			// Extract the server key from the block id
+			BlockId block_id = block.blockId;
+			int server_id = ((int) block_id.Low & 0x0FF);
+
+			// Look up the max known block id for the manager server,
+			BlockId max_block_id;
+			lock (maxKnownBlockId) {
+				max_block_id = maxKnownBlockId[server_id];
+			}
+
+			// If the block is less than the max, the block can be compressed!
+			if (max_block_id != null && block_id.CompareTo(max_block_id) < 0)
+				return true;
+
+			// Otherwise update the last write flag (so we only check the max block id
+			// every 3 mins).
+			block.TouchLastWrite();
+			return false;
 		}
 
 		protected override void OnStop() {
@@ -176,23 +205,26 @@ namespace Deveel.Data.Net {
 				blockFlushTimer.Dispose();
 
 			blockCount = 0;
-			lastBlockId = -1;
 		}
 
 		protected void SetGuid(long value) {
 			serverGuid = value;
 		}
 						
-		protected virtual void OnCompleteBlockWrite(long blockId, int storeType) {
+		protected virtual void OnCompleteBlockWrite(BlockId blockId, int storeType) {
 		}
 		
-		protected virtual void OnWriteBlockPart(long blockId, long pos, int storeType, byte[] buffer, int length) {
+		protected virtual void OnWriteBlockPart(BlockId blockId, long pos, int storeType, byte[] buffer, int length) {
 			
 		}
+
+		protected virtual byte[] CreateAvailabilityMap(BlockId[] blocks) {
+			return new byte[0];
+		}
 		
-		protected abstract BlockContainer LoadBlock(long blockId);
+		protected abstract BlockContainer LoadBlock(BlockId blockId);
 		
-		protected BlockContainer GetBlock(long blockId) {
+		protected BlockContainer GetBlock(BlockId blockId) {
 			CheckErrorState();
 			
 			BlockContainer container;
@@ -204,7 +236,7 @@ namespace Deveel.Data.Net {
 			return container;
 		}
 		
-		protected abstract long[] ListBlocks();
+		protected abstract BlockId[] ListBlocks();
 
 		protected override IMessageProcessor CreateProcessor() {
 			return new BlockServerMessageProcessor(this);
@@ -212,23 +244,17 @@ namespace Deveel.Data.Net {
 
 		protected override void OnStart() {
 			// Read in all the blocks in and populate the map,
-			long[] blocks = ListBlocks();
-			long inLastBlockId = -1;
+			BlockId[] blocks = ListBlocks();
 
 			lock (pathLock) {
-				foreach (long blockId in blocks) {
+				foreach (BlockId blockId in blocks) {
 					BlockContainer container = LoadBlock(blockId);
 					blockContainerCache[blockId] = container;
-					if (blockId > inLastBlockId) {
-						inLastBlockId = blockId;
-					}
 				}
 			}
 
 			// Discover the block count,
 			blockCount = blocks.Length;
-			// The latest block on this service,
-			this.lastBlockId = inLastBlockId;
 		}
 		
 		#region BlockServerMessageProcessor
@@ -240,21 +266,20 @@ namespace Deveel.Data.Net {
 				this.service = service;
 			}
 
-			private void CloseContainers(Dictionary<long, BlockContainer> touched) {
-				foreach (KeyValuePair<long, BlockContainer> c in touched) {
+			private void CloseContainers(Dictionary<BlockId, BlockContainer> touched) {
+				foreach (KeyValuePair<BlockId, BlockContainer> c in touched) {
 					service.Logger.Info("Closing block '" + c.Key + "'.");
 					c.Value.Close();
 				}
 			}
 
-			private BlockContainer GetBlock(IDictionary<long, BlockContainer> touched, long blockId) {
+			private BlockContainer GetBlock(IDictionary<BlockId, BlockContainer> touched, BlockId blockId) {
 				BlockContainer b;
 				if (!touched.TryGetValue(blockId, out b)) {
 					b = service.FetchBlockContainer(blockId);
 					bool created = b.Open();
 					if (created) {
 						++service.blockCount;
-						service.lastBlockId = blockId;
 					}
 					touched[blockId] = b;
 					service.Logger.Info("Opening block '" + blockId + "'.");
@@ -262,9 +287,9 @@ namespace Deveel.Data.Net {
 				return b;
 			}
 
-			private void WriteToBlock(Dictionary<long, BlockContainer> touched, DataAddress address, byte[] buf, int off, int len) {
+			private void WriteToBlock(Dictionary<BlockId, BlockContainer> touched, DataAddress address, byte[] buf, int off, int len) {
 				// The block being written to,
-				long blockId = address.BlockId;
+				BlockId blockId = address.BlockId;
 				// The data identifier,
 				int dataId = address.DataId;
 
@@ -277,9 +302,9 @@ namespace Deveel.Data.Net {
 				service.ScheduleBlockFlush(container, 5000);
 			}
 
-			private NodeSet ReadFromBlock(IDictionary<long, BlockContainer> touched, DataAddress address) {
+			private NodeSet ReadFromBlock(IDictionary<BlockId, BlockContainer> touched, DataAddress address) {
 				// The block being written to,
-				long blockId = address.BlockId;
+				BlockId blockId = address.BlockId;
 				// The data identifier,
 				int dataId = address.DataId;
 
@@ -289,10 +314,10 @@ namespace Deveel.Data.Net {
 				return container.GetNodeSet(dataId);
 			}
 
-			private void DeleteNodes(IDictionary<long, BlockContainer> touched, DataAddress[] addresses) {
+			private void DeleteNodes(IDictionary<BlockId, BlockContainer> touched, DataAddress[] addresses) {
 				foreach (DataAddress address in addresses) {
 					// The block being removed from,
-					long blockId = address.BlockId;
+					BlockId blockId = address.BlockId;
 					// The data identifier,
 					int dataId = address.DataId;
 
@@ -305,9 +330,9 @@ namespace Deveel.Data.Net {
 				}
 			}
 
-			private long SendBlockTo(long blockId, IServiceAddress destination,
+			private long SendBlockTo(BlockId blockId, IServiceAddress destination,
 									 long destServerGuid,
-									 IServiceAddress managerAddress) {
+									 IServiceAddress[] managerAddress) {
 				lock (service.processLock) {
 					long processId = service.processId;
 					service.processId = service.processId + 1;
@@ -334,15 +359,10 @@ namespace Deveel.Data.Net {
 				IMessageProcessor p = service.connector.Connect(info.destination, ServiceType.Block);
 
 				try {
-					// If the block was accessed less than 5 minutes ago, we don't allow
+					// If the block was written less than 6 minutes ago, we don't allow
 					// the copy to happen,
-					if (info.blockId == service.lastBlockId) {
-						service.Logger.Info("Can't copy last block_id ( " + info.blockId + " ) on server.");
-						return;
-					} else if (container.LastWriteTime >
-							   DateTime.Now.AddMilliseconds(-(6 * 60 * 1000))) {
-						// Won't copy a block that was written to within the last 6 minutes,
-						service.Logger.Info("Can't copy block ( " + info.blockId + " ) written to within the last 6 minutes.");
+					if (!service.IsKnownStaticBlock(container)) {
+						service.Logger.Info("Can't copy last block_id ( " + info.blockId + " ) on server: not a known static block.");
 						return;
 					}
 
@@ -387,27 +407,28 @@ namespace Deveel.Data.Net {
 					}
 
 					// Tell the manager service about this new block mapping,
-					IMessageProcessor mp = service.connector.Connect(info.managerAddress, ServiceType.Manager);
-					request = new RequestMessage("addBlockServerMapping");
-					request.Arguments.Add(info.blockId);
-					request.Arguments.Add(info.destServerGuid);
+					for (int i = 0; i < info.managerAddress.Length; i++) {
+						IMessageProcessor mp = service.connector.Connect(info.managerAddress[i], ServiceType.Manager);
+						request = new RequestMessage("internalAddBlockServerMapping");
+						request.Arguments.Add(info.blockId);
+						request.Arguments.Add(new long[] {info.destServerGuid});
 
-					service.Logger.Info("Adding block_id->server mapping (" + info.blockId + " -> " + info.destServerGuid + ")");
+						service.Logger.Info("Adding block_id->server mapping (" + info.blockId + " -> " + info.destServerGuid + ")");
 
-					// Process the message,
-					response = mp.Process(request);
-					
-					if (response.HasError) {
-						service.Logger.Error("addBlockServerMapping Error: " + response.ErrorMessage);
-						return;
+						// Process the message,
+						response = mp.Process(request);
+
+						if (response.HasError) {
+							service.Logger.Error("internalAddBlockServerMapping Error: " + response.ErrorMessage);
+							return;
+						}
 					}
-
 				} catch (IOException e) {
 					service.Logger.Error("IO Error: " + e.Message);
 				}
 			}
 
-			private long GetBlockChecksum(IDictionary<long, BlockContainer> touched, long blockId) {
+			private long GetBlockChecksum(IDictionary<BlockId, BlockContainer> touched, BlockId blockId) {
 				// Fetch the block container,
 				BlockContainer container = GetBlock(touched, blockId);
 				// Calculate the checksum value,
@@ -415,7 +436,7 @@ namespace Deveel.Data.Net {
 			}
 
 			// The nodes fetched in this message,
-			private List<long> readNodes;
+			private List<NodeId> readNodes;
 
 			public Message Process(Message message) {
 				Message response;
@@ -427,7 +448,7 @@ namespace Deveel.Data.Net {
 				}
 
 				// The map of containers touched,
-				Dictionary<long, BlockContainer> containersTouched = new Dictionary<long, BlockContainer>();
+				Dictionary<BlockId, BlockContainer> containersTouched = new Dictionary<BlockId, BlockContainer>();
 
 				RequestMessage request = (RequestMessage) message;
 				response = request.CreateResponse();
@@ -455,13 +476,13 @@ namespace Deveel.Data.Net {
 						}
 						case "readFromBlock": {
 							if (readNodes == null)
-								readNodes = new List<long>();
+								readNodes = new List<NodeId>();
 
 							DataAddress address = (DataAddress) request.Arguments[0].Value;
 							if (!readNodes.Contains(address.Value)) {
 								NodeSet nodeSet = ReadFromBlock(containersTouched, address);
 								response.Arguments.Add(nodeSet);
-								foreach(long node in nodeSet.NodeIds)
+								foreach(NodeId node in nodeSet.NodeIds)
 									readNodes.Add(node);
 							}
 							break;
@@ -473,19 +494,19 @@ namespace Deveel.Data.Net {
 							break;
 						}
 						case "deleteBlock": {
-							long blockId = request.Arguments[0].ToInt64();
+							BlockId blockId = (BlockId) request.Arguments[0].Value;
 							//TODO: Can we delete blocks? Only in extreme conditions ... but how?
 							response.Arguments.Add(1L);
 							break;
 						}
 						case "blockSetReport": {
-							long[] blockIds = service.ListBlocks();
+							BlockId[] blockIds = service.ListBlocks();
 							response.Arguments.Add(service.serverGuid);
 							response.Arguments.Add(blockIds);
 							break;
 						}
 						case "blockChecksum": {
-								long blockId = request.Arguments[0].ToInt64();
+								BlockId blockId = (BlockId) request.Arguments[0].Value;
 								long checksum = GetBlockChecksum(containersTouched, blockId);
 								response.Arguments.Add(checksum);
 								break;
@@ -493,16 +514,16 @@ namespace Deveel.Data.Net {
 						case "sendBlockTo": {
 								// Returns immediately. There's currently no way to determine
 								// when this process will happen or if it will happen.
-								long blockId = request.Arguments[0].ToInt64();
+								BlockId blockId = (BlockId) request.Arguments[0].Value;
 								IServiceAddress destAddress = (IServiceAddress)request.Arguments[1].Value;
 								long destServerGuid = request.Arguments[2].ToInt64();
-								IServiceAddress managerAddress = (IServiceAddress)request.Arguments[3].Value;
+								IServiceAddress[] managerAddress = (IServiceAddress[])request.Arguments[3].Value;
 								long processId = SendBlockTo(blockId, destAddress, destServerGuid, managerAddress);
 								response.Arguments.Add(processId);
 								break;
 							}
 						case "sendBlockPart": {
-								long blockId = request.Arguments[0].ToInt64();
+								BlockId blockId = (BlockId) request.Arguments[0].Value;
 								long pos = request.Arguments[1].ToInt64();
 								int storeType = request.Arguments[2].ToInt32();
 								byte[] buffer = (byte[])request.Arguments[3].Value;
@@ -512,12 +533,27 @@ namespace Deveel.Data.Net {
 								break;
 							}
 						case "sendBlockComplete": {
-								long blockId = request.Arguments[0].ToInt64();
+								BlockId blockId = (BlockId) request.Arguments[0].Value;
 								int storeType = request.Arguments[1].ToInt32();
 								service.CompleteBlockWrite(blockId, storeType);
 								response.Arguments.Add(1L);
 								break;
 							}
+						case "poll": {
+							response.Arguments.Add(1L);
+							break;
+						}
+						case "notifyCurrentBlockId": {
+							service.NotifyCurrentBlockId((BlockId) message.Arguments[0].Value);
+							response.Arguments.Add(1L);
+							break;
+						}
+						case "createAvailabilityMapForBlocks": {
+							BlockId[] block_ids = (BlockId[]) message.Arguments[0].Value;
+							byte[] map = service.CreateAvailabilityMap(block_ids);
+							response.Arguments.Add(map);
+							break;
+						}
 						default:
 							throw new ApplicationException("Unknown message name: " + request.Name);
 					}
@@ -544,8 +580,8 @@ namespace Deveel.Data.Net {
 		#region SendBlockInfo
 		
 		private struct SendBlockInfo {
-			public SendBlockInfo(long processId, long blockId, IServiceAddress destination, 
-			                     long destServerGuid, IServiceAddress managerAddress) {
+			public SendBlockInfo(long processId, BlockId blockId, IServiceAddress destination, 
+			                     long destServerGuid, IServiceAddress[] managerAddress) {
 				this.processId = processId;
 				this.blockId = blockId;
 				this.destination = destination;
@@ -554,10 +590,10 @@ namespace Deveel.Data.Net {
 			}
 
 			public long processId;
-			public long blockId;
-			public IServiceAddress destination;
-			public long destServerGuid;
-			public IServiceAddress managerAddress;
+			public readonly BlockId blockId;
+			public readonly IServiceAddress destination;
+			public readonly long destServerGuid;
+			public readonly IServiceAddress[] managerAddress;
 		}
 		
 		#endregion
@@ -568,12 +604,12 @@ namespace Deveel.Data.Net {
 		
 		protected sealed class BlockContainer : IBlockStore, IComparable<BlockContainer> {
 			public IBlockStore blockStore;
-			public readonly long blockId;
+			public readonly BlockId blockId;
 			private DateTime lastWrite = DateTime.MinValue;
 			private int lockCount = 0;
 			private int type;
 			
-			internal BlockContainer(long blockId, IBlockStore blockStore) {
+			internal BlockContainer(BlockId blockId, IBlockStore blockStore) {
 				this.blockId = blockId;
 				this.blockStore = blockStore;
 				type = blockStore.Type;
@@ -587,7 +623,7 @@ namespace Deveel.Data.Net {
 				get { return blockStore; }
 			}
 			
-			public long BlockId {
+			public BlockId BlockId {
 				get { return blockId; }
 			}
 			
@@ -630,11 +666,15 @@ namespace Deveel.Data.Net {
 					blockStore = newStore;
 				}
 			}
+
+			public void TouchLastWrite() {
+				lastWrite = DateTime.Now;
+			}
 			
 			public void Write(int dataId, byte[] buffer, int offset, int length) {
+				TouchLastWrite();
 				lock (this) {
 					blockStore.Write(dataId, buffer, offset, length);
-					lastWrite = DateTime.Now;
 				}
 			}
 			
@@ -651,9 +691,9 @@ namespace Deveel.Data.Net {
 			}
 			
 			public void Delete(int dataId) {
+				TouchLastWrite();
 				lock (this) {
 					blockStore.Delete(dataId);
-					lastWrite = DateTime.Now;
 				}
 			}
 			

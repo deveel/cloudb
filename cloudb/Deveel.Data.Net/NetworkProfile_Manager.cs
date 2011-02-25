@@ -5,27 +5,90 @@ using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
 	public sealed partial class NetworkProfile {
+		private void SendManagerCommand(string functionName, params object[] args) {
+			// Send the add path command to the first available manager server.
+			MachineProfile[] managerServers = ManagerServers;
+
+			RequestMessage message = new RequestMessage(functionName);
+			foreach (object obj in args) {
+				message.Arguments.Add(obj);
+			}
+
+			// The first manager that takes the command,
+			Message lastError = null;
+			for (int i = 0; i < managerServers.Length && lastError == null; ++i) {
+				IServiceAddress managerServer = managerServers[i].Address;
+				Message m = Command(managerServer, ServiceType.Manager, message);
+				if (m.HasError) {
+					if (!IsConnectionFailure(m))
+						throw new NetworkAdminException(m.ErrorMessage);
+
+					lastError = m;
+				}
+			}
+			// All managers failed,
+			if (lastError != null)
+				throw new NetworkAdminException(lastError.ErrorMessage);
+		}
+
+		private object SendManagerFunction(String functionName, params object[] args) {
+			// Send the add path command to the first available manager server.
+			MachineProfile[] managerServers = ManagerServers;
+
+			RequestMessage request = new RequestMessage(functionName);
+			foreach (object obj in args) {
+				request.Arguments.Add(obj);
+			}
+
+			// The first manager that takes the command,
+			Message lastError = null;
+			for (int i = 0; i < managerServers.Length; ++i) {
+				IServiceAddress manager_server = managerServers[i].Address;
+				Message m = Command(manager_server, ServiceType.Manager, request);
+				if (m.HasError) {
+					if (!IsConnectionFailure(m)) {
+						throw new NetworkAdminException(m.ErrorMessage);
+					}
+					lastError = m;
+				} else {
+					return m.Arguments[0].Value;
+				}
+			}
+
+			// All managers failed,
+			throw new NetworkAdminException(lastError.ErrorMessage);
+		}
+
 		private void RegisterService(IServiceAddress address, ServiceType serviceType) {
 			InspectNetwork();
 
 			// Check machine is in the schema,
 			MachineProfile machine_p = CheckMachineInNetwork(address);
-			MachineProfile current_manager = ManagerServer;
+			MachineProfile[] currentManagers = ManagerServers;
 
-			if (current_manager == null)
+			if (currentManagers == null || currentManagers.Length == 0)
 				throw new NetworkAdminException("No manager server found");
 
 			if ((machine_p.ServiceType & serviceType) == 0)
 				throw new NetworkAdminException("Machine '" + address + "' is not assigned as a " + serviceType.ToString().ToLower() +
 												" role");
 
-			string messageName = serviceType == ServiceType.Block ? "registerBlockServer" : "registerRootServer";
+			string messageName;
+			if (serviceType == ServiceType.Manager)
+				messageName = "registerManagerServer";
+			else if (serviceType == ServiceType.Root)
+				messageName = "registerRootServer";
+			else 
+				messageName = "registerBlockServer";
+
 			RequestMessage request = new RequestMessage(messageName);
 			request.Arguments.Add(address);
 
-			Message m = Command(current_manager.Address, ServiceType.Manager, request);
-			if (m.HasError)
-				throw new NetworkAdminException(m.ErrorMessage, m.ErrorStackTrace);
+			for (int i = 0; i < currentManagers.Length; i++) {
+				Message m = Command(currentManagers[i].Address, ServiceType.Manager, request);
+				if (m.HasError)
+					throw new NetworkAdminException(m.ErrorMessage, m.ErrorStackTrace);
+			}
 		}
 
 		private void DeregisterService(IServiceAddress address, ServiceType serviceType) {
@@ -33,22 +96,39 @@ namespace Deveel.Data.Net {
 
 			// Check machine is in the schema,
 			MachineProfile machine_p = CheckMachineInNetwork(address);
-			MachineProfile current_manager = ManagerServer;
+			MachineProfile[] currentManagers = ManagerServers;
 
-			if (current_manager == null)
+			if (currentManagers == null || currentManagers.Length == 0)
 				throw new NetworkAdminException("No manager server found");
 
 			if ((machine_p.ServiceType & serviceType) == 0)
 				throw new NetworkAdminException("Machine '" + address + "' is not assigned as a " + serviceType.ToString().ToLower() +
 												" role");
 
-			string messageName = serviceType == ServiceType.Block ? "unregisterBlockServer" : "unregisterRootServer";
+			string messageName;
+			if (serviceType == ServiceType.Manager)
+				messageName = "unregisterManagerServer";
+			else if (serviceType == ServiceType.Root)
+				messageName = "unregisterRootServer";
+			else
+				messageName = "unregisterBlockServer";
+
 			RequestMessage request = new RequestMessage(messageName);
 			request.Arguments.Add(address);
 
-			Message m = Command(current_manager.Address, ServiceType.Manager, request);
-			if (m.HasError)
-				throw new NetworkAdminException(m.ErrorMessage);
+			for (int i = 0; i < currentManagers.Length; i++) {
+				Message m = Command(currentManagers[i].Address, ServiceType.Manager, request);
+				if (m.HasError)
+					throw new NetworkAdminException(m.ErrorMessage);
+			}
+		}
+
+		public void RegisterManager(IServiceAddress manager) {
+			RegisterService(manager, ServiceType.Manager);
+		}
+
+		public void DeregisterManager(IServiceAddress manager) {
+			DeregisterService(manager, ServiceType.Manager);
 		}
 
 		public void RegisterRoot(IServiceAddress root) {
@@ -67,36 +147,15 @@ namespace Deveel.Data.Net {
 			DeregisterService(block, ServiceType.Block);
 		}
 
-		public IServiceAddress GetRoot(string pathName) {
-			InspectNetwork();
-
-			// Get the current manager server,
-			MachineProfile man = ManagerServer;
-			if (man == null)
-				throw new NetworkAdminException("No manager server found");
-
-			IServiceAddress manager_server = man.Address;
-
-			RequestMessage request = new RequestMessage("getRootFor");
-			request.Arguments.Add(pathName);
-
-			Message m = Command(manager_server, ServiceType.Manager, request);
-			if (m.HasError)
-				throw new NetworkAdminException(m.ErrorMessage);
-
-			// Return the service address for the root server,
-			return (IServiceAddress)m.Arguments[0].Value;
-		}
-
 		public long GetBlockMappingCount() {
 			InspectNetwork();
 
 			// Get the current manager server,
-			MachineProfile man = ManagerServer;
-			if (man == null)
+			MachineProfile[] man = ManagerServers;
+			if (man == null || man.Length == 0)
 				throw new NetworkAdminException("No manager server found");
 
-			IServiceAddress manager_server = man.Address;
+			IServiceAddress manager_server = man[0].Address;
 
 			RequestMessage request = new RequestMessage("getBlockMappingCount");
 			Message m = Command(manager_server, ServiceType.Manager, request);
@@ -111,11 +170,11 @@ namespace Deveel.Data.Net {
 			InspectNetwork();
 
 			// Get the current manager server,
-			MachineProfile man = ManagerServer;
-			if (man == null)
+			MachineProfile[] man = ManagerServers;
+			if (man == null || man.Length == 0)
 				throw new NetworkAdminException("No manager server found");
 
-			IServiceAddress manager_server = man.Address;
+			IServiceAddress manager_server = man[0].Address;
 
 			RequestMessage request = new RequestMessage("getBlockMappingRange");
 			request.Arguments.Add(p1);
@@ -133,11 +192,11 @@ namespace Deveel.Data.Net {
 			InspectNetwork();
 
 			// Get the current manager server,
-			MachineProfile man = ManagerServer;
-			if (man == null)
+			MachineProfile[] man = ManagerServers;
+			if (man == null || man.Length == 0)
 				throw new NetworkAdminException("No manager server found");
 
-			IServiceAddress manager_server = man.Address;
+			IServiceAddress manager_server = man[0].Address;
 
 			RequestMessage request = new RequestMessage("getRegisteredServerList");
 
@@ -157,42 +216,61 @@ namespace Deveel.Data.Net {
 			return map;
 		}
 
-		public void AddBlockAssociation(long block_id, long server_guid) {
+		public void AddBlockAssociation(long blockId, long serverGuid) {
 			InspectNetwork();
 
 			// Get the current manager server,
-			MachineProfile man = ManagerServer;
-			if (man == null)
+			MachineProfile[] man = ManagerServers;
+			if (man == null || man.Length == 0)
 				throw new NetworkAdminException("No manager server found");
 
-			IServiceAddress manager_server = man.Address;
+			IServiceAddress[] managerServers = new IServiceAddress[man.Length];
+			for (int i = 0; i < man.Length; i++) {
+				managerServers[i] = man[i].Address;
+			}
 
-			RequestMessage request = new RequestMessage("addBlockServerMapping");
-			request.Arguments.Add(block_id);
-			request.Arguments.Add(server_guid);
+			RequestMessage request = new RequestMessage("internalAddBlockServerMapping");
+			request.Arguments.Add(blockId);
+			request.Arguments.Add(new long[] {serverGuid});
 
-			Message m = Command(manager_server, ServiceType.Manager, request);
-			if (m.HasError)
-				throw new NetworkAdminException(m.ErrorMessage);
+			Message lastError = null;
+			for (int i = 0; i < managerServers.Length; ++i) {
+				Message response = Command(managerServers[i], ServiceType.Manager, request);
+				if (response.HasError) 
+					lastError = response;
+			}
+
+			if (lastError != null)
+				throw new NetworkAdminException(lastError.ErrorMessage);
 		}
 
-		public void RemoveBlockAssociation(long block_id, long server_guid) {
+		public void RemoveBlockAssociation(long blockId, long serverGuid) {
 			InspectNetwork();
 
 			// Get the current manager server,
-			MachineProfile man = ManagerServer;
-			if (man == null)
+			MachineProfile[] man = ManagerServers;
+			if (man == null || man.Length == 0)
 				throw new NetworkAdminException("No manager server found");
 
-			IServiceAddress manager_server = man.Address;
+			IServiceAddress[] managerAddresses = new IServiceAddress[man.Length];
+			for (int i = 0; i < man.Length; i++) {
+				managerAddresses[i] = man[i].Address;
+			}
 
-			RequestMessage request = new RequestMessage("removeBlockServerMapping");
-			request.Arguments.Add(block_id);
-			request.Arguments.Add(server_guid);
+			RequestMessage request = new RequestMessage("internalRemoveBlockServerMapping");
+			request.Arguments.Add(blockId);
+			request.Arguments.Add(new long[] {serverGuid});
 
-			Message m = Command(manager_server, ServiceType.Manager, request);
-			if (m.HasError)
-				throw new NetworkAdminException(m.ErrorMessage);
+			Message lastError = null;
+			for (int i = 0; i < managerAddresses.Length; i++) {
+				Message m = Command(managerAddresses[i], ServiceType.Manager, request);
+				if (m.HasError)
+					lastError = m;
+			}
+
+			
+			if (lastError != null)
+				throw new NetworkAdminException(lastError.ErrorMessage);
 		}
 	}
 }

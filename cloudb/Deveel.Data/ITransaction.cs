@@ -56,5 +56,9 @@ namespace Deveel.Data {
 		/// </para>
 		/// </remarks>
 		void PreFetchKeys(Key[] keys);
+
+		IDataRange GetRange(Key minKey, Key maxKey);
+
+		IDataRange GetRange();
 	}
 }

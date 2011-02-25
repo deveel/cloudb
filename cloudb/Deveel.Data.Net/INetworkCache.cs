@@ -1,14 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 
-using Deveel.Data.Store;
-
 namespace Deveel.Data.Net {
 	public interface INetworkCache : ITreeNodeCache {
-		void SetServers(long blockId, IList<BlockServerElement> servers, int ttlHint);
+		void SetServers(BlockId blockId, IList<BlockServerElement> servers, int ttlHint);
 
-		IList<BlockServerElement> GetServers(long blockId);
+		IList<BlockServerElement> GetServers(BlockId blockId);
 
-		void RemoveServers(long block_id);
+		void RemoveServers(BlockId blockId);
+
+		PathInfo GetPathInfo(string pathName);
+
+		void SetPathInfo(string pathName, PathInfo pathInfo);
 	}
 }

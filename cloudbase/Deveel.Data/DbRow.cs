@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 
 namespace Deveel.Data {
+	[DbTrusted]
 	public sealed class DbRow {
 		private readonly DbTable table;
 		private long rowId;

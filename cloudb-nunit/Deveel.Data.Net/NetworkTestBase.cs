@@ -90,7 +90,7 @@ namespace Deveel.Data.Net {
 		public void StartManager() {
 			MachineProfile machine = networkProfile.GetMachineProfile(LocalAddress);
 			Assert.IsNotNull(machine);
-			Assert.IsNull(networkProfile.ManagerServer);
+			Assert.IsEmpty(networkProfile.ManagerServers);
 			Assert.IsFalse(machine.IsManager);
 			networkProfile.StartService(LocalAddress, ServiceType.Manager);
 
@@ -98,7 +98,7 @@ namespace Deveel.Data.Net {
 
 			machine = networkProfile.GetMachineProfile(LocalAddress);
 			Assert.IsNotNull(machine);
-			Assert.IsNotNull(networkProfile.ManagerServer);
+			Assert.IsNotEmpty(networkProfile.ManagerServers);
 			Assert.IsTrue(machine.IsManager);
 		}
 

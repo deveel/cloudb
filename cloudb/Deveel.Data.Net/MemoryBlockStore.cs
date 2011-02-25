@@ -7,14 +7,14 @@ using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
 	public sealed class MemoryBlockStore : IBlockStore {
-		private readonly long blockId;
+		private readonly BlockId blockId;
 		private MemoryStream content;
 		private int length;
 		private StrongPagedAccess pagedAccess;
 
 		private const int Header = 6 * 16384;
 
-		internal MemoryBlockStore(long blockId) {
+		internal MemoryBlockStore(BlockId blockId) {
 			this.blockId = blockId;
 		}
 

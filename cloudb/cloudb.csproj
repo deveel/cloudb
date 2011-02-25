@@ -3,12 +3,12 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProductVersion>9.0.30729</ProductVersion>
+    <ProductVersion>9.0.21022</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{A18511ED-5BA6-4811-B44F-F730FAD84CE8}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>cloudb</RootNamespace>
+    <RootNamespace>Deveel.Data</RootNamespace>
     <AssemblyName>cloudb</AssemblyName>
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -107,6 +107,7 @@
     <Compile Include="Deveel.Data.Net\AdminService.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Deveel.Data.Net\BlockId.cs" />
     <Compile Include="Deveel.Data.Net\BlockReadException.cs" />
     <Compile Include="Deveel.Data.Net\BlockService.cs">
       <SubType>Component</SubType>
@@ -117,6 +118,7 @@
     <Compile Include="Deveel.Data.Net\CompressedBlockStore.cs" />
     <Compile Include="Deveel.Data.Net\CompressedNodeSet.cs" />
     <Compile Include="Deveel.Data.Net\DataAddress.cs" />
+    <Compile Include="Deveel.Data.Net\EnqueuedMessage.cs" />
     <Compile Include="Deveel.Data.Net\FileSystemServiceFactory.cs" />
     <Compile Include="Deveel.Data.Net\HandleAttribute.cs" />
     <Compile Include="Deveel.Data.Net.Client\RestPathClientService.cs">
@@ -150,14 +152,24 @@
     <Compile Include="Deveel.Data.Net\IBlockStore.cs" />
     <Compile Include="Deveel.Data.Net\HttpServiceAddress.cs" />
     <Compile Include="Deveel.Data.Net.Client\IRequestHandler.cs" />
+    <Compile Include="Deveel.Data.Net\InvalidPathInfoException.cs" />
     <Compile Include="Deveel.Data.Net\IServiceFactory.cs" />
     <Compile Include="Deveel.Data.Net.Client\RequestType.cs" />
     <Compile Include="Deveel.Data.Net\MemoryServiceFactory.cs" />
+    <Compile Include="Deveel.Data.Net\MessageCommunicator.cs" />
+    <Compile Include="Deveel.Data.Net\PathInfo.cs" />
+    <Compile Include="Deveel.Data.Net\ReplicatedValueStore.cs" />
+    <Compile Include="Deveel.Data.Net\ServiceMessageQueue.cs" />
+    <Compile Include="Deveel.Data.Net\ServiceNotConnectedException.cs" />
     <Compile Include="Deveel.Data.Net\ServiceState.cs" />
     <Compile Include="Deveel.Data.Net\ServiceStatus.cs" />
+    <Compile Include="Deveel.Data.Net\ServiceStatusEventArgs.cs" />
+    <Compile Include="Deveel.Data.Net\ServiceStatusTracker.cs" />
     <Compile Include="Deveel.Data.Net\TcpProxyAdminService.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Deveel.Data\ByteBufferStream.cs" />
+    <Compile Include="Deveel.Data\IDataRange.cs" />
     <Compile Include="Deveel.Data\IIndexCursor.cs" />
     <Compile Include="Deveel.Data\IIndex.cs" />
     <Compile Include="Deveel.Data\IInteractiveEnumerator.cs">
@@ -198,7 +210,6 @@
     <Compile Include="Deveel.Data.Net\NetworkTreeSystem.cs" />
     <Compile Include="Deveel.Data.Net\NetworkWriteException.cs" />
     <Compile Include="Deveel.Data.Net\PathNameAttribute.cs" />
-    <Compile Include="Deveel.Data.Net\PathProfile.cs" />
     <Compile Include="Deveel.Data.Net\PathRootTable.cs" />
     <Compile Include="Deveel.Data.Net\RootService.cs">
       <SubType>Component</SubType>
@@ -217,6 +228,8 @@
     <Compile Include="Deveel.Data.Util\StrongPagedAccess.cs" />
     <Compile Include="Deveel.Data.Configuration\ConfigSource.cs" />
     <Compile Include="Deveel.Data\MemoryDatabase.cs" />
+    <Compile Include="Deveel.Data\NodeId.cs" />
+    <Compile Include="Deveel.Data\Quadruple.cs" />
     <Compile Include="Deveel.Data\SortedIndex.cs" />
     <Compile Include="Deveel.Data\TreeBranch.cs">
       <SubType>Code</SubType>
@@ -241,7 +254,7 @@
     <Compile Include="Deveel.Data.Net\ServiceException.cs" />
     <Compile Include="Deveel.Data.Net\ServiceType.cs" />
     <Compile Include="Deveel.Data.Net\SingleNodeSet.cs" />
-    <Compile Include="Deveel.Data.Store\DataFile.cs" />
+    <Compile Include="Deveel.Data\DataFile.cs" />
     <Compile Include="Deveel.Data.Store\DataFileStream.cs" />
     <Compile Include="Deveel.Data.Store\JournalledFileStore.cs" />
     <Compile Include="Deveel.Data.Store\JournalledSystem.cs" />
@@ -249,8 +262,9 @@
     <Compile Include="Deveel.Data.Store\ScatteringStoreDataAccessor.cs" />
     <Compile Include="Deveel.Data.Store\StreamFile.cs" />
     <Compile Include="Deveel.Data\FileSystemDatabase.cs" />
+    <Compile Include="Deveel.Data\TreeSystemStack.cs" />
     <Compile Include="Deveel.Data\TreeWrite.cs" />
-    <Compile Include="Deveel.Data.Util\ByteBuffer.cs" />
+    <Compile Include="Deveel.Data\ByteBuffer.cs" />
     <Compile Include="Deveel.Data.Util\CollectionsUtil.cs" />
     <Compile Include="Deveel.Data.Util\IInputStream.cs" />
     <Compile Include="Deveel.Data.Util\Properties.cs" />
@@ -267,7 +281,6 @@
     <Compile Include="Deveel.Data\KeyBase.cs" />
     <Compile Include="Deveel.Data.Caching\MemoryCache.cs" />
     <Compile Include="Deveel.Data\StringDictionary.cs" />
-    <Compile Include="Deveel.Data\SparseLeafNode.cs" />
     <Compile Include="Deveel.Data\StoreTreeSystem.cs" />
     <Compile Include="Deveel.Data\StringCollection.cs" />
     <Compile Include="Deveel.Data\StringData.cs" />
@@ -283,9 +296,11 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TomKraminski\Crc32.cs" />
     <None Include="cloudb.snk" />
     <None Include="default.build" />
     <None Include="Deveel.Data.Net\ChangeLog" />
+    <None Include="Deveel.Data\ChangeLog" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">

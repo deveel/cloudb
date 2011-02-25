@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<project name="mnode" default="build" xmlns="http://nant.sf.net/release/0.91-alpha2/nant.xsd">
+  <include buildfile="../common.build"/>
+  
+  <target name="build">
+  	<if test="${not kernel}">
+	    <call target="-build-kernel"/>
+	  </if>
+	  <if test="${standalone}">
+	    <property name="libs" value="../libs" />
+	  </if>
+	  <choose>
+	    <when test="${system == 'unix'}">
+	      <property name="define" value="${define};UNIX"/>
+	    </when>
+	    <otherwise>
+	      <property name="define" value="${define};WINDOWS"/>
+	    </otherwise>
+	  </choose>
+	  
+	  <echo message="building application mnode to ${path::get-full-path(output)}; libraries from ${path::get-full-path(libs)} ..." />
+	  
+    <csc target="exe" output="${output}/mnode.exe" debug="${debug}" define="${define}" optimize="${not debug}" platform="${platform}" keyfile="mnode.snk">
+    	<sources basedir="${sources}">
+				<include name="Properties/AssemblyInfo.cs" />
+				<include name="Deveel.Data.Net/*.cs" />
+			</sources>
+			<references>
+				<include name="System.dll" />
+				<include name="System.Configuration.Install.dll" />
+				<include name="System.ServiceProcess.dll"/>
+				<include name="${output}/cloudb.dll" />
+				<include name="${libs}/deveel-cli.dll" />
+			</references>
+    </csc>
+		  <copy file="${libs}/deveel-cli.dll" todir="${output}" overwrite="true"/>
+		  <copy file="${conf}/node.conf" todir="${output}" overwrite="true"/>
+		  <copy file="${conf}/network.conf" todir="${output}" overwrite="true"/>
+  </target>
+  
+  <target name="-package-bin" depends="build">
+  </target>
+  <target name="-package-src">
+    <tar destfile="${dist-path}/${package.name}.tar.gz" compression="GZip">
+	    <fileset basedir="${sources}">
+	      <include name="Properties/AssemblyInfo.cs"/>
+	      <include name="Deveel.Data.Net/*.cs"/>
+	      <include name="default.build" />
+	    </fileset>
+	  </tar>
+  </target>
+</project>

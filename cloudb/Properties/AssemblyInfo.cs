@@ -7,11 +7,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("cloudb")]
-[assembly: AssemblyDescription("CloudB Framework Library")]
+[assembly: AssemblyDescription("CloudB Kernel Library")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Deveel")]
 [assembly: AssemblyProduct("cloudb")]
-[assembly: AssemblyCopyright("Copyright © Deveel 2010")]
+[assembly: AssemblyCopyright("Copyright © 2010-2011 Deveel")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

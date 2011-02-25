@@ -5,21 +5,31 @@ using Deveel.Data.Net.Client;
 
 namespace Deveel.Data.Net {
 	public class NetworkClient : IDisposable {
-		public NetworkClient(IServiceAddress managerAddress, IServiceConnector connector)
-			: this(managerAddress, connector, ManagerCacheState.GetCache(managerAddress)) {
+		public NetworkClient(IServiceAddress[] managerAddresses, IServiceConnector connector)
+			: this(managerAddresses, connector, ManagerCacheState.GetCache(managerAddresses)) {
 		}
 
-		public NetworkClient(IServiceAddress managerAddress, IServiceConnector connector, INetworkCache cache) {
+		public NetworkClient(IServiceAddress[] managerAddresses, IServiceConnector connector, INetworkCache cache) {
 			if (!(connector.MessageSerializer is IMessageStreamSupport))
 				throw new ArgumentException("The connector given has an invalid message serializer for this context (must be a IRPC serializer).");
 			
 			this.connector = connector;
-			this.managerAddress = managerAddress;
+			this.managerAddresses = managerAddresses;
 			this.cache = cache;
 		}
 
+		public NetworkClient(IServiceAddress managerAddress, IServiceConnector connector)
+			: this(new IServiceAddress[] { managerAddress }, connector, ManagerCacheState.GetCache(new IServiceAddress[] { managerAddress })) {
+		}
+
+		public NetworkClient(IServiceAddress managerAddress, IServiceConnector connector, INetworkCache cache)
+			: this(new IServiceAddress[] { managerAddress }, connector, cache) {
+		}
+
+
 		private IServiceConnector connector;
-		private readonly IServiceAddress managerAddress;
+		private ServiceStatusTracker serviceTracker;
+		private readonly IServiceAddress[] managerAddresses;
 		private NetworkTreeSystem storageSystem;
 		private readonly INetworkCache cache;
 		private bool connected;
@@ -43,8 +53,9 @@ namespace Deveel.Data.Net {
 		public void Connect() {
 			if (connected)
 				throw new InvalidOperationException("The client is already connected.");
-			
-			storageSystem = new NetworkTreeSystem(connector, managerAddress, cache);
+
+			serviceTracker = new ServiceStatusTracker(connector);
+			storageSystem = new NetworkTreeSystem(connector, managerAddresses, cache, serviceTracker);
 			storageSystem.SetMaxNodeCacheHeapSize(maxTransactionNodeCacheHeapSize);
 			connected = true;
 		}
@@ -56,13 +67,22 @@ namespace Deveel.Data.Net {
 
 		internal void Disconnect() {
 			CheckConnected();
-			
-			if (connector != null)
-				connector.Close();
 
-			OnDisconnected();
+			try {
+				if (connector != null)
+					connector.Close();
+			} finally {
+				try {
+					serviceTracker.Stop();
 
-			connected = false;
+					OnDisconnected();
+				} finally {
+					serviceTracker = null;
+					connected = false;	
+
+					OnDisconnected();
+				}
+			}
 		}
 
 		public DataAddress CreateEmptyDatabase() {
@@ -95,10 +115,8 @@ namespace Deveel.Data.Net {
 		}
 
 		public DataAddress Commit(string pathName, DataAddress proposal) {
-			CheckConnected();
-			
-			IServiceAddress rootAddress = storageSystem.GetRootServer(pathName);
-			return storageSystem.Commit(rootAddress, pathName, proposal);
+			CheckConnected();			
+			return storageSystem.Commit(pathName, proposal);
 		}
 
 		public void DisposeTransaction(ITransaction transaction) {
@@ -112,21 +130,14 @@ namespace Deveel.Data.Net {
 		}
 
 		public DataAddress[] GetHistoricalSnapshots(string pathName, DateTime timeStart, DateTime timeEnd) {
-			CheckConnected();
-			
-			IServiceAddress rootAddress = storageSystem.GetRootServer(pathName);
-			return storageSystem.GetSnapshots(rootAddress, pathName, timeStart, timeEnd);
+			CheckConnected();			
+			return storageSystem.GetSnapshots(pathName, timeStart, timeEnd);
 		}
 
 		public DataAddress GetCurrentSnapshot(string pathName) {
 			CheckConnected();
-			
-			IServiceAddress rootAddress = storageSystem.GetRootServer(pathName);
 
-			if (rootAddress == null)
-				throw new Exception("There are no root servers in the network for path '" + pathName + "'");
-
-			return storageSystem.GetSnapshot(rootAddress, pathName);
+			return storageSystem.GetSnapshot(pathName);
 		}
 
 		public string[] GetNetworkPaths() {
@@ -141,11 +152,11 @@ namespace Deveel.Data.Net {
 			return storageSystem.CreateDiagnosticGraph(t);
 		}
 
-		public void CreateReachabilityList(TextWriter warning_log, DataAddress root_node, IIndex discovered_node_list) {
+		public void CreateReachabilityList(TextWriter warningLog, DataAddress rootNode, IIndex discovered_node_list) {
 			CheckConnected();
 			
 			try {
-				storageSystem.CreateReachabilityList(warning_log, root_node.Value, discovered_node_list);
+				storageSystem.CreateReachabilityList(warningLog, rootNode.Value, discovered_node_list);
 			} catch (IOException e) {
 				throw new ApplicationException("IO Error: " + e.Message);
 			}

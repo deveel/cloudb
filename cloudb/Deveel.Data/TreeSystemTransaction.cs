@@ -3,12 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 
-namespace Deveel.Data.Store {
+namespace Deveel.Data {
 	internal class TreeSystemTransaction : ITransaction {
-		private long rootNodeId;
+		private NodeId rootNodeId;
 		private readonly long versionId;
-		private List<long> nodeDeletes;
-		private List<long> nodeInserts;
+		private List<NodeId> nodeDeletes;
+		private List<NodeId> nodeInserts;
 		private TreeNodeHeap nodeHeap;
 		private readonly ITreeSystem storeSystem;
 		private long updateVersion;
@@ -22,7 +22,10 @@ namespace Deveel.Data.Store {
 		private bool committed;
 		private bool non_committable;
 
-		internal TreeSystemTransaction(ITreeSystem storeSystem, long versionId, long rootNodeId, bool readOnly) {
+		public static readonly Key UserDataMin = new Key(Int16.MinValue, Int32.MinValue, Int64.MinValue + 1);
+		public static readonly Key UserDataMax = new Key((short) 0x07F7F, Int32.MaxValue, Int64.MaxValue);
+
+		internal TreeSystemTransaction(ITreeSystem storeSystem, long versionId, NodeId rootNodeId, bool readOnly) {
 			this.storeSystem = storeSystem;
 			this.rootNodeId = rootNodeId;
 			this.versionId = versionId;
@@ -34,8 +37,9 @@ namespace Deveel.Data.Store {
 
 		}
 
-		public long RootNodeId {
+		public NodeId RootNodeId {
 			get { return rootNodeId; }
+			internal set { rootNodeId = value; }
 		}
 
 		public TreeNodeHeap NodeHeap {
@@ -46,23 +50,32 @@ namespace Deveel.Data.Store {
 			}
 		}
 
-		private List<long> NodeDeletes {
+		internal ITreeSystem TreeSystem {
+			get { return storeSystem; }
+		}
+
+		internal int TreeHeight {
+			get { return treeHeight; }
+			set { treeHeight = value; }
+		}
+
+		private List<NodeId> NodeDeletes {
 			get {
 				if (nodeDeletes == null)
-					nodeDeletes = new List<long>(64);
+					nodeDeletes = new List<NodeId>(64);
 				return nodeDeletes;
 			}
 		}
 
-		private List<long> NodeInserts {
+		private List<NodeId> NodeInserts {
 			get {
 				if (nodeInserts == null)
-					nodeInserts = new List<long>(64);
+					nodeInserts = new List<NodeId>(64);
 				return nodeInserts;
 			}
 		}
 
-		internal IList<long> DeletedNodes {
+		internal IList<NodeId> DeletedNodes {
 			get { return NodeDeletes; }
 		}
 		private int MaxLeafByteSize {
@@ -78,54 +91,47 @@ namespace Deveel.Data.Store {
 		}
 
 		public ICollection<Key> Keys {
-			get { return new KeyCollection(this); }
+			get { return new KeyCollection(this, GetRange()); }
 		}
 
 
-		private TreeLeaf CreateSparseLeaf(Key key, byte b, long max_size) {
+		internal TreeLeaf CreateSparseLeaf(Key key, byte b, long maxSize) {
 			// Make sure the sparse leaf doesn't exceed the maximum leaf size
-			int sparseSize = (int)Math.Min(max_size, (long)MaxLeafByteSize);
+			int sparseSize = (int)Math.Min(maxSize, (long)MaxLeafByteSize);
 			// Make sure the sparse leaf doesn't exceed the maximum size of the
 			// sparse leaf object.
 			sparseSize = Math.Min(65535, sparseSize);
-
-			// The byte encoding
-			int byte_code = (((int)b) & 0x0FF) << 16;
-			// Merge all the info into the sparse node reference
-			int sparse_code = sparseSize | byte_code | 0x01000000;
-			long node_ref = 0x01000000000000000L + sparse_code;
-
-			return (TreeLeaf)FetchNode(node_ref);
+			// Create node reference for a special sparse node,
+			NodeId nodeId = NodeId.CreateSpecialSparseNode(b, maxSize);
+			return (TreeLeaf)FetchNode(nodeId);
 		}
 
-		private TreeLeaf CreateLeaf(Key key) {
+		internal TreeLeaf CreateLeaf(Key key) {
 			return NodeHeap.CreateLeaf(this, key, MaxLeafByteSize);
 		}
 
-		private TreeBranch CreateBranch() {
+		internal TreeBranch CreateBranch() {
 			return NodeHeap.CreateBranch(this, MaxBranchSize);
 		}
 
-		private static bool IsFrozen(long nodeId) {
-			// A node is frozen if either it is in the store (nodeId >= 0) or it has
-			// the lock bit set to 0
-			return nodeId >= 0 || (nodeId & 0x02000000000000000L) == 0;
+		internal static bool IsFrozen(NodeId nodeId) {
+			return !nodeId.IsInMemory;
 		}
 
-		private ITreeNode UnfreezeNode(ITreeNode node) {
-			long node_ref = node.Id;
-			if (IsFrozen(node_ref)) {
+		internal ITreeNode UnfreezeNode(ITreeNode node) {
+			NodeId nodeId = node.Id;
+			if (IsFrozen(nodeId)) {
 				// Return a copy of the node
-				ITreeNode new_copy = NodeHeap.Copy(node, storeSystem.MaxBranchSize,
-												   storeSystem.MaxLeafByteSize, this, false);
+				ITreeNode newCopy = NodeHeap.Copy(node, storeSystem.MaxBranchSize,
+												   storeSystem.MaxLeafByteSize, this);
 				// Delete the old node,
-				DeleteNode(node_ref);
-				return new_copy;
+				DeleteNode(nodeId);
+				return newCopy;
 			}
 			return node;
 		}
 
-		private ITreeNode FetchNode(long nodeId) {
+		internal ITreeNode FetchNode(NodeId nodeId) {
 			// Is it a node we can fetch from the local node heap?
 			if (IsHeapNode(nodeId)) {
 				ITreeNode n = NodeHeap.FetchNode(nodeId);
@@ -136,49 +142,58 @@ namespace Deveel.Data.Store {
 
 			// If there's nothing in the prefetch keymap,
 			if (prefetch_keymap.Count == 0) {
-				return storeSystem.FetchNodes(new long[] { nodeId })[0];
+				ITreeNode n = storeSystem.FetchNodes(new NodeId[] { nodeId })[0];
+				if (n == null)
+					throw new NullReferenceException();
+				return n;
 			}
 
-			List<long> prefetch_nodeset = new List<long>();
+			List<NodeId> prefetch_nodeset = new List<NodeId>();
 			prefetch_nodeset.Add(nodeId);
 			DiscoverPrefetchNodeSet(prefetch_nodeset);
 
 			int len = prefetch_nodeset.Count;
-			long[] node_refs = new long[len];
+			NodeId[] node_refs = new NodeId[len];
 			for (int i = 0; i < len; ++i) {
 				node_refs[i] = prefetch_nodeset[i];
 			}
 
 			// Otherwise fetch the node from the tree store
-			return storeSystem.FetchNodes(node_refs)[0];
+			ITreeNode node = storeSystem.FetchNodes(node_refs)[0];
+			if (node == null)
+				throw new NullReferenceException();
+			return node;
 		}
 
 		private static Key PreviousKeyOrder(Key key) {
 			short type = key.Type;
 			int secondary = key.Secondary;
 			long primary = key.Primary;
+			if (primary == Int64.MinValue)
+				throw new InvalidOperationException();
+
 			return new Key(type, secondary, primary - 1);
 		}
 
 
-		private ITreeNode FetchNodeIfLocallyAvailable(long node_ref) {
+		private ITreeNode FetchNodeIfLocallyAvailable(NodeId nodeId) {
 			// If it's a heap node,
-			if (IsHeapNode(node_ref)) {
-				return FetchNode(node_ref);
+			if (IsHeapNode(nodeId)) {
+				return FetchNode(nodeId);
 			}
 
 			// If the node is locally available, return it,
-			if (storeSystem.IsNodeAvailable(node_ref)) {
-				return storeSystem.FetchNodes(new long[] { node_ref })[0];
+			if (storeSystem.IsNodeAvailable(nodeId)) {
+				return storeSystem.FetchNodes(new NodeId[] { nodeId })[0];
 			}
 			// Otherwise return null
 			return null;
 		}
 
-		private long LastUncachedNode(Key key) {
+		private NodeId LastUncachedNode(Key key) {
 			int cur_height = 1;
-			long child_node_ref = rootNodeId;
-			TreeBranch last_branch = null;
+			NodeId childNodeId = RootNodeId;
+			TreeBranch lastBranch = null;
 			int child_i = -1;
 
 			// How this works;
@@ -195,9 +210,9 @@ namespace Deveel.Data.Store {
 
 			// Try and fetch the node, if it's not available locally then return the
 			// child node ref
-			ITreeNode node = FetchNodeIfLocallyAvailable(child_node_ref);
+			ITreeNode node = FetchNodeIfLocallyAvailable(childNodeId);
 			if (node == null) {
-				return child_node_ref;
+				return childNodeId;
 			}
 
 			while (true) {
@@ -209,11 +224,11 @@ namespace Deveel.Data.Store {
 					// Must be a branch,
 				else {
 					TreeBranch branch = (TreeBranch)node;
-					last_branch = branch;
+					lastBranch = branch;
 					// We ask the node for the child sub-tree that will contain this node
 					child_i = branch.SearchLast(key);
 					// Child will be in this subtree
-					child_node_ref = branch.GetChild(child_i);
+					childNodeId = branch.GetChild(child_i);
 
 					// Ok, if we know child_node_ref is a leaf,
 					if (cur_height + 1 == treeHeight) {
@@ -222,9 +237,9 @@ namespace Deveel.Data.Store {
 
 					// Try and fetch the node, if it's not available locally then return
 					// the child node ref
-					node = FetchNodeIfLocallyAvailable(child_node_ref);
+					node = FetchNodeIfLocallyAvailable(childNodeId);
 					if (node == null) {
-						return child_node_ref;
+						return childNodeId;
 					}
 					// Otherwise, descend to the child and repeat
 					++cur_height;
@@ -234,21 +249,21 @@ namespace Deveel.Data.Store {
 			// Ok, we've reached the end of the tree,
 
 			// Fetch the next child_i if we are not at the end already,
-			if (child_i + 1 < last_branch.ChildCount) {
-				child_node_ref = last_branch.GetChild(child_i);
+			if (child_i + 1 < lastBranch.ChildCount) {
+				childNodeId = lastBranch.GetChild(child_i);
 			}
 
 			// If the child node is not a heap node, and is not available locally then
 			// return it.
-			if (!IsHeapNode(child_node_ref) &&
-				!storeSystem.IsNodeAvailable(child_node_ref)) {
-				return child_node_ref;
+			if (!IsHeapNode(childNodeId) &&
+				!storeSystem.IsNodeAvailable(childNodeId)) {
+				return childNodeId;
 			}
 			// The key is available locally,
-			return -1;
+			return null;
 		}
 
-		private void DiscoverPrefetchNodeSet(IList<long> node_set) {
+		private void DiscoverPrefetchNodeSet(IList<NodeId> nodeSet) {
 			// If the map is empty, return
 			if (prefetch_keymap.Count == 0) {
 				return;
@@ -256,11 +271,11 @@ namespace Deveel.Data.Store {
 
 			List<Key> toRemove = new List<Key>();
 			foreach (Key key in prefetch_keymap.Keys) {
-				long node_ref = LastUncachedNode(key);
+				NodeId nodeId = LastUncachedNode(key);
 
-				if (node_ref != -1) {
-					if (!node_set.Contains(node_ref)) {
-						node_set.Add(node_ref);
+				if (nodeId != null) {
+					if (!nodeSet.Contains(nodeId)) {
+						nodeSet.Add(nodeId);
 					}
 				} else {
 					// Remove the key from the prefetch map
@@ -273,8 +288,8 @@ namespace Deveel.Data.Store {
 			}
 		}
 
-		private static bool IsHeapNode(long nodeId) {
-			return nodeId < 0;
+		internal static bool IsHeapNode(NodeId nodeId) {
+			return nodeId.IsInMemory;
 		}
 
 		private static void ByteBufferCopyTo(DataFile source, DataFile target, long size) {
@@ -297,7 +312,7 @@ namespace Deveel.Data.Store {
 			}
 		}
 
-		private int PopulateWrite(long reference, TreeWrite write) {
+		private int PopulateWrite(NodeId reference, TreeWrite write) {
 			// If it's not a heap node, return
 			if (!IsHeapNode(reference))
 				return -1;
@@ -316,7 +331,7 @@ namespace Deveel.Data.Store {
 				TreeBranch branch = (TreeBranch)node;
 				int sz = branch.ChildCount;
 				for (int i = 0; i < sz; ++i) {
-					long child_ref = branch.GetChild(i);
+					NodeId child_ref = branch.GetChild(i);
 					// Sequence the child
 					int child_id = PopulateWrite(child_ref, write);
 					// If something could be sequenced in the child,
@@ -332,7 +347,7 @@ namespace Deveel.Data.Store {
 			throw new ApplicationException("Unknown node type.");
 		}
 
-		private long WriteNode(long reference) {
+		internal NodeId WriteNode(NodeId reference) {
 			// Create the sequence,
 			TreeWrite treeWrite = new TreeWrite();
 			// Create the command sequence to write this tree out,
@@ -340,7 +355,7 @@ namespace Deveel.Data.Store {
 
 			if (root_id != -1) {
 				// Write out this sequence,
-				IList<long> refs = storeSystem.Persist(treeWrite);
+				IList<NodeId> refs = storeSystem.Persist(treeWrite);
 
 				// Update internal structure for each node written,
 				IList<ITreeNode> nodes = treeWrite.BranchNodes;
@@ -369,14 +384,14 @@ namespace Deveel.Data.Store {
 			}
 		}
 
-		private void OnNodeWritten(ITreeNode node, long reference) {
+		private void OnNodeWritten(ITreeNode node, NodeId reference) {
 			// Delete the reference to the old node,
 			DeleteNode(node.Id);
 			// Log the insert operation.
 			LogStoreChange(1, reference);
 		}
 
-		private void DeleteNode(long pointer) {
+		internal void DeleteNode(NodeId pointer) {
 			// If we are deleting a node that's on the temporary node heap, we delete
 			// it immediately.  We know such nodes are only accessed within the scope of
 			// this transaction so we can free up the resources immediately.
@@ -394,12 +409,12 @@ namespace Deveel.Data.Store {
 			}
 		}
 
-		private void LogStoreChange(byte type, long pointer) {
-			if ((pointer & 0x02000000000000000L) != 0)
-				// This could happen if there's a pointer overflow
-				throw new ApplicationException("Pointer error.");
+		private void LogStoreChange(byte type, NodeId pointer) {
+			if (!storeSystem.NotifyForAllNodes)
+				return;
+
 			// Special node type changes are not logged
-			if ((pointer & 0x01000000000000000L) != 0)
+			if (pointer.IsSpecial)
 				return;
 
 			if (type == 0) {
@@ -414,16 +429,16 @@ namespace Deveel.Data.Store {
 		}
 
 		private long KeyEndPosition(Key key) {
-			Key left_key = Key.Head;
-			int cur_height = 1;
-			long left_offset = 0;
-			long node_total_size = -1;
-			ITreeNode node = FetchNode(rootNodeId);
+			Key leftKey = Key.Head;
+			int curHeight = 1;
+			long leftOffset = 0;
+			long nodeTotalSize = -1;
+			ITreeNode node = FetchNode(RootNodeId);
 
 			while (true) {
 				// Is the node a leaf?
 				if (node is TreeLeaf) {
-					treeHeight = cur_height;
+					treeHeight = curHeight;
 					break;
 				}
 
@@ -432,24 +447,24 @@ namespace Deveel.Data.Store {
 				// We ask the node for the child sub-tree that will contain this node
 				int child_i = branch.SearchLast(key);
 				// Child will be in this subtree
-				long child_offset = branch.GetChildOffset(child_i);
-				long child_node_ref = branch.GetChild(child_i);
-				node_total_size = branch.GetChildLeafElementCount(child_i);
+				long childOffset = branch.GetChildOffset(child_i);
+				NodeId childNodeId = branch.GetChild(child_i);
+				nodeTotalSize = branch.GetChildLeafElementCount(child_i);
 				// Get the left key of the branch if we can
 				if (child_i > 0) {
-					left_key = branch.GetKey(child_i);
+					leftKey = branch.GetKey(child_i);
 				}
 				// Update left_offset
-				left_offset += child_offset;
+				leftOffset += childOffset;
 
 				// Ok, if we know child_node_ref is a leaf,
-				if (cur_height + 1 == treeHeight) {
+				if (curHeight + 1 == treeHeight) {
 					break;
 				}
 
 				// Otherwise, descend to the child and repeat
-				node = FetchNode(child_node_ref);
-				++cur_height;
+				node = FetchNode(childNodeId);
+				++curHeight;
 			}
 
 			// Ok, we've reached the end of the tree,
@@ -457,15 +472,20 @@ namespace Deveel.Data.Store {
 			// 'node_total_size' will be the size of the node,
 
 			// If the key matches,
-			int c = key.CompareTo(left_key);
+			int c = key.CompareTo(leftKey);
 			if (c == 0)
-				return left_offset + node_total_size;
+				return leftOffset + nodeTotalSize;
 			// If the searched for key is less than this
 			if (c < 0)
-				return -(left_offset + 1);
+				return -(leftOffset + 1);
 
 			// If this key is greater, relative offset is at the end of this node.
-			return -((left_offset + node_total_size) + 1);
+			return -((leftOffset + nodeTotalSize) + 1);
+		}
+
+		private long AbsKeyEndPosition(Key key) {
+			long pos = KeyEndPosition(key);
+			return (pos < 0) ? -(pos + 1) : pos;
 		}
 
 		private void GetDataFileBounds(Key key, out long start, out long end) {
@@ -474,7 +494,7 @@ namespace Deveel.Data.Store {
 			int cur_height = 1;
 			long left_offset = 0;
 			long node_total_size = -1;
-			ITreeNode node = FetchNode(rootNodeId);
+			ITreeNode node = FetchNode(RootNodeId);
 			TreeBranch last_branch = (TreeBranch) node;
 			int child_i = -1;
 
@@ -506,7 +526,7 @@ namespace Deveel.Data.Store {
 				}
 
 				// Otherwise, descend to the child and repeat
-				long child_node_ref = branch.GetChild(child_i);
+				NodeId child_node_ref = branch.GetChild(child_i);
 				node = FetchNode(child_node_ref);
 				++cur_height;
 			}
@@ -569,11 +589,7 @@ namespace Deveel.Data.Store {
 			// Otherwise, find the end position of the previous key through a tree
 			// search
 			Key previous_key = PreviousKeyOrder(key);
-			long start_pos = KeyEndPosition(previous_key);
-
-			if (start_pos < 0) {
-				start_pos = -(start_pos + 1);
-			}
+			long start_pos = AbsKeyEndPosition(previous_key);
 
 			if (start_pos > end_pos) {
 				throw new ApplicationException("Assertion failed: (2) start_pos > end_pos");
@@ -590,6 +606,15 @@ namespace Deveel.Data.Store {
 			return new TransactionDataFile(this, key, access);
 		}
 
+		internal IDataRange UnsafeGetDataRange(Key minKey, Key maxKey) {
+			// Check if the transaction disposed,
+			if (disposed)
+				throw new ApplicationException("Transaction is disposed");
+
+			// Create and return the data file object for this key.
+			return new TransactionDataRange(this, minKey, maxKey);
+		}
+
 		private void CheckErrorState() {
 			storeSystem.CheckErrorState();
 		}
@@ -598,11 +623,11 @@ namespace Deveel.Data.Store {
 			return storeSystem.SetErrorState(error);
 		}
 
-		private void DisposeNode(long node_id) {
-			storeSystem.DisposeNode(node_id);
+		private void DisposeNode(NodeId nodeId) {
+			storeSystem.DisposeNode(nodeId);
 		}
 
-		private void DisposeHeapNodes(long reference) {
+		private void DisposeHeapNodes(NodeId reference) {
 			// If it's not a heap node, return
 			if (!IsHeapNode(reference))
 				return;
@@ -634,12 +659,39 @@ namespace Deveel.Data.Store {
 			throw new ApplicationException("Unknown node type.");
 		}
 
-		private void CompactNodeKey(Key key) {
-			long[] merge_buffer = new long[6];
-			CompactNode(Key.Head, rootNodeId, merge_buffer, key, key);
+		private void DisposeTree(NodeId id) {
+			// It is a heap node, so fetch
+			ITreeNode node = FetchNode(id);
+			// Is it a leaf or a branch?
+			if (node is TreeLeaf) {
+				// If it's a leaf, dispose it
+				DeleteNode(id);
+				// And return,
+				return;
+			} else if (node is TreeBranch) {
+				// This is a branch, so we need to dipose the children if they are heap
+				TreeBranch branch = (TreeBranch) node;
+
+				int sz = branch.ChildCount;
+				for (int i = 0; i < sz; ++i) {
+					// Recurse for each child,
+					DisposeTree(branch.GetChild(i));
+				}
+				// Then dispose this,
+				DeleteNode(id);
+				// And return,
+				return;
+			}
+				
+			throw new ApplicationException("Unknown node type.");
 		}
 
-		private void CompactNode(Key far_left, long reference, long[] merge_buffer, Key min_bound, Key max_bound) {
+		private void CompactNodeKey(Key key) {
+			object [] mergeBuffer = new object[5];
+			CompactNode(Key.Head, RootNodeId, mergeBuffer, key, key);
+		}
+
+		private void CompactNode(Key farLeft, NodeId reference, object[] mergeBuffer, Key minBound, Key maxBound) {
 			// If the ref is not on the heap, return the ref,
 			if (!IsHeapNode(reference))
 				return;
@@ -657,8 +709,8 @@ namespace Deveel.Data.Store {
 
 				// We ask the node for the child sub-tree that will contain the range
 				// of this key
-				int first_child_i = branch.SearchFirst(min_bound);
-				int last_child_i = branch.SearchLast(max_bound);
+				int first_child_i = branch.SearchFirst(minBound);
+				int last_child_i = branch.SearchLast(maxBound);
 
 				// first_child_i may be negative which means a key reference is equal
 				// to the key being searched, in which case we follow the left branch.
@@ -668,10 +720,10 @@ namespace Deveel.Data.Store {
 				// Compact the children,
 				for (int i = first_child_i; i <= last_child_i; ++i) {
 					// Change far left to represent the new far left node
-					Key new_far_left = (i > 0) ? branch.GetKey(i) : far_left;
+					Key new_far_left = (i > 0) ? branch.GetKey(i) : farLeft;
 
 					// We don't change max_bound because it's not necessary.
-					CompactNode(new_far_left, branch.GetChild(i), merge_buffer, min_bound, max_bound);
+					CompactNode(new_far_left, branch.GetChild(i), mergeBuffer, minBound, maxBound);
 				}
 
 				// The number of children in this branch,
@@ -682,23 +734,23 @@ namespace Deveel.Data.Store {
 				// We must not let there be less than 3 children
 				while (sz > 3 && i1 <= last_child_i - 1) {
 					// The left and right children nodes,
-					long left_child_ref = branch.GetChild(i1);
-					long right_child_ref = branch.GetChild(i1 + 1);
+					NodeId left_child_ref = branch.GetChild(i1);
+					NodeId right_child_ref = branch.GetChild(i1 + 1);
 
 					// If at least one of them is a heap node we attempt to merge the
 					// nodes,
 					if (IsHeapNode(left_child_ref) || IsHeapNode(right_child_ref)) {
 						// Set the left left key and right left key of the references,
-						Key left_left_key = (i1 > 0) ? branch.GetKey(i1) : far_left;
+						Key left_left_key = (i1 > 0) ? branch.GetKey(i1) : farLeft;
 						Key right_left_key = branch.GetKey(i1 + 1);
 						// Attempt to merge the nodes,
 						int node_result = MergeNodes(branch.GetKey(i1 + 1), left_child_ref, right_child_ref, left_left_key, right_left_key,
-													 merge_buffer);
+													 mergeBuffer);
 						// If we merged into a single node then we update the left left and
 						// delete the right
 						if (node_result == 1) {
-							branch.SetChild(i1, merge_buffer[0]);
-							branch.SetChildLeafElementCount(i1, merge_buffer[1]);
+							branch.SetChild(i1, (NodeId) mergeBuffer[0]);
+							branch.SetChildLeafElementCount(i1, (long)mergeBuffer[1]);
 							branch.RemoveChild(i1 + 1);
 							// Reduce the size but don't increase i, because we may want to
 							// merge again.
@@ -707,11 +759,11 @@ namespace Deveel.Data.Store {
 						} else if (node_result == 2) {
 							// Two result but there was a change (the left was increased in
 							// size)
-							branch.SetChild(i1, merge_buffer[0]);
-							branch.SetChildLeafElementCount(i1, merge_buffer[1]);
-							branch.SetKeyValueToLeft(merge_buffer[2], merge_buffer[3], i1 + 1);
-							branch.SetChild(i1 + 1, merge_buffer[4]);
-							branch.SetChildLeafElementCount(i1 + 1, merge_buffer[5]);
+							branch.SetChild(i1, (NodeId) mergeBuffer[0]);
+							branch.SetChildLeafElementCount(i1, (long) mergeBuffer[1]);
+							branch.SetKeyValueToLeft((Key) mergeBuffer[2], i1 + 1);
+							branch.SetChild(i1 + 1, (NodeId) mergeBuffer[3]);
+							branch.SetChildLeafElementCount(i1 + 1, (long) mergeBuffer[4]);
 							++i1;
 						} else {
 							// Otherwise, no change so skip to the next child,
@@ -726,24 +778,26 @@ namespace Deveel.Data.Store {
 			}
 		}
 
-		private int MergeNodes(Key middle_key_value, long left_ref, long right_ref, Key left_left_key, Key right_left_key, long[] merge_buffer) {
+		private int MergeNodes(Key middleKeyValue, NodeId leftRef, NodeId rightRef, Key leftLeftKey, Key rightLeftKey, object [] mergeBuffer) {
 			// Fetch the nodes,
-			ITreeNode left_node = FetchNode(left_ref);
-			ITreeNode right_node = FetchNode(right_ref);
+			ITreeNode leftNode = FetchNode(leftRef);
+			ITreeNode rightNode = FetchNode(rightRef);
 			// Are we merging branches or leafs?
-			if (left_node is TreeLeaf) {
-				TreeLeaf lleaf = (TreeLeaf)left_node;
-				TreeLeaf rleaf = (TreeLeaf)right_node;
+			if (leftNode is TreeLeaf) {
+				TreeLeaf lleaf = (TreeLeaf)leftNode;
+				TreeLeaf rleaf = (TreeLeaf)rightNode;
 				// Check the keys are identical,
-				//      if (lleaf.getKey().equals(rleaf.getKey())) {
-				if (left_left_key.Equals(right_left_key)) {
+				if (leftLeftKey.Equals(rightLeftKey)) {
 					int capacity80 = (int)(0.80 * MaxLeafByteSize);
+					// True if it's possible to full merge left and right into a single
+					bool fullyMerge = lleaf.Length + rleaf.Length <= MaxLeafByteSize;
+
 					// Only proceed if left is less than 80% full,
-					if (lleaf.Length < capacity80) {
+					if (fullyMerge || lleaf.Length < capacity80) {
 						// Move elements from the right leaf to the left leaf so that either
 						// the right node becomes completely empty or if that's not possible
 						// the left node is 80% full.
-						if (lleaf.Length + rleaf.Length <= MaxLeafByteSize) {
+						if (fullyMerge) {
 							// We can fit both nodes into a single node so merge into a single
 							// node,
 							TreeLeaf nleaf = (TreeLeaf)UnfreezeNode(lleaf);
@@ -755,8 +809,8 @@ namespace Deveel.Data.Store {
 							DeleteNode(rleaf.Id);
 
 							// Setup the merge state
-							merge_buffer[0] = nleaf.Id;
-							merge_buffer[1] = nleaf.Length;
+							mergeBuffer[0] = nleaf.Id;
+							mergeBuffer[1] = (long) nleaf.Length;
 							return 1;
 						} else {
 							// Otherwise, we move bytes from the right leaf into the left
@@ -769,47 +823,48 @@ namespace Deveel.Data.Store {
 								TreeLeaf mlleaf = (TreeLeaf)UnfreezeNode(lleaf);
 								TreeLeaf mrleaf = (TreeLeaf)UnfreezeNode(rleaf);
 								// Copy,
-								byte[] copy_buf = new byte[to_copy];
-								mrleaf.Read(0, copy_buf, 0, to_copy);
-								mlleaf.Read(mlleaf.Length, copy_buf, 0, to_copy);
+								byte[] copyBuf = new byte[to_copy];
+								mrleaf.Read(0, copyBuf, 0, to_copy);
+								mlleaf.Read(mlleaf.Length, copyBuf, 0, to_copy);
 								// Shift the data in the right leaf,
 								mrleaf.Shift(to_copy, -to_copy);
 
 								// Return the merge state
-								merge_buffer[0] = mlleaf.Id;
-								merge_buffer[1] = mlleaf.Length;
-								merge_buffer[2] = right_left_key.GetEncoded(1);
-								merge_buffer[3] = right_left_key.GetEncoded(2);
-								merge_buffer[4] = mrleaf.Id;
-								merge_buffer[5] = mrleaf.Length;
+								mergeBuffer[0] = mlleaf.Id;
+								mergeBuffer[1] = (long)mlleaf.Length;
+								mergeBuffer[2] = rightLeftKey;
+								mergeBuffer[3] = mrleaf.Id;
+								mergeBuffer[4] = (long)mrleaf.Length;
 								return 2;
 							}
 						}
 					}
 				} // leaf keys unequal
-			} else if (left_node is TreeBranch) {
+			} else if (leftNode is TreeBranch) {
 				// Merge branches,
-				TreeBranch lbranch = (TreeBranch)left_node;
-				TreeBranch rbranch = (TreeBranch)right_node;
+				TreeBranch lbranch = (TreeBranch)leftNode;
+				TreeBranch rbranch = (TreeBranch)rightNode;
 
 				int capacity75 = (int)(0.75 * MaxBranchSize);
+				// True if it's possible to full merge left and right into a single
+				bool fully_merge = lbranch.ChildCount + rbranch.ChildCount <= MaxBranchSize;
 				// Only proceed if left is less than 75% full,
-				if (lbranch.ChildCount < capacity75) {
+				if (fully_merge || lbranch.ChildCount < capacity75) {
 					// Move elements from the right branch to the left leaf only if the
 					// branches can be completely merged into a node
-					if (lbranch.ChildCount + rbranch.ChildCount <= MaxBranchSize) {
+					if (fully_merge) {
 						// We can fit both nodes into a single node so merge into a single
 						// node,
 						TreeBranch nbranch = (TreeBranch)UnfreezeNode(lbranch);
 						// Merge,
-						nbranch.MergeLeft(rbranch, middle_key_value, rbranch.ChildCount);
+						nbranch.MergeLeft(rbranch, middleKeyValue, rbranch.ChildCount);
 
 						// Delete the right branch,
 						DeleteNode(rbranch.Id);
 
 						// Setup the merge state
-						merge_buffer[0] = nbranch.Id;
-						merge_buffer[1] = nbranch.LeafElementCount;
+						mergeBuffer[0] = nbranch.Id;
+						mergeBuffer[1] = nbranch.LeafElementCount;
 						return 1;
 					} else {
 						// Otherwise, we move children from the right branch into the left
@@ -822,15 +877,14 @@ namespace Deveel.Data.Store {
 							TreeBranch mlbranch = (TreeBranch)UnfreezeNode(lbranch);
 							TreeBranch mrbranch = (TreeBranch)UnfreezeNode(rbranch);
 							// And merge
-							Key new_middle_value = mlbranch.MergeLeft(mrbranch, middle_key_value, to_copy);
+							Key new_middle_value = mlbranch.MergeLeft(mrbranch, middleKeyValue, to_copy);
 
 							// Setup and return the merge state
-							merge_buffer[0] = mlbranch.Id;
-							merge_buffer[1] = mlbranch.LeafElementCount;
-							merge_buffer[2] = new_middle_value.GetEncoded(1);
-							merge_buffer[3] = new_middle_value.GetEncoded(2);
-							merge_buffer[4] = mrbranch.Id;
-							merge_buffer[5] = mrbranch.LeafElementCount;
+							mergeBuffer[0] = mlbranch.Id;
+							mergeBuffer[1] = mlbranch.LeafElementCount;
+							mergeBuffer[2] = new_middle_value;
+							mergeBuffer[3] = mrbranch.Id;
+							mergeBuffer[4] = mrbranch.LeafElementCount;
 							return 2;
 						}
 					}
@@ -842,22 +896,117 @@ namespace Deveel.Data.Store {
 			return 3;
 		}
 
-		private long FlushNodes(long reference, long[] include_refs) {
-			if (!IsHeapNode(reference))
-				return reference;
+		private TreeBranch RecurseRebalanceTree(long leftOffset, int height, NodeId nodeId, long absolutePosition, Key inLeftKey) {
+			// Put the node in memory,
+			TreeBranch branch = (TreeBranch) FetchNode(nodeId);
+
+			int sz = branch.ChildCount;
+			int i;
+			long pos = leftOffset;
+			// Find the first child i that contains the position.
+			for (i = 0; i < sz; ++i) {
+				long child_elem_count = branch.GetChildLeafElementCount(i);
+				// abs position falls within bounds,
+				if (absolutePosition >= pos &&
+				    absolutePosition < pos + child_elem_count) {
+					break;
+				}
+				pos += child_elem_count;
+			}
+
+			if (i > 0) {
+
+				NodeId leftRef = branch.GetChild(i - 1);
+				NodeId rightRef = branch.GetChild(i);
+
+				// Only continue if both left and right are on the heap
+				if (IsHeapNode(leftRef) &&
+				    IsHeapNode(rightRef) &&
+				    IsHeapNode(nodeId)) {
+
+					Key leftKey = (i - 1 == 0) ? inLeftKey : branch.GetKey(i - 1);
+					Key rightKey = branch.GetKey(i);
+
+					// Perform the merge operation,
+					Key midKeyValue = rightKey;
+					Object[] mergeBuffer = new Object[5];
+					int merge_result = MergeNodes(midKeyValue, leftRef, rightRef,
+					                              leftKey, rightKey, mergeBuffer);
+					if (merge_result == 1) {
+						branch.SetChild(i - 1, (NodeId) mergeBuffer[0]);
+						branch.SetChildLeafElementCount(i - 1, (long) mergeBuffer[1]);
+						branch.RemoveChild(i);
+					}
+						//
+					else if (merge_result == 2) {
+						branch.SetChild(i - 1, (NodeId) mergeBuffer[0]);
+						branch.SetChildLeafElementCount(i - 1, (long) mergeBuffer[1]);
+						branch.SetKeyValueToLeft((Key) mergeBuffer[2], i);
+						branch.SetChild(i, (NodeId) mergeBuffer[3]);
+						branch.SetChildLeafElementCount(i, (long) mergeBuffer[4]);
+					}
+
+				}
+
+			}
+
+			// After merge, we don't know how the children will be placed, so we
+			// do another search on the child to descend to,
+
+			sz = branch.ChildCount;
+			pos = leftOffset;
+			// Find the first child i that contains the position.
+			for (i = 0; i < sz; ++i) {
+				long childElemCount = branch.GetChildLeafElementCount(i);
+				// abs position falls within bounds,
+				if (absolutePosition >= pos &&
+				    absolutePosition < pos + childElemCount) {
+					break;
+				}
+				pos += childElemCount;
+			}
+
+			// Descend on 'i'
+			ITreeNode descendChild = FetchNode(branch.GetChild(i));
+
+			// Finish if we hit a leaf
+			if (descendChild is TreeLeaf) {
+				// End if we hit the leaf,
+				return branch;
+			}
+
+			Key new_left_key = (i == 0) ? inLeftKey : branch.GetKey(i);
+
+			// Otherwise recurse on the child,
+			TreeBranch child_branch = RecurseRebalanceTree(pos, height + 1, descendChild.Id, absolutePosition, new_left_key);
+
+			// Make sure we unfreeze the branch
+			branch = (TreeBranch) UnfreezeNode(branch);
+
+			// Update the child,
+			branch.SetChild(i, child_branch.Id);
+			branch.SetChildLeafElementCount(i, child_branch.LeafElementCount);
+
+			// And return this branch,
+			return branch;
+		}
+
+		private NodeId FlushNodes(NodeId nodeId, NodeId[] includeNodeIds) {
+			if (!IsHeapNode(nodeId))
+				return nodeId;
 
 			// Is this reference in the list?
-			int c = Array.BinarySearch(include_refs, reference);
+			int c = Array.BinarySearch(includeNodeIds, nodeId);
 			if (c < 0) {
 				// It was not found, so go to the children,
 				// Note that this node will change if it's a branch node, but the
 				// reference to it will not change.
 
 				// It is a heap node, so fetch
-				ITreeNode node = FetchNode(reference);
+				ITreeNode node = FetchNode(nodeId);
 				// Is it a leaf or a branch?
 				if (node is TreeLeaf)
-					return reference;
+					return nodeId;
 				if (node is TreeBranch) {
 					// This is a branch, so we need to write out any children that are on
 					// the heap before we write out the branch itself,
@@ -866,19 +1015,19 @@ namespace Deveel.Data.Store {
 					int sz = branch.ChildCount;
 
 					for (int i = 0; i < sz; ++i) {
-						long old_ref = branch.GetChild(i);
+						NodeId old_ref = branch.GetChild(i);
 						// Recurse
-						branch.SetChild(i, FlushNodes(old_ref, include_refs));
+						branch.SetChild(i, FlushNodes(old_ref, includeNodeIds));
 					}
 					// And return the reference
-					return reference;
+					return nodeId;
 				}
 
 				throw new Exception("Unknown node type.");
 			}
 
 			// This node was in the 'include_refs' list so write it out now,
-			return WriteNode(reference);
+			return WriteNode(nodeId);
 		}
 
 		private void FlushCache() {
@@ -887,36 +1036,188 @@ namespace Deveel.Data.Store {
 			NodeHeap.Flush();
 		}
 
-		private Key NextKey(Key right_key, Key key, long reference) {
-			// Fetch the node
-			ITreeNode node = FetchNode(reference);
-			// If the node is a branch node
-			if (node is TreeBranch) {
-				TreeBranch branch = (TreeBranch)node;
-				// We ask the node for the child sub-tree that will contain this node
-				int child_i = branch.SearchLast(key);
-				// Child will be in this subtree
-				long child_ref = branch.GetChild(child_i);
-				// Get the right key of the branch if we can
-				Key new_right_key;
-				if (child_i + 1 < branch.ChildCount) {
-					new_right_key = branch.GetKey(child_i + 1);
-				} else {
-					new_right_key = right_key;
-				}
-				// Recurse,
-				return NextKey(new_right_key, key, child_ref);
+		private void DeleteChildTree(int height, NodeId node) {
+			if (height == treeHeight) {
+				// This is a known leaf node,
+				DeleteNode(node);
+				return;
 			}
 
-			// We hit a leaf node, therefore return the 'right_key' value
-			return right_key;
+			// Fetch the node,
+			ITreeNode treeNode = FetchNode(node);
+			if (treeNode is TreeLeaf) {
+				// Leaf reached, so set the tree height, delete and return
+				treeHeight = height;
+				DeleteNode(node);
+				return;
+			}
+
+			// The behaviour here changes depending on the system implementation.
+			// Either we can simply unlink from the entire tree or we need to
+			// recursely free all the leaf nodes.
+			if (storeSystem.NotifyForAllNodes) {
+				// Need to account for all nodes so delete the node and all in the
+				// sub-tree.
+				DisposeTree(node);
+			} else {
+				// Otherwise we can simply unlink the branches on the heap and be
+				// done with it.
+				DisposeHeapNodes(node);
+			}
 		}
+
+		private object[] DeleteFromLeaf(long leftOffset, NodeId leaf, long startPos, long endPos, Key inLeftKey) {
+			if (startPos < endPos)
+				throw new ArgumentOutOfRangeException();
+
+			TreeLeaf tree_leaf = (TreeLeaf) UnfreezeNode(FetchNode(leaf));
+			int leaf_start = 0;
+			int leaf_end = tree_leaf.Length;
+			int del_start = (int) Math.Max(startPos - leftOffset, (long) leaf_start);
+			int del_end = (int) Math.Min(endPos - leftOffset, (long) leaf_end);
+
+			int remove_amount = del_end - del_start;
+
+			// Remove from the end point,
+			tree_leaf.Shift(del_end, -remove_amount);
+
+			return new object[] {tree_leaf.Id, (long) remove_amount, inLeftKey, false};
+		}
+
+		private object[] RecurseRemoveBranches(long leftOffset, int height, NodeId node, long startPos, long endPos, Key inLeftKey) {
+			// Do we know if this is a leaf node?
+			if (treeHeight == height) {
+				return DeleteFromLeaf(leftOffset, node, startPos, endPos, inLeftKey);
+			}
+
+			// Fetch the node,
+			ITreeNode treeNode = FetchNode(node);
+			if (treeNode is TreeLeaf) {
+				// Leaf reach, so set the tree height and return
+				treeHeight = height;
+				return DeleteFromLeaf(leftOffset, node, startPos, endPos, inLeftKey);
+			}
+
+			// The amount removed,
+			long removeCount = 0;
+
+			// This is a branch,
+			TreeBranch treeBranch = (TreeBranch) treeNode;
+			treeBranch = (TreeBranch) UnfreezeNode(treeBranch);
+
+			Key parentLeftKey = inLeftKey;
+
+			// Find all the children branches between the bounds,
+			int childCount = treeBranch.ChildCount;
+			long pos = leftOffset;
+			for (int i = 0; i < childCount && pos < endPos; ++i) {
+				long childNodeSize = treeBranch.GetChildLeafElementCount(i);
+				long nextPos = pos + childNodeSize;
+
+				// Test if start_pos/end_pos bounds intersects with this child,
+				if (startPos < nextPos && endPos > pos) {
+					// Yes, we intersect,
+
+					// Make sure the branch is on the heap,
+					NodeId childNode = treeBranch.GetChild(i);
+
+					// If we intersect entirely remove the child from the branch,
+					if (pos >= startPos && nextPos <= endPos) {
+						// Delete the child tree,
+						DeleteChildTree(height + 1, childNode);
+						removeCount += childNodeSize;
+
+						// If removing the first child, bubble up a new left_key
+						if (i == 0) {
+							parentLeftKey = treeBranch.GetKey(1);
+						}
+							// Otherwise parent left key doesn't change
+						else {
+							parentLeftKey = inLeftKey;
+						}
+
+						// Remove the child from the branch,
+						treeBranch.RemoveChild(i);
+						--i;
+						--childCount;
+					} else {
+						// We don't intersect entirely, so recurse on this,
+						// The left key
+						Key rLeftKey = (i == 0) ? inLeftKey : treeBranch.GetKey(i);
+
+						object[] rv = RecurseRemoveBranches(pos, height + 1, childNode, startPos, endPos, rLeftKey);
+						NodeId newChildRef = (NodeId) rv[0];
+						long removedInChild = (long) rv[1];
+						Key childLeftKey = (Key) rv[2];
+
+						removeCount += removedInChild;
+
+						// Update the child,
+						treeBranch.SetChild(i, newChildRef);
+						treeBranch.SetChildLeafElementCount(i, childNodeSize - removedInChild);
+						if (i == 0) {
+							parentLeftKey = childLeftKey;
+						} else {
+							treeBranch.SetKeyValueToLeft(childLeftKey, i);
+							parentLeftKey = inLeftKey;
+						}
+					}
+				}
+
+				// Next child in the branch,
+				pos = nextPos;
+			}
+
+			// Return the reference and remove count,
+			bool parentRebalance = (treeBranch.ChildCount <= 2);
+			return new object[] { treeBranch.Id, removeCount, parentLeftKey, parentRebalance };
+		}
+
+		internal void RemoveAbsoluteBounds(long positionStart, long positionEnd) {
+			// We scan from the root and remove branches that we determine are
+			// fully represented by the key and bounds, being careful about edge
+			// conditions.
+
+			object[] rv = RecurseRemoveBranches(0, 1, RootNodeId, positionStart, positionEnd, Key.Head);
+			RootNodeId = (NodeId) rv[0];
+			long removeCount = (long) rv[1];
+
+			// Assert we didn't remove more or less than requested,
+			if (removeCount != (positionEnd - positionStart)) {
+				throw new ApplicationException("Assert failed " + removeCount + " to " + (positionEnd - positionStart));
+			}
+
+			// Adjust position_end by the amount removed,
+			positionEnd -= removeCount;
+
+			// Rebalance the tree. This does not change the height of the tree but
+			// it may leave single branch nodes at the top.
+			RootNodeId = (RecurseRebalanceTree(0, 1, RootNodeId, positionEnd, Key.Head).Id);
+
+			// Shrink the tree if the top contains single child branches
+			while (true) {
+				TreeBranch branch = (TreeBranch) FetchNode(RootNodeId);
+				if (branch.ChildCount == 1) {
+					// Delete the root node and go to the child,
+					DeleteNode(RootNodeId);
+					RootNodeId = (branch.GetChild(0));
+					if (TreeHeight != -1) {
+						TreeHeight = TreeHeight - 1;
+					}
+				}
+					// Otherwise break,
+				else {
+					break;
+				}
+			}
+		}
+
 		#region Implementation of ITransaction
 
 		public DataFile GetFile(Key key, FileAccess access) {
 			CheckErrorState();
 			try {
-				if (key.Type >= Key.SpecialKeyType)
+				if (OutOfUserDataRange(key))
 					throw new ApplicationException("Key is reserved for system data.");
 
 				return UnsafeGetDataFile(key, access);
@@ -925,33 +1226,76 @@ namespace Deveel.Data.Store {
 			}
 		}
 
-		public void PreFetchKeys(Key[] keys) {
+		public bool FileExists(Key key) {
 			CheckErrorState();
 
-			foreach(Key k in keys) {
-				prefetch_keymap[k] = "";
+			try {
+				// All key types above 0x07F80 are reserved for system data
+				if (OutOfUserDataRange(key))
+					throw new ApplicationException("Key is reserved for system data.");
+
+				// If the key exists, the position will be >= 0
+				return KeyEndPosition(key) >= 0;
+			} catch (IOException e) {
+				throw SetErrorState(e);
+			} catch (OutOfMemoryException e) {
+				throw SetErrorState(e);
 			}
 		}
 
+		public void PreFetchKeys(Key[] keys) {
+			CheckErrorState();
+
+			try {
+				foreach (Key k in keys) {
+					prefetch_keymap[k] = "";
+				}
+			} catch (OutOfMemoryException e) {
+				throw SetErrorState(e);
+			}
+		}
+
+		public IDataRange GetRange(Key minKey, Key maxKey) {
+			CheckErrorState();
+			try {
+
+				// All key types greater than 0x07F80 are reserved for system data
+				if (OutOfUserDataRange(minKey) ||
+				    OutOfUserDataRange(maxKey)) {
+					throw new ArgumentException("Key is reserved for system data");
+				}
+
+				// Use the unsafe method after checks have been performed
+				return UnsafeGetDataRange(minKey, maxKey);
+			} catch (OutOfMemoryException e) {
+				throw SetErrorState(e);
+			}
+		}
+
+		public IDataRange GetRange() {
+			// The full range of user data
+			return GetRange(UserDataMin, UserDataMax);
+		}
+
 		#endregion
+
 		protected void SetToEmpty() {
 			// Write a root node to the store,
 			try {
 				// Create an empty head node
-				TreeLeaf head_leaf = CreateLeaf(Key.Head);
+				TreeLeaf headLeaf = CreateLeaf(Key.Head);
 				// Insert a tree identification pattern
-				head_leaf.Write(0, new byte[] { 1, 1, 1, 1 }, 0, 4);
+				headLeaf.Write(0, new byte[] { 1, 1, 1, 1 }, 0, 4);
 				// Create an empty tail node
-				TreeLeaf tail_leaf = CreateLeaf(Key.Tail);
+				TreeLeaf tailLeaf = CreateLeaf(Key.Tail);
 				// Insert a tree identification pattern
-				tail_leaf.Write(0, new byte[] { 1, 1, 1, 1 }, 0, 4);
+				tailLeaf.Write(0, new byte[] { 1, 1, 1, 1 }, 0, 4);
 
 				// Create a branch,
-				TreeBranch root_branch = CreateBranch();
-				root_branch.Set(head_leaf.Id, 4, Key.Tail.GetEncoded(1), Key.Tail.GetEncoded(2), tail_leaf.Id, 4);
+				TreeBranch rootBranch = CreateBranch();
+				rootBranch.Set(headLeaf.Id, 4, Key.Tail, tailLeaf.Id, 4);
 
-				rootNodeId = root_branch.Id;
-
+				RootNodeId = rootBranch.Id;
 			} catch (IOException e) {
 				throw new ApplicationException(e.Message, e);
 			}
@@ -963,15 +1307,15 @@ namespace Deveel.Data.Store {
 			// If it's not already disposed,
 			if (!disposed) {
 				// Walk the tree and dispose all nodes on the heap,
-				DisposeHeapNodes(rootNodeId);
+				DisposeHeapNodes(RootNodeId);
 				if (!committed) {
 					// Then dispose all nodes that were inserted during the operation of
 					// this transaction
 					if (nodeInserts != null) {
 						int sz = NodeInserts.Count;
 						for (int i = 0; i < sz; ++i) {
-							long node_id = NodeInserts[i];
-							DisposeNode(node_id);
+							NodeId nodeId = NodeInserts[i];
+							DisposeNode(nodeId);
 						}
 					}
 				}
@@ -985,15 +1329,15 @@ namespace Deveel.Data.Store {
 
 		#endregion
 
-		internal void FlushNodes(long[] nids) {
+		internal void FlushNodes(NodeId[] nids) {
 			// If not disposed,
 			if (!disposed) {
 				// Compact the entire tree
-				long[] merge_buffer = new long[6];
-				CompactNode(Key.Head, rootNodeId, merge_buffer, Key.Head, Key.Tail);
+				object[] mergeBuffer = new object[6];
+				CompactNode(Key.Head, RootNodeId, mergeBuffer, Key.Head, Key.Tail);
 
 				// Flush the reference node list,
-				rootNodeId = FlushNodes(rootNodeId, nids);
+				RootNodeId = FlushNodes(rootNodeId, nids);
 
 				// Update the version so any data file objects will flush with the
 				// changes.
@@ -1007,7 +1351,7 @@ namespace Deveel.Data.Store {
 		internal void OnCommitted() {
 			if (non_committable)
 				throw new ApplicationException("Assertion failed, commit non-commitable.");
-			if (rootNodeId < 0)
+			if (RootNodeId.IsInMemory)
 				throw new ApplicationException("Assertion failed, tree on heap.");
 			committed = true;
 			readOnly = true;
@@ -1015,10 +1359,10 @@ namespace Deveel.Data.Store {
 
 		public virtual void CheckOut() {
 			// Compact the entire tree,
-			long[] merge_buffer = new long[6];
-			CompactNode(Key.Head, rootNodeId, merge_buffer, Key.Head, Key.Tail);
+			object[] mergeBuffer = new object[5];
+			CompactNode(Key.Head, RootNodeId, mergeBuffer, Key.Head, Key.Tail);
 			// Write out the changes
-			rootNodeId = WriteNode(rootNodeId);
+			RootNodeId = WriteNode(rootNodeId);
 
 			// Update the version so any data file objects will flush with the
 			// changes.
@@ -1044,831 +1388,17 @@ namespace Deveel.Data.Store {
 			return leaf.Length;
 		}
 
-		#region TreeStack
-
-		private class TreeStack {
-			private readonly TreeSystemTransaction tnx;
-			private int stack_size;
-			private long[] stack;
-			private TreeLeaf current_leaf;
-			private Key current_leaf_key;
-			private int leaf_offset;
-
-			public TreeStack(TreeSystemTransaction tnx) {
-				this.tnx = tnx;
-				stack_size = 0;
-				stack = new long[3 * 13];
-				current_leaf = null;
-				current_leaf_key = null;
-				leaf_offset = 0;
-			}
-
-			private void Push(int child_i, long offset, long node_pointer) {
-				if (stack_size + 3 >= stack.Length) {
-					// Expand the size of the stack.
-					// The default size should be plenty for most iterators unless we
-					// happen to be iterating across a particularly deep B+Tree.
-					long[] new_stack = new long[stack.Length * 2];
-					Array.Copy(stack, 0, new_stack, 0, stack.Length);
-					stack = new_stack;
-				}
-				stack[stack_size] = child_i;
-				stack[stack_size + 1] = offset;
-				stack[stack_size + 2] = node_pointer;
-				stack_size += 3;
-			}
-
-			private long Pop() {
-				if (stack_size == 0)
-					throw new ApplicationException("Iterator stack underflow.");
-				--stack_size;
-				long v = stack[stack_size];
-				return v;
-			}
-
-			private long End(int off) {
-				return stack[stack_size - off - 1];
-			}
-
-			private bool IsEmpty {
-				get { return (stack_size == 0); }
-			}
-
-			private void Clear() {
-				stack_size = 0;
-			}
-
-			private void Unfreeze() {
-				long old_child_node_ref = stack[stack_size - 1];
-				// If the leaf reference isn't frozen then we exit early
-				if (!IsFrozen(stack[stack_size - 1])) {
-					return;
-				}
-				TreeLeaf leaf = (TreeLeaf)tnx.UnfreezeNode(tnx.FetchNode(old_child_node_ref));
-				long new_child_node_ref = leaf.Id;
-				stack[stack_size - 1] = new_child_node_ref;
-				current_leaf = leaf;
-				// NOTE: Setting current_leaf here does not change the key of the node
-				//   so we don't need to update current_leaf_key.
-
-				// Walk the stack from the end
-				for (int i = stack_size - 4; i >= 1; i -= 3) {
-					long old_branch_ref = stack[i];
-					TreeBranch branch =
-								   (TreeBranch)tnx.UnfreezeNode(tnx.FetchNode(old_branch_ref));
-					// Get the child_i from the stack,
-					int changed_child_i = (int)stack[i + 1];
-					branch.SetChild(changed_child_i, new_child_node_ref);
-
-					// Change the stack entry
-					stack[i] = branch.Id;
-
-					//        old_child_node_ref = old_branch_ref;
-					new_child_node_ref = branch.Id;
-				}
-
-				// Set the new root node reference
-				tnx.rootNodeId = stack[2];
-			}
-
-			internal void WriteLeafOnly(Key key) {
-				long leaf_ref = stack[stack_size - 1];
-				long new_ref = tnx.WriteNode(leaf_ref);
-
-				if (new_ref == leaf_ref)
-					return;
-
-				// Otherwise, update the references,
-				stack[stack_size - 1] = new_ref;
-				current_leaf = (TreeLeaf)tnx.FetchNode(new_ref);
-				// Walk back up the stack and update the reference as necessary
-				for (int i = stack_size - 4; i >= 1; i -= 3) {
-					long old_branch_ref = stack[i];
-					TreeBranch branch = (TreeBranch)tnx.UnfreezeNode(tnx.FetchNode(old_branch_ref));
-					// Get the child_i from the stack,
-					int changed_child_i = (int)stack[i + 1];
-					branch.SetChild(changed_child_i, new_ref);
-
-					// Change the stack entry
-					stack[i] = branch.Id;
-
-					new_ref = branch.Id;
-				}
-
-				// Set the new root node reference
-				tnx.rootNodeId = stack[2];
-			}
-
-			private void updateStackProperties(int size_diff) {
-				// Walk the stack from the end
-				for (int i = stack_size - 4; i >= 1; i -= 3) {
-					TreeBranch branch = (TreeBranch)tnx.FetchNode(stack[i]);
-					//int child_i = branch.childWithReference(node_ref);
-					int child_i = (int)stack[i + 1];
-					branch.SetChildLeafElementCount(child_i, branch.GetChildLeafElementCount(child_i) + size_diff);
-				}
-			}
-
-			internal void InsertLeaf(Key new_leaf_key, TreeLeaf new_leaf, bool before) {
-				int leaf_size = new_leaf.Length;
-				if (leaf_size <= 0)
-					throw new ArgumentException("size <= 0");
-
-				// The current absolute position and key
-				//      final long cur_absolute_pos = stack[stack_size - 2] + leaf_offset;
-				Key new_key = new_leaf_key;
-
-				TreeLeaf left, right;
-				long key_ref;
-
-				long current_leaf_ref = stack[stack_size - 1];
-
-				long[] nfo;
-				long[] r_nfo = new long[6];
-				Key left_key;
-				long cur_absolute_pos;
-				// If we are inserting the new leaf after,
-				if (!before) {
-					Key k = new_leaf_key;
-					nfo = new long[] { current_leaf.Id, current_leaf.Length, k.GetEncoded(1), k.GetEncoded(2), new_leaf.Id, new_leaf.Length };
-					left_key = null;
-					cur_absolute_pos = stack[stack_size - 2] + current_leaf.Length;
-				}
-					// Otherwise we are inserting the new leaf before,
-				else {
-					// If before and current_leaf key is different than new_leaf key, we
-					// generate an error
-					if (!current_leaf_key.Equals(new_leaf_key)) {
-						throw new ApplicationException("Can't insert different new key before.");
-					}
-					Key k = current_leaf_key;
-					nfo = new long[] { new_leaf.Id, new_leaf.Length, k.GetEncoded(1), k.GetEncoded(2), current_leaf.Id, current_leaf.Length };
-					left_key = new_leaf_key;
-					cur_absolute_pos = stack[stack_size - 2] - 1;
-				}
-
-				bool insert_two_nodes = true;
-				for (int i = stack_size - 4; i >= 0; i -= 3) {
-					// The child reference of this stack element
-					long child_ref = stack[i];
-					// Fetch it
-					TreeBranch branch = (TreeBranch)tnx.UnfreezeNode(tnx.FetchNode(child_ref));
-					int child_i = (int)stack[i + 1];
-
-					// Do we have two nodes to insert into the branch?
-					if (insert_two_nodes) {
-						TreeBranch insert_branch;
-						int insert_n = child_i;
-						// If the branch is full,
-						if (branch.IsFull) {
-							// Create a new node,
-							TreeBranch left_branch = branch;
-							TreeBranch right_branch = tnx.CreateBranch();
-							// Split the branch,
-							Key midpoint_key = left_branch.MidPointKey;
-							// And move half of this branch into the new branch
-							left_branch.MoveLastHalfInto(right_branch);
-							// We split so we need to return a split flag,
-							r_nfo[0] = left_branch.Id;
-							r_nfo[1] = left_branch.LeafElementCount;
-							r_nfo[2] = midpoint_key.GetEncoded(1);
-							r_nfo[3] = midpoint_key.GetEncoded(2);
-							r_nfo[4] = right_branch.Id;
-							r_nfo[5] = right_branch.LeafElementCount;
-							// Adjust insert_n and insert_branch
-							if (insert_n >= left_branch.ChildCount) {
-								insert_n -= left_branch.ChildCount;
-								insert_branch = right_branch;
-								r_nfo[5] += new_leaf.Length;
-								// If insert_n == 0, we change the midpoint value to the left
-								// key value,
-								if (insert_n == 0 && left_key != null) {
-									r_nfo[2] = left_key.GetEncoded(1);
-									r_nfo[3] = left_key.GetEncoded(2);
-									left_key = null;
-								}
-							} else {
-								insert_branch = left_branch;
-								r_nfo[1] += new_leaf.Length;
-							}
-						}
-							// If it's not full,
-						else {
-							insert_branch = branch;
-							r_nfo[0] = insert_branch.Id;
-							insert_two_nodes = false;
-						}
-						// Insert the two children nodes
-						insert_branch.Insert(nfo[0], nfo[1], nfo[2], nfo[3], nfo[4], nfo[5], insert_n);
-						// Copy r_nfo to nfo
-						for (int p = 0; p < r_nfo.Length; ++p) {
-							nfo[p] = r_nfo[p];
-						}
-
-						// Adjust the left key reference if necessary
-						if (left_key != null && insert_n > 0) {
-							insert_branch.SetKeyValueToLeft(left_key, insert_n);
-							left_key = null;
-						}
-					} else {
-						branch.SetChild(child_i, nfo[0]);
-						nfo[0] = branch.Id;
-						branch.SetChildLeafElementCount(child_i, branch.GetChildLeafElementCount(child_i) + leaf_size);
-
-						// Adjust the left key reference if necessary
-						if (left_key != null && child_i > 0) {
-							branch.SetKeyValueToLeft(left_key, child_i);
-							left_key = null;
-						}
-					}
-
-				} // For all elements in the stack,
-
-				// At the end, if we still have a split then we make a new root and
-				// adjust the stack accordingly
-				if (insert_two_nodes) {
-					TreeBranch new_root = tnx.CreateBranch();
-					new_root.Set(nfo[0], nfo[1], nfo[2], nfo[3], nfo[4], nfo[5]);
-					tnx.rootNodeId = new_root.Id;
-					// The tree height has increased,
-					if (tnx.treeHeight != -1) {
-						++tnx.treeHeight;
-					}
-				} else {
-					tnx.rootNodeId = nfo[0];
-				}
-
-				// Now reset the position,
-				Reset();
-				SetupForPosition(new_key, cur_absolute_pos);
-			}
-
-			private void RedistributeBranchElements(TreeBranch branch, int childIndex, TreeBranch child) {
-				// We distribute the nodes in the child branch with the branch
-				// immediately to the right.  If that's not possible, then we distribute
-				// with the left.
-
-				int left_i, right_i;
-				TreeBranch left, right;
-				if (childIndex < branch.ChildCount - 1) {
-					// Distribute with the right
-					left_i = childIndex;
-					right_i = childIndex + 1;
-					left = child;
-					right = (TreeBranch)tnx.UnfreezeNode(tnx.FetchNode(branch.GetChild(childIndex + 1)));
-					branch.SetChild(childIndex + 1, right.Id);
-				} else {
-					// Distribute with the left
-					left_i = childIndex - 1;
-					right_i = childIndex;
-					left = (TreeBranch)tnx.UnfreezeNode(tnx.FetchNode(branch.GetChild(childIndex - 1)));
-					right = child;
-					branch.SetChild(childIndex - 1, left.Id);
-				}
-
-				// Get the mid value key reference
-				Key mid_key = branch.GetKey(right_i);
-
-				// Perform the merge,
-				Key new_mid_key = left.Merge(right, mid_key);
-				// Reset the leaf element count
-				branch.SetChildLeafElementCount(left_i, left.LeafElementCount);
-				branch.SetChildLeafElementCount(right_i, right.LeafElementCount);
-
-				// If after the merge the right branch is empty, we need to remove it
-				if (right.IsEmpty) {
-					// Delete the node
-					tnx.DeleteNode(right.Id);
-					// And remove it from the branch,
-					branch.RemoveChild(right_i);
-				} else {
-					// Otherwise set the key reference
-					branch.SetKeyValueToLeft(new_mid_key, right_i);
-				}
-			}
-
-
-			// ----- Public methods -----
-
-			public TreeLeaf CurrentLeaf {
-				get { return current_leaf; }
-			}
-
-			public Key CurrentLeafKey {
-				get { return current_leaf_key; }
-			}
-
-			public int LeafOffset {
-				get { return leaf_offset; }
-			}
-
-			public bool IsAtEndOfKeyData {
-				get { return LeafOffset >= LeafLength; }
-			}
-
-			public void SetupForPosition(Key key, long posit) {
-				// If the current leaf is set
-				if (current_leaf != null) {
-					long leaf_start = End(1);
-					long leaf_end = leaf_start + current_leaf.Length;
-					// If the position is at the leaf end, or if the keys aren't equal, we
-					// need to reset the stack.  This ensures that we correctly place the
-					// pointer.
-					if (posit == leaf_end || !key.Equals(current_leaf_key)) {
-						Clear();
-						current_leaf = null;
-						current_leaf_key = null;
-					} else {
-						// Check whether the position is within the bounds of the current leaf
-						// If 'posit' is within this leaf
-						if (posit >= leaf_start && posit < leaf_end) {
-							// If the position is within the current leaf, set up the internal
-							// vars as necessary.
-							leaf_offset = (int)(posit - leaf_start);
-							return;
-						} else {
-							// If it's not, we reset the stack and start fresh,
-							Clear();
-							current_leaf = null;
-							current_leaf_key = null;
-						}
-					}
-				}
-
-				// ISSUE: It appears looking at the code above, the stack will always be
-				//   empty and current_leaf will always be null if we get here.
-
-				// If the stack is empty, push the root node,
-				if (IsEmpty) {
-					// Push the root node onto the top of the stack.
-					Push(-1, 0, tnx.rootNodeId);
-					// Set up the current_leaf_key to the default value
-					current_leaf_key = Key.Head;
-				}
-				// Otherwise, we need to setup by querying the BTree.
-				while (true) {
-					if (IsEmpty) {
-						throw new ApplicationException("Position out of bounds.  p = " + posit);
-					}
-
-					long node_pointer = Pop();
-					long left_side_offset = Pop();
-					int node_child_i = (int)Pop();
-					// Relative offset within this node
-					long relative_offset = posit - left_side_offset;
-
-					// If the node is not on the heap,
-					if (!IsHeapNode(node_pointer)) {
-						// The node is not on the heap. We optimize here.
-						// If we know the node is going to be a leaf node, we set up a
-						// temporary leaf node object with as much information as we know.
-
-						// Check if we know this is a leaf
-						if (tnx.treeHeight != -1) {
-							if ((stack_size / 3) + 1 == tnx.treeHeight) {
-								// Fetch the parent node,
-								long twig_node_pointer = End(0);
-								TreeBranch twig = (TreeBranch)tnx.FetchNode(twig_node_pointer);
-								long leaf_size = twig.GetChildLeafElementCount(node_child_i);
-
-								// This object holds off fetching the contents of the leaf node
-								// unless it's absolutely required.
-								TreeLeaf leaf = new PlaceholderLeaf(tnx, node_pointer, (int)leaf_size);
-
-								current_leaf = leaf;
-								Push(node_child_i, left_side_offset, node_pointer);
-								// Set up the leaf offset and return
-								leaf_offset = (int)relative_offset;
-								return;
-							}
-						}
-					}
-
-					// Fetch the node
-					ITreeNode node = tnx.FetchNode(node_pointer);
-					if (node is TreeLeaf) {
-						// Node is a leaf node
-						TreeLeaf leaf = (TreeLeaf)node;
-
-						current_leaf = leaf;
-						Push(node_child_i, left_side_offset, node_pointer);
-						// Set up the leaf offset and return
-						leaf_offset = (int)relative_offset;
-
-						// Update the treeHeight value,
-						tnx.treeHeight = (stack_size / 3);
-						return;
-					} else {
-						// Node is a branch node
-						TreeBranch branch = (TreeBranch)node;
-						int child_i = branch.IndexOfChild(key, relative_offset);
-						if (child_i != -1) {
-							// Push the current details,
-							Push(node_child_i, left_side_offset, node_pointer);
-							// Found child so push the details
-							Push(child_i,
-									  branch.GetChildOffset(child_i) + left_side_offset,
-									  branch.GetChild(child_i));
-							// Set up the left key
-							if (child_i > 0) {
-								current_leaf_key = branch.GetKey(child_i);
-							}
-						}
-					}
-				} // while (true)
-			}
-
-			public void DeleteLeaf(Key key) {
-
-				// The leaf
-				long leaf_ref = stack[stack_size - 1];
-				// Delete the leaf,
-				tnx.DeleteNode(leaf_ref);
-
-				Key left_key = null;
-
-				// Go to the twig and remove this reference,
-				long this_ref = stack[stack_size - 4];
-				TreeBranch branch_node = (TreeBranch)tnx.UnfreezeNode(tnx.FetchNode(this_ref));
-				// The offset of the child
-				int child_i = (int)stack[stack_size - 3];
-				// The size of the leaf element being deleted,
-				int delete_node_size =
-					(int)branch_node.GetChildLeafElementCount(child_i);
-
-				// If this is the first reference,
-				if (child_i == 0) {
-					left_key = branch_node.GetKey(1);
-					branch_node.RemoveChild(0);
-				} else {
-					branch_node.RemoveChild(child_i);
-				}
-
-				// Walk back through the stack
-				for (int i = stack_size - 7; i >= 1; i -= 3) {
-					this_ref = stack[i];
-					TreeBranch child_branch = branch_node;
-					branch_node = (TreeBranch)tnx.UnfreezeNode(tnx.FetchNode(this_ref));
-
-					// Find the child_i for the child
-					//        child_i = branch_node.childWithReference(child_ref);
-					child_i = (int)stack[i + 1];
-
-					// Replace with the new child node reference
-					branch_node.SetChild(child_i, child_branch.Id);
-					// Set the element count
-					long new_child_size = branch_node.GetChildLeafElementCount(child_i) - delete_node_size;
-					branch_node.SetChildLeafElementCount(child_i, new_child_size);
-					// Can we set the left key reference?
-					if (child_i > 0 && left_key != null) {
-						branch_node.SetKeyValueToLeft(left_key, child_i);
-						left_key = null;
-					}
-
-					// Has the size of the child reached the lower threshold?
-					if (child_branch.ChildCount <= 2) {
-						// If it has, we need to redistribute the children,
-						RedistributeBranchElements(branch_node, child_i, child_branch);
-					}
-
-				}
-
-				// Finally, set the root node
-				// If the branch node is a single element, we set the root as the child,
-				if (branch_node.ChildCount == 1) {
-					// This shrinks the height of the tree,
-					tnx.rootNodeId = branch_node.GetChild(0);
-					if (tnx.treeHeight != -1) {
-						tnx.treeHeight = tnx.treeHeight - 1;
-					}
-				} else {
-					// Otherwise, we set the branch node.
-					tnx.rootNodeId = branch_node.Id;
-				}
-
-				// Reset the object
-				Reset();
-
-			}
-
-			public void RemoveSpaceBefore(Key key, long amount_to_remove) {
-				long p = (stack[stack_size - 2] + leaf_offset) - 1;
-				while (true) {
-					SetupForPosition(key, p);
-					int leaf_size = LeafLength;
-					if (amount_to_remove >= leaf_size) {
-						DeleteLeaf(key);
-						amount_to_remove -= leaf_size;
-					} else {
-						if (amount_to_remove > 0) {
-							SetupForPosition(key, (p - amount_to_remove) + 1);
-							TrimAtPosition();
-						}
-						return;
-					}
-					p -= leaf_size;
-				}
-			}
-
-			public long DeleteAllNodesBackTo(Key key, long back_position) {
-				long p = stack[stack_size - 2] - 1;
-				long bytes_removed = 0;
-
-				while (true) {
-					// Set up for the node,
-					SetupForPosition(key, p);
-					// This is the stopping condition, when the start of the node is
-					// before the back_position,
-					if (stack[stack_size - 2] <= back_position)
-						return bytes_removed;
-
-					// The current leaf size
-					int leaf_size = LeafLength;
-					// The bytes removed is the size of the leaf,
-					bytes_removed += LeafLength;
-					// Otherwise, delete the leaf
-					DeleteLeaf(key);
-
-					p -= leaf_size;
-				}
-			}
-
-			public void SplitLeaf(Key key, long position) {
-				Unfreeze();
-				TreeLeaf source_leaf = CurrentLeaf;
-				int split_point = LeafOffset;
-				// The amount of data we are copying from the current key.
-				int amount = source_leaf.Length - split_point;
-				// Create a new empty node
-				TreeLeaf empty_leaf = tnx.CreateLeaf(key);
-				empty_leaf.SetLength(amount);
-				// Copy the data at the end of the leaf into a buffer
-				byte[] buf = new byte[amount];
-				source_leaf.Read(split_point, buf, 0, amount);
-				// And write it out to the new leaf
-				empty_leaf.Write(0, buf, 0, amount);
-				// Set the new size of the node
-				source_leaf.SetLength(split_point);
-				// Update the stack properties
-				updateStackProperties(-amount);
-				// And insert the new leaf after
-				InsertLeaf(key, empty_leaf, false);
-			}
-
-			public void AddSpaceAfter(Key key, long space_to_add) {
-				while (space_to_add > 0) {
-					// Create an empty sparse node
-					TreeLeaf empty_leaf = tnx.CreateSparseLeaf(key, (byte)0, space_to_add);
-					InsertLeaf(key, empty_leaf, false);
-					space_to_add -= empty_leaf.Length;
-				}
-			}
-
-			public int ExpandLeaf(long amount) {
-				if (amount > 0) {
-					Unfreeze();
-					int actual_expand_by = (int)Math.Min((long)current_leaf.Capacity - current_leaf.Length, amount);
-					if (actual_expand_by > 0) {
-						current_leaf.SetLength(current_leaf.Length + actual_expand_by);
-						updateStackProperties(actual_expand_by);
-					}
-					return actual_expand_by;
-				}
-				return 0;
-			}
-
-			public void TrimAtPosition() {
-				Unfreeze();
-				int size_before = current_leaf.Length;
-				current_leaf.SetLength(leaf_offset);
-				updateStackProperties(leaf_offset - size_before);
-			}
-
-			public void ShiftLeaf(long amount) {
-				if (amount != 0) {
-					Unfreeze();
-					int size_before = current_leaf.Length;
-					current_leaf.Shift(leaf_offset, (int)amount);
-					updateStackProperties(current_leaf.Length - size_before);
-				}
-			}
-
-			public bool MoveToNextLeaf(Key key) {
-				long next_pos = stack[stack_size - 2] + current_leaf.Length;
-				SetupForPosition(key, next_pos);
-				return leaf_offset != current_leaf.Length && current_leaf_key.Equals(key);
-			}
-
-			public bool MoveToPreviousLeaf(Key key) {
-				long previous_pos = stack[stack_size - 2] - 1;
-				SetupForPosition(key, previous_pos);
-				return current_leaf_key.Equals(key);
-			}
-
-			public int LeafLength {
-				get { return current_leaf.Length; }
-			}
-
-
-			public int LeafSpareSpace {
-				get { return tnx.storeSystem.MaxLeafByteSize - current_leaf.Length; }
-			}
-
-			public int ReadInto(Key key, long current_p,
-								 byte[] buf, int off, int len) {
-				int readCount = 0;
-				// While there is information to read into the array,
-				while (len > 0) {
-					// Set up the stack and internal variables for the given position,
-					SetupForPosition(key, current_p);
-					// Read as much as we can from the current leaf capped at the leaf size
-					// if necessary,
-					int to_read = Math.Min(len, current_leaf.Length - leaf_offset);
-					if (to_read == 0)
-						throw new ApplicationException("Read out of bounds.");
-					// Copy the leaf into the array,
-					current_leaf.Read(leaf_offset, buf, off, to_read);
-					// Modify the pointers
-					current_p += to_read;
-					off += to_read;
-					len -= to_read;
-					readCount += to_read;
-				}
-				
-				return readCount;
-			}
-
-			public void WriteFrom(Key key, long current_p, byte[] buf, int off, int len) {
-				// While there is information to read into the array,
-				while (len > 0) {
-					// Set up the stack and internal variables for the given position,
-					SetupForPosition(key, current_p);
-					// Unfreeze all the nodes currently on the stack,
-					Unfreeze();
-					// Read as much as we can from the current leaf capped at the leaf size
-					// if necessary,
-					int to_write = Math.Min(len, current_leaf.Length - leaf_offset);
-					if (to_write == 0)
-						throw new ApplicationException("Write out of bounds.");
-					// Copy the leaf into the array,
-					current_leaf.Write(leaf_offset, buf, off, to_write);
-					// Modify the pointers
-					current_p += to_write;
-					off += to_write;
-					len -= to_write;
-				}
-			}
-
-			internal void ShiftData(Key key, long position, long shift_offset) {
-				if (shift_offset == 0) {
-					return;
-				}
-				// Set up for the given position
-				SetupForPosition(key, position);
-				// If there is no leaf node for this key yet, it's an empty file so we
-				// add new data and return.
-				if (!CurrentLeafKey.Equals(key)) {
-					// If we are expanding, then add the extra space and return
-					// We can't shrink an empty file.
-					if (shift_offset >= 0) {
-						// No, so add empty nodes of the required size to make up the space
-						AddSpaceAfter(key, shift_offset);
-					}
-					return;
-				}
-				// If we are at the end of the data, we simply expand or reduce the data
-				// by the shift amount
-				if (IsAtEndOfKeyData) {
-					if (shift_offset > 0) {
-						// Expand,
-						long to_expand_by = shift_offset;
-						to_expand_by -= ExpandLeaf(to_expand_by);
-						// And add nodes for the remaining
-						AddSpaceAfter(key, to_expand_by);
-						// And return
-						return;
-					} else {
-						// Reduction,
-						// Remove the space immediately before this node up to the given
-						// amount.
-						RemoveSpaceBefore(key, -shift_offset);
-						// And return
-						return;
-					}
-				} else {
-					// Can we shift data in the leaf and complete the operation?
-					if ((shift_offset > 0 && LeafSpareSpace >= shift_offset) ||
-						(shift_offset < 0 && LeafOffset + shift_offset >= 0)) {
-						// We can simply shift the data in the node
-						ShiftLeaf(shift_offset);
-						return;
-					}
-					// There isn't enough space in the current node,
-					if (shift_offset > 0) {
-						// If we are expanding,
-						// The data to copy from the leaf
-						int buf_size = LeafLength - LeafOffset;
-						byte[] buf = new byte[buf_size];
-						ReadInto(key, position, buf, 0, buf_size);
-						long leaf_end = position + buf_size;
-						// Record the amount of spare space available in this node.
-						long space_available = LeafSpareSpace;
-						// Is there a node immediately after we can shift the data into?
-						bool successful = MoveToNextLeaf(key);
-						if (successful) {
-							// We were successful at moving to the next node, so determine if
-							// there is space available here to make the shift
-							if (LeafSpareSpace + space_available >= shift_offset) {
-								// Yes there is, so lets make room,
-								ShiftLeaf(shift_offset - space_available);
-								// Move back
-								SetupForPosition(key, position);
-								// Expand this node to max size
-								ExpandLeaf(space_available);
-								// And copy,
-								WriteFrom(key, position + shift_offset, buf, 0, buf_size);
-								// Done,
-								return;
-							} else {
-								// Not enough spare space available in the node with the
-								// shift point and the next node, so we need to make new nodes,
-								SetupForPosition(key, position);
-								// Expand this node to max size
-								ExpandLeaf(space_available);
-								// Add nodes after it
-								AddSpaceAfter(key, shift_offset - space_available);
-								// And copy,
-								WriteFrom(key, position + shift_offset, buf, 0, buf_size);
-								// Done,
-								return;
-							}
-						} else {
-							// If we were unsuccessful at moving data to the next leaf, we must
-							// be at the last node in the file.
-
-							// Expand,
-							long to_expand_by = shift_offset;
-							to_expand_by -= ExpandLeaf(to_expand_by);
-							// And add nodes for the remaining
-							AddSpaceAfter(key, to_expand_by);
-							// And copy,
-							WriteFrom(key, position + shift_offset, buf, 0, buf_size);
-							// Done,
-							return;
-						}
-					}
-						// shift_offset is < 0
-					else {
-						// We need to reduce,
-						// The data to copy from the leaf
-						int buf_size = LeafLength - LeafOffset;
-						byte[] buf = new byte[buf_size];
-						ReadInto(key, position, buf, 0, buf_size);
-						// Set up to the point where we will be inserting the data into,
-						SetupForPosition(key, position);
-
-						// Delete all the nodes between the current node and the destination
-						// node, but don't delete either the destination node or this node
-						// in the process.
-						long bytes_removed = DeleteAllNodesBackTo(key, position + shift_offset);
-
-						// Position
-						SetupForPosition(key, position + shift_offset);
-						// Record the amount of spare space available in this node.
-						long space_available = LeafSpareSpace;
-						// Expand the leaf
-						ExpandLeaf(space_available);
-						// Will we be writing over two nodes?
-						bool writing_over_two_nodes = buf_size > (LeafLength - LeafOffset);
-						bool writing_complete_node = buf_size == (LeafLength - LeafOffset);
-						// Write the data,
-						WriteFrom(key, position + shift_offset, buf, 0, buf_size);
-						// Move to the end of what we just inserted,
-						SetupForPosition(key, position + shift_offset + buf_size);
-						// Trim the node,
-						if (!writing_complete_node) {
-							TrimAtPosition();
-						}
-						if (!writing_over_two_nodes) {
-							// Move to the end of what we just inserted,
-							SetupForPosition(key, position + shift_offset + buf_size);
-							// Delete this node
-							DeleteLeaf(key);
-						}
-						// Finished
-					}
-				}
-			}
-
-			public void Reset() {
-				Clear();
-				current_leaf = null;
-				current_leaf_key = null;
-			}
-
+		public static bool OutOfUserDataRange(Key key) {
+			// These types reserved for system use,
+			if (key.Type >= Key.SpecialKeyType)
+				return true;
+
+			// Primary key has a reserved group of values at min value
+			if (key.Primary <= Int64.MinValue + 16)
+				return true;
+
+			return false;
 		}
-
-		#endregion
 
 		#region TransactionDataFile
 
@@ -1882,11 +1412,11 @@ namespace Deveel.Data.Store {
 			private long start;
 			private long end;
 
-			private TreeStack stack;
+			private TreeSystemStack stack;
 
 			internal TransactionDataFile(TreeSystemTransaction tnx, Key key, FileAccess access) {
 				this.tnx = tnx;
-				stack = new TreeStack(tnx);
+				stack = new TreeSystemStack(tnx);
 				this.key = key;
 				pos = 0;
 
@@ -1999,8 +1529,8 @@ namespace Deveel.Data.Store {
 			private void CopyDataTo(long position, TransactionDataFile target_data_file, long target_position, long size) {
 				// If transactions are the same (data is being copied within the same
 				// transaction context).
-				TreeStack target_stack;
-				TreeStack source_stack;
+				TreeSystemStack target_stack;
+				TreeSystemStack source_stack;
 				// Keys
 				Key target_key = target_data_file.key;
 				Key source_key = key;
@@ -2042,7 +1572,7 @@ namespace Deveel.Data.Store {
 				if (leaf_off > 0) {
 					// We copy the remaining data in the leaf to the target
 					// The amount of data to copy from the leaf to the target
-					int to_copy = (int)Math.Min(size, source_stack.LeafLength - leaf_off);
+					int to_copy = (int)Math.Min(size, source_stack.LeafSize - leaf_off);
 					if (to_copy > 0) {
 						// Read into a buffer
 						byte[] buf = new byte[to_copy];
@@ -2116,8 +1646,7 @@ namespace Deveel.Data.Store {
 						target_stack.SetupForPosition(target_key, target_position);
 						bool insert_next_before = false;
 						// Does the target key exist?
-						bool target_key_exists =
-							target_stack.CurrentLeafKey.Equals(target_key);
+						bool target_key_exists = target_stack.CurrentLeafKey.Equals(target_key);
 						if (target_key_exists) {
 							// If the key exists, is target_position at the end of the span?
 							insert_next_before = target_stack.LeafOffset < target_stack.CurrentLeaf.Length;
@@ -2157,6 +1686,7 @@ namespace Deveel.Data.Store {
 					}
 				}
 			}
+
 			#region Implementation of IDataFile
 
 			public override long Length {
@@ -2323,69 +1853,325 @@ namespace Deveel.Data.Store {
 				}
 			}
 
+			public override void ReplicateTo(DataFile target) {
+				// TODO: Placeholder implementation,
+				target.Position = 0;
+				target.Delete();
+				Position = 0;
+				CopyTo(target, Length);
+			}
+
 			#endregion
 		}
 
 		#endregion
 
-		#region PlaceholderLeaf
+		#region TransactionDataRange
 
-		private class PlaceholderLeaf : TreeLeaf {
-			private readonly TreeSystemTransaction tnx;
-			private TreeLeaf leaf;
-			private readonly long nodeId;
-			private readonly int length;
+		private class TransactionDataRange : IDataRange {
+			private readonly TreeSystemTransaction transaction;
+			// The lower and upper bounds of the range
+			private readonly Key lower_key;
+			private readonly Key upper_key;
 
-			internal PlaceholderLeaf(TreeSystemTransaction tnx, long nodeId, int length) {
-				this.tnx = tnx;
-				this.nodeId = nodeId;
-				this.length = length;
+			// The current absolute position
+			private long p;
+
+			// The current version of the bounds information.  If it is out of date
+			// it must be updated.
+			private long version;
+			// The current absolute start position
+			private long start;
+			// The current absolute position (changes when modification happens)
+			private long end;
+
+			// Tree stack
+			private readonly TreeSystemStack stack;
+
+
+
+			public TransactionDataRange(TreeSystemTransaction transaction, Key lowerKey, Key upperKey) {
+				this.transaction = transaction;
+				stack = new TreeSystemStack(transaction);
+				lower_key = PreviousKeyOrder(lowerKey);
+				this.upper_key = upperKey;
+				p = 0;
+
+				version = -1;
+				start = -1;
+				end = -1;
 			}
 
-			private TreeLeaf Leaf {
-				get {
-					if (leaf == null)
-						leaf = (TreeLeaf)tnx.FetchNode(Id);
-					return leaf;
+			internal ITreeSystem TreeSystem {
+				get { return transaction.storeSystem; }
+			}
+
+			private TreeSystemTransaction Transaction {
+				get { return transaction; }
+			}
+
+			private void EnsureCorrectBounds() {
+				if (transaction.updateVersion > version) {
+					// If version is -1, we force a key position lookup. Version is -1
+					// when the range is created or it undergoes a large structural change.
+					if (version == -1) {
+						// Calculate absolute upper bound,
+						end = transaction.AbsKeyEndPosition(upper_key);
+						// Calculate the lower bound,
+						start = transaction.AbsKeyEndPosition(lower_key);
+					} else {
+						if (upper_key.CompareTo(transaction.lowestSizeChangedKey) >= 0) {
+							// Calculate absolute upper bound,
+							end = transaction.AbsKeyEndPosition(upper_key);
+						}
+						if (lower_key.CompareTo(transaction.lowestSizeChangedKey) > 0) {
+							// Calculate the lower bound,
+							start = transaction.AbsKeyEndPosition(lower_key);
+						}
+					}
+					// Reset the stack and set the version to the most recent
+					stack.Reset();
+					version = transaction.updateVersion;
 				}
 			}
 
-			public override long Id {
-				get { return nodeId; }
+			private void CheckAccessSize(int len) {
+				if (p < 0 || p > (end - start - len)) {
+					throw new IndexOutOfRangeException("Position out of bounds");
+				}
 			}
 
-			public override int Length {
-				get { return length; }
+			private void InitWrite() {
+				// Generate exception if the backed transaction is read-only.
+				if (transaction.readOnly) {
+					throw new ApplicationException("Read only transaction.");
+				}
+
+				// On writing, we update the versions
+				if (version >= 0) {
+					++version;
+				}
+				++transaction.updateVersion;
 			}
 
-			public override void Read(int position, byte[] buf, int off, int len) {
-				Leaf.Read(position, buf, off, len);
+			// -----
+
+			public long Count {
+				get {
+					transaction.CheckErrorState();
+					try {
+
+						EnsureCorrectBounds();
+						return end - start;
+
+					} catch (IOException e) {
+						throw transaction.SetErrorState(e);
+					} catch (OutOfMemoryException e) {
+						throw transaction.SetErrorState(e);
+					}
+				}
 			}
 
-			public override int Capacity {
-				get { throw new NotSupportedException(); }
+			public long Position {
+				get { return p; }
+				set { p = value; }
 			}
 
-			public override void Write(int position, byte[] buf, int off, int len) {
-				Leaf.Write(position, buf, off, len);
+			public Key CurrentKey {
+				get {
+					transaction.CheckErrorState();
+					try {
+						EnsureCorrectBounds();
+						CheckAccessSize(1);
+
+						stack.SetupForPosition(Key.Tail, start + p);
+						return stack.CurrentLeafKey;
+
+					} catch (IOException e) {
+						throw transaction.SetErrorState(e);
+					} catch (OutOfMemoryException e) {
+						throw transaction.SetErrorState(e);
+					}
+				}
 			}
 
-			public override void WriteTo(IAreaWriter writer) {
-				Leaf.WriteTo(writer);
+			public long MoveToStart() {
+				transaction.CheckErrorState();
+				try {
+					EnsureCorrectBounds();
+					CheckAccessSize(1);
+
+					stack.SetupForPosition(Key.Tail, start + p);
+					Key cur_key = stack.CurrentLeafKey;
+					long start_of_cur = transaction.AbsKeyEndPosition(PreviousKeyOrder(cur_key)) - start;
+					p = start_of_cur;
+					return p;
+
+				} catch (IOException e) {
+					throw transaction.SetErrorState(e);
+				} catch (OutOfMemoryException e) {
+					throw transaction.SetErrorState(e);
+				}
 			}
 
-			public override void SetLength(int size) {
-				Leaf.SetLength(size);
+			public long MoveNext() {
+				transaction.CheckErrorState();
+				try {
+
+					EnsureCorrectBounds();
+					CheckAccessSize(1);
+
+					stack.SetupForPosition(Key.Tail, start + p);
+					Key cur_key = stack.CurrentLeafKey;
+					long start_of_next = transaction.AbsKeyEndPosition(cur_key) - start;
+					p = start_of_next;
+					return p;
+
+				} catch (IOException e) {
+					throw transaction.SetErrorState(e);
+				} catch (OutOfMemoryException e) {
+					throw transaction.SetErrorState(e);
+				}
 			}
 
-			public override void Shift(int position, int offset) {
-				Leaf.Shift(position, offset);
+			public long MovePrevious() {
+				transaction.CheckErrorState();
+				try {
+
+					EnsureCorrectBounds();
+					CheckAccessSize(0);
+
+					// TODO: This seems rather complicated. Any way to simplify?
+
+					// Special case, if we are at the end,
+					long start_of_cur;
+					if (p == (end - start)) {
+						start_of_cur = p;
+					}
+						//
+					else {
+						stack.SetupForPosition(Key.Tail, start + p);
+						Key cur_key = stack.CurrentLeafKey;
+						start_of_cur = transaction.AbsKeyEndPosition(PreviousKeyOrder(cur_key)) - start;
+					}
+					// If at the start then we can't go to previous,
+					if (start_of_cur == 0) {
+						throw new IndexOutOfRangeException("On first key");
+					}
+					// Decrease the pointer and find the key and first position of that
+					--start_of_cur;
+					stack.SetupForPosition(Key.Tail, start + start_of_cur);
+					Key prev_key = stack.CurrentLeafKey;
+					long start_of_prev = transaction.AbsKeyEndPosition(PreviousKeyOrder(prev_key)) - start;
+
+					p = start_of_prev;
+					return p;
+
+				} catch (IOException e) {
+					throw transaction.SetErrorState(e);
+				} catch (OutOfMemoryException e) {
+					throw transaction.SetErrorState(e);
+				}
 			}
 
-			public override long MemoryAmount {
-				get { throw new NotSupportedException(); }
+			public DataFile GetFile(FileAccess access) {
+				transaction.CheckErrorState();
+				try {
+
+					EnsureCorrectBounds();
+					CheckAccessSize(1);
+
+					stack.SetupForPosition(Key.Tail, start + p);
+					Key cur_key = stack.CurrentLeafKey;
+
+					return transaction.GetFile(cur_key, access);
+
+				} catch (IOException e) {
+					throw transaction.SetErrorState(e);
+				} catch (OutOfMemoryException e) {
+					throw transaction.SetErrorState(e);
+				}
 			}
 
+			public DataFile GetFile(Key key, FileAccess access) {
+				transaction.CheckErrorState();
+				try {
+
+					// Check the key is within range,
+					if (key.CompareTo(lower_key) < 0 ||
+						key.CompareTo(upper_key) > 0) {
+						throw new IndexOutOfRangeException("Key out of bounds");
+					}
+
+					return transaction.GetFile(key, access);
+
+				} catch (OutOfMemoryException e) {
+					throw transaction.SetErrorState(e);
+				}
+			}
+
+			public void ReplicateTo(IDataRange target) {
+				if (target is TransactionDataRange) {
+					// If the tree systems are different we fall back
+					TransactionDataRange t_target = (TransactionDataRange)target;
+					if (TreeSystem == t_target.TreeSystem) {
+						// Fail condition (same transaction),
+						if (t_target.Transaction == Transaction) {
+							throw new ArgumentException("'ReplicateTo' on the same transaction");
+						}
+
+						// Ok, different transaction, same tree system source, both
+						// TranDataRange objects, so we can do an efficient tree copy.
+
+						// PENDING,
+
+
+					}
+				}
+
+				// The fallback method,
+				// This uses the standard API to replicate all the keys in the target
+				// range.
+				// Note that if the target can't contain the keys because they fall
+				//  outside of its bound then the exception comes from the target.
+				target.Delete();
+				long sz = Count;
+				long pos = 0;
+				while (pos < sz) {
+					Position = pos;
+					Key key = CurrentKey;
+					DataFile df = GetFile(FileAccess.Read);
+					DataFile target_df = target.GetFile(key, FileAccess.ReadWrite);
+					df.ReplicateTo(target_df);
+					pos = MoveNext();
+				}
+
+			}
+
+			public void Delete() {
+				transaction.CheckErrorState();
+				try {
+
+					InitWrite();
+					EnsureCorrectBounds();
+
+					if (end > start) {
+						// Remove the data,
+						transaction.RemoveAbsoluteBounds(start, end);
+					}
+					if (end < start) {
+						// Should ever happen?
+						throw new ApplicationException("end < start");
+					}
+
+					transaction.FlushCache();
+
+				} catch (IOException e) {
+					throw transaction.SetErrorState(e);
+				} catch (OutOfMemoryException e) {
+					throw transaction.SetErrorState(e);
+				}
+			}
 		}
 
 		#endregion
@@ -2394,10 +2180,12 @@ namespace Deveel.Data.Store {
 
 		private class KeyCollection : ICollection<Key> {
 			private readonly TreeSystemTransaction transaction;
+			private readonly IDataRange range;
 			private bool iterating;
 
-			public KeyCollection(TreeSystemTransaction transaction) {
+			public KeyCollection(TreeSystemTransaction transaction, IDataRange range) {
 				this.transaction = transaction;
+				this.range = range;
 			}
 
 			#region Implementation of IEnumerable
@@ -2458,7 +2246,7 @@ namespace Deveel.Data.Store {
 			}
 
 			public int Count {
-				get { throw new NotSupportedException(); }
+				get { return (int) range.Count; }
 			}
 
 			public bool IsReadOnly {
@@ -2474,48 +2262,28 @@ namespace Deveel.Data.Store {
 			#region KeyEnumerator
 
 			private class KeyEnumerator : IEnumerator<Key> {
-				private Key found_key;
-				private Key last_key;
+				private Key key;
 				private readonly TreeSystemTransaction tran;
 				private readonly KeyCollection collection;
 
 				internal KeyEnumerator(TreeSystemTransaction tran, KeyCollection collection) {
 					this.tran = tran;
 					this.collection = collection;
-					// The last key is the head key, initially
-					last_key = Key.Head;
-					found_key = null;
-				}
-
-				private Key NextKey {
-					get {
-						if (found_key == null) {
-							try {
-								found_key = tran.NextKey(Key.Tail, last_key, tran.rootNodeId);
-							} catch (IOException e) {
-								// PENDING: It's bad to wrap this IO error - an IOException here
-								// should be a critical stop condition.  Perhaps we need to
-								// implement a key iterator that can throw an IOException.
-								throw new Exception(e.Message, e);
-							}
-						}
-						return found_key;
-					}
 				}
 
 				#region IEnumerator<Key> Members
 
 				public bool MoveNext() {
-					if (NextKey.Equals(Key.Tail)) {
-						collection.OnIterationEnded();
-						return false;
+					bool hasNext = collection.range.Position < collection.range.Count;
+					if (hasNext) {
+						key = collection.range.CurrentKey;
+						collection.range.MoveNext();
 					}
-					return true;
+					return hasNext;
 				}
 
 				public void Reset() {
-					last_key = Key.Head;
-					found_key = null;
+					collection.range.MoveToStart();
 				}
 
 				object IEnumerator.Current {
@@ -2523,15 +2291,7 @@ namespace Deveel.Data.Store {
 				}
 
 				public Key Current {
-					get {
-						Key next_key = NextKey;
-						if (next_key.Equals(Key.Tail))
-							throw new Exception("End of iterator");
-
-						found_key = null;
-						last_key = next_key;
-						return next_key;
-					}
+					get { return key; }
 				}
 
 				#endregion

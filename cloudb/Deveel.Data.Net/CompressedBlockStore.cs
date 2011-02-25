@@ -7,12 +7,12 @@ using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
 	public sealed class CompressedBlockStore : IBlockStore {
-		private readonly long blockId;
+		private readonly BlockId blockId;
 		private readonly string fileName;
 		private FileStream content;
 		private StrongPagedAccess pagedAccess;
 
-		public CompressedBlockStore(long blockId, string fileName) {
+		public CompressedBlockStore(BlockId blockId, string fileName) {
 			this.blockId = blockId;
 			this.fileName = fileName;
 		}
@@ -107,7 +107,7 @@ namespace Deveel.Data.Net {
 
 				// Turn it into a node array,
 				int sz = nodeIds.Count;
-				long[] lnodeIds = new long[sz];
+				NodeId[] lnodeIds = new NodeId[sz];
 				for (int i = 0; i < sz; ++i) {
 					DataAddress daddr = new DataAddress(blockId, nodeIds[i]);
 					lnodeIds[i] = daddr.Value;

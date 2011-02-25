@@ -41,6 +41,8 @@ namespace Deveel.Data.Net.Client {
 			typeCodes[102] = typeof(DataAddress);
 			typeCodes[103] = typeof(NodeSet);
 			typeCodes[104] = typeof(MessageError);
+			typeCodes[106] = typeof(BlockId);
+			typeCodes[107] = typeof(PathInfo);
 		}
 		
 		private static Type GetType(byte code) {
@@ -116,8 +118,21 @@ namespace Deveel.Data.Net.Client {
 
 			if (type == typeof(DataAddress)) {
 				int dataId = reader.ReadInt32();
-				long blockId = reader.ReadInt64();
-				return new DataAddress(blockId, dataId);
+				long blockIdH = reader.ReadInt64();
+				long blockIdL = reader.ReadInt64();
+				return new DataAddress(new BlockId(blockIdH, blockIdL), dataId);
+			}
+
+			if (type == typeof(BlockId)) {
+				long high = reader.ReadInt64();
+				long low = reader.ReadInt64();
+				return new BlockId(high, low);
+			}
+
+			if (type == typeof(PathInfo)) {
+				string pathName = reader.ReadString();
+				string content = reader.ReadString();
+				return PathInfo.Parse(pathName, content);
 			}
 
 			if (type == typeof(MessageError)) {
@@ -131,9 +146,11 @@ namespace Deveel.Data.Net.Client {
 				byte node_set_type = reader.ReadByte();
 				// The node_ids list,
 				int sz = reader.ReadInt32();
-				long[] arr = new long[sz];
+				NodeId[] arr = new NodeId[sz];
 				for (int n = 0; n < sz; ++n) {
-					arr[n] = reader.ReadInt64();
+					long nodeIdH = reader.ReadInt64();
+					long nodeIdL = reader.ReadInt64();
+					arr[n] = new NodeId(nodeIdH, nodeIdL);
 				}
 				// The binary encoding,
 				sz = reader.ReadInt32();
@@ -228,7 +245,8 @@ namespace Deveel.Data.Net.Client {
 			} else if (valueType == typeof(DataAddress)) {
 				DataAddress data_addr = (DataAddress) value;
 				writer.Write(data_addr.DataId);
-				writer.Write(data_addr.BlockId);
+				writer.Write(data_addr.BlockId.High);
+				writer.Write(data_addr.BlockId.Low);
 			} else if (valueType == typeof(MessageError)) {
 				MessageError e = (MessageError) value;
 				writer.Write(e.Source);
@@ -236,16 +254,24 @@ namespace Deveel.Data.Net.Client {
 				writer.Write(e.StackTrace);
 			} else if (typeof(NodeSet).IsAssignableFrom(valueType)) {
 				if (value is SingleNodeSet) {
-					writer.Write((byte)1);
+					writer.Write((byte) 1);
 				} else if (value is CompressedNodeSet) {
-					writer.Write((byte)2);
+					writer.Write((byte) 2);
 				} else {
 					throw new Exception("Unknown NodeSet type: " + value.GetType());
 				}
-				NodeSet nset = (NodeSet)value;
+				NodeSet nset = (NodeSet) value;
 				// Write the node set,
 				// Write the binary encoding,
 				nset.WriteTo(writer.BaseStream);
+			} else if (valueType == typeof(BlockId)) {
+				BlockId blockId = (BlockId) value;
+				writer.Write(blockId.High);
+				writer.Write(blockId.Low);
+			} else if (valueType == typeof(PathInfo)) {
+				PathInfo pathInfo = (PathInfo) value;
+				writer.Write(pathInfo.PathName);
+				writer.Write(pathInfo.ToString());
 			} else if (value is Array) {
 				Array array = (Array)value;
 				Type arrayType = array.GetType().GetElementType();

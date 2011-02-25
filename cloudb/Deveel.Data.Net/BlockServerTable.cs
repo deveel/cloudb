@@ -1,19 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 
-using Deveel.Data.Store;
-
 namespace Deveel.Data.Net {
 	public sealed class BlockServerTable : FixedSizeCollection {
 		public BlockServerTable(DataFile data) 
-			: base(data, 16) {
+			: base(data, 24) {
 		}
 
-		public long[] this[long block_id] {
+		public long[] this[BlockId block_id] {
 			get { return Get(block_id); }
 		}
 
-		public long LastBlockId {
+		public BlockId LastBlockId {
 			get {
 				long p = Count - 1;
 				Record item = (Record)GetRecordKey(p);
@@ -26,7 +24,9 @@ namespace Deveel.Data.Net {
 		protected override object GetRecordKey(long recordIndex) {
 			SetPosition(recordIndex);
 
-			long blockId = DataFile.ReadInt64();
+			long blockIdH = DataFile.ReadInt64();
+			long blockIdL = DataFile.ReadInt64();
+			BlockId blockId = new BlockId(blockIdH, blockIdL);
 			long serverId = DataFile.ReadInt64();
 
 			return new Record(blockId, serverId);
@@ -35,15 +35,19 @@ namespace Deveel.Data.Net {
 		protected override int CompareRecordTo(long recordIndex, object recordKey) {
 			SetPosition(recordIndex);
 
-			long srcBlockId = DataFile.ReadInt64();
+			long srcBlockIdH = DataFile.ReadInt64();
+			long srcBlockIdL = DataFile.ReadInt64();
+			BlockId srcBlockId = new BlockId(srcBlockIdH, srcBlockIdL);
 			long srcServerId = DataFile.ReadInt64();
 
 			Record dstRecord = (Record) recordKey;
 
-			long dstBlockId = dstRecord.BlockId;
-			if (srcBlockId > dstBlockId)
+			BlockId dstBlockId = dstRecord.BlockId;
+
+			int cmp = srcBlockId.CompareTo(dstBlockId);
+			if (cmp > 0)
 				return 1;
-			if (srcBlockId < dstBlockId)
+			if (cmp < 0)
 				return -1;
 
 			// If identical block items, sort by the server identifier
@@ -59,7 +63,10 @@ namespace Deveel.Data.Net {
 
 		#endregion
 
-		public bool Add(long blockId, long serverId) {
+		public bool Add(BlockId blockId, long serverId) {
+			if (serverId < 0)
+				throw new ArgumentOutOfRangeException("serverId");
+
 			long p = Search(new Record(blockId, serverId));
 
 			if (p >= 0)
@@ -71,13 +78,22 @@ namespace Deveel.Data.Net {
 
 			SetPosition(p);
 
-			DataFile.Write(blockId);
+			DataFile.Write(blockId.High);
+			DataFile.Write(blockId.Low);
 			DataFile.Write(serverId);
 
 			return true;
 		}
 
-		public long [] Get(long blockId) {
+		public bool Add(BlockId blockId, long[] serverIds) {
+			bool b = true;
+			foreach (long serverId in serverIds) {
+				b &= Add(blockId, serverId);
+			}
+			return b;
+		}
+
+		public long [] Get(BlockId blockId) {
 			long p = Search(new Record(blockId, 0));
 			if (p < 0)
 				p = -(p + 1);
@@ -91,34 +107,35 @@ namespace Deveel.Data.Net {
 			dfile.Position = pos;
 
 			while (pos < size) {
-				long read_block_id = dfile.ReadInt64();
-				long read_server_id = dfile.ReadInt64();
+				long readBlockIdH = dfile.ReadInt64();
+				long readBlockIdL = dfile.ReadInt64();
+				BlockId readBlockId = new BlockId(readBlockIdH, readBlockIdL);
+				long readServerId = dfile.ReadInt64();
 
-				if (read_block_id != blockId)
+				if (!readBlockId.Equals(blockId))
 					break;
 
-				serverIdList.Add(read_server_id);
+				serverIdList.Add(readServerId);
 				pos += RecordSize;
 			}
 
 			return serverIdList.ToArray();
 		}
 
-		public long[] GetRange(long p1, long p2) {
+		public string[] GetRange(long p1, long p2) {
 			if ((p2 - p1) > Int32.MaxValue)
 				throw new OverflowException();
 
 			int sz = (int)(p2 - p1);
-			long[] arr = new long[sz * 2];
+			string[] arr = new string[sz];
 			for (int p = 0; p < sz; ++p) {
 				Record item = (Record)GetRecordKey(p1 + p);
-				arr[(p * 2) + 0] = item.BlockId;
-				arr[(p * 2) + 1] = item.ServerId;
+				arr[p] = item.BlockId + "=" + item.ServerId;
 			}
 			return arr;
 		}
 
-		public int Remove(long blockId) {
+		public int Remove(BlockId blockId) {
 			long p = Search(new Record(blockId, 0));
 			if (p < 0)
 				p = -(p + 1);
@@ -132,10 +149,12 @@ namespace Deveel.Data.Net {
 
 			int count = 0;
 			while (pos < size) {
-				long readBlockId = dfile.ReadInt64();
+				long readBlockIdH = dfile.ReadInt64();
+				long readBlockIdL = dfile.ReadInt64();
+				BlockId readBlockId = new BlockId(readBlockIdH, readBlockIdL);
 				long readServerId = dfile.ReadInt64();
 
-				if (readBlockId != blockId)
+				if (!readBlockId.Equals(blockId))
 					break;
 
 				pos += RecordSize;
@@ -150,7 +169,7 @@ namespace Deveel.Data.Net {
 			return count;
 		}
 
-		public bool Remove(long blockId, long serverId) {
+		public bool Remove(BlockId blockId, long serverId) {
 			long p = Search(new Record(blockId, serverId));
 			if (p < 0)
 				return false;
@@ -159,22 +178,65 @@ namespace Deveel.Data.Net {
 			return true;
 		}
 
+		public object[] GetKeyValueChunk(BlockId min, int rangeSize) {
+			List<BlockId> keys = new List<BlockId>();
+			List<long> values = new List<long>();
+
+			// Search for the first record item
+			Record item = new Record(min, 0);
+			long p = Search(item);
+			if (p < 0) {
+				// If the record wasn't found, we set p to the insert location
+				p = -(p + 1);
+			}
+			// Fetch the records,
+			DataFile dfile = DataFile;
+			long size = dfile.Length;
+			long startLoc = p * RecordSize;
+			long loc = startLoc;
+			int count = 0;
+			dfile.Position = loc;
+
+			BlockId lastBlockId = null;
+
+			while (count < rangeSize && loc < size) {
+				long readBlockIdH = dfile.ReadInt64();
+				long readBlockIdL = dfile.ReadInt64();
+				BlockId readBlockId = new BlockId(readBlockIdH, readBlockIdL);
+				long readServerId = dfile.ReadInt64();
+
+				// Count each time we go to a new block,
+				if (lastBlockId == null || !lastBlockId.Equals(readBlockId)) {
+					lastBlockId = readBlockId;
+					++count;
+				}
+
+				keys.Add(readBlockId);
+				values.Add(readServerId);
+
+				// Add this record to the area being deleted,
+				loc += RecordSize;
+			}
+
+			return new object[] {keys, values};
+		}
+
 		private sealed class Record {
-			internal Record(long blockId, long serverId) {
+			internal Record(BlockId blockId, long serverId) {
 				BlockId = blockId;
 				ServerId = serverId;
 			}
 
-			public readonly long BlockId;
+			public readonly BlockId BlockId;
 			public readonly long ServerId;
 
 			public override int GetHashCode() {
-				return (int)(BlockId + ServerId);
+				return (int)(BlockId.GetHashCode() + ServerId);
 			}
 
 			public override bool Equals(Object ob) {
 				Record dest_ob = (Record)ob;
-				return (dest_ob.BlockId == BlockId &&
+				return (dest_ob.BlockId.Equals(BlockId) &&
 						dest_ob.ServerId == ServerId);
 			}
 		}

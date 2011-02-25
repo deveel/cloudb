@@ -123,10 +123,11 @@ namespace Deveel.Data.Net.Client {
 		private void GetPathProfiles() {
 			network.Refresh();
 			
-			PathProfile[] profiles = network.GetPaths();
+			string[] pathNames = network.GetPathNames();
+			PathInfo[] profiles = new PathInfo[pathNames.Length];
 			for (int i = 0; i < profiles.Length; i++) {
-				PathProfile path = profiles[i];
-				pathTypes[path.Path] = path.PathType;
+				PathInfo path = profiles[i];
+				pathTypes[path.PathName] = path.PathType;
 			}
 		}
 

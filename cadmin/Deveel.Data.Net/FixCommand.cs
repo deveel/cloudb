@@ -16,10 +16,6 @@ namespace Deveel.Data.Net {
 			// Refresh
 			context.Network.Refresh();
 
-			MachineProfile manager = context.Network.ManagerServer;
-			if (manager == null)
-				throw new ApplicationException("Error: Manager currently not available.");
-
 			// Generate a map of server guid value to MachineProfile for that machine
 			// node currently available.
 			MachineProfile[] blockServers = context.Network.BlockServers;

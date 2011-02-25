@@ -10,6 +10,8 @@ namespace Deveel.Data.Net {
 		
 		private const string RegisteredBlockServers = "blockservers";
 		private const string RegisteredRootServers = "rootservers";
+		private const string RegisteredManagerServers = "managerservers";
+		private const String ManagerProperties = "manager.properties";
 
 		public FileSystemManagerService(IServiceConnector connector, string basePath, 
 		                               string dbPath, IServiceAddress address)
@@ -24,9 +26,24 @@ namespace Deveel.Data.Net {
 
 			SetBlockDatabase(database);
 
+			// Read the unique id value,
+			string f = Path.Combine(basePath, ManagerProperties);
+			if (File.Exists(f)) {
+				TextReader rin = new StreamReader(f);
+				while (true) {
+					string line = rin.ReadLine();
+					if (line == null)
+						break;
+
+					if (line.StartsWith("id="))
+						UniqueId = Int32.Parse(line.Substring(3));
+				}
+				rin.Close();
+			}
+
 			// Read all the registered block servers that were last persisted and
 			// populate the manager with them,
-			string f = Path.Combine(basePath, RegisteredBlockServers);
+			f = Path.Combine(basePath, RegisteredBlockServers);
 			if (File.Exists(f)) {
 				using (StreamReader rin = new StreamReader(f)) {
 					string line;
@@ -51,6 +68,25 @@ namespace Deveel.Data.Net {
 					}
 				}
 			}
+
+			// Read all the registered manager servers that were last persisted and
+			// populate the manager with them,
+			f = Path.Combine(basePath, RegisteredManagerServers);
+			if (File.Exists(f)) {
+				TextReader rin = new StreamReader(f);
+				while (true) {
+					string line = rin.ReadLine();
+					if (line == null) {
+						break;
+					}
+					AddRegisteredManagerServer(ServiceAddresses.ParseString(line));
+				}
+				rin.Close();
+			}
+
+			// Perform the initialization procedure (contacts the other managers and
+			// syncs data).
+			base.OnStart();
 		}
 
 		protected override void OnStop() {
@@ -61,8 +97,54 @@ namespace Deveel.Data.Net {
 
 			base.OnStop();
 		}
-		
-		protected override void PersistBlockServers(IList<BlockServerInfo> servers_list) {
+
+		protected override void PersistManagerServers(IList<ManagerServerInfo> servers) {
+			Stream fileStream = null;
+			try {
+				string f = Path.Combine(basePath, RegisteredManagerServers);
+				if (File.Exists(f)) 
+					File.Delete(f);
+					
+				fileStream = File.Create(f);
+
+				StreamWriter fr = new StreamWriter(fileStream);
+				foreach (ManagerServerInfo s in servers) {
+					fr.WriteLine(s.Address.ToString());
+				}
+
+				fr.Flush();
+				fr.Close();
+
+			} catch (IOException e) {
+				throw new ApplicationException("Error persisting manager server list: " + e.Message);
+			} finally {
+				if (fileStream != null)
+					fileStream.Close();
+			}
+		}
+
+		protected override void PersistUniqueId(int unique_id) {
+			Stream filestream = null;
+			try {
+				string f = Path.Combine(basePath, ManagerProperties);
+				if (File.Exists(f))
+					File.Delete(f);
+					
+				filestream = File.Create(f);
+
+				StreamWriter fr = new StreamWriter(filestream);
+				fr.WriteLine("id=" + unique_id);
+
+				fr.Flush();
+			} catch (Exception e) {
+				throw new ApplicationException(e.Message, e);
+			} finally {
+				if (filestream != null)
+					filestream.Close();
+			}
+		}
+
+		protected override void PersistBlockServers(IList<BlockServerInfo> servers) {
 			try {
 				string f = Path.Combine(basePath, RegisteredBlockServers);
 				if (File.Exists(f))
@@ -70,7 +152,7 @@ namespace Deveel.Data.Net {
 
 				using(FileStream fileStream = File.Create(f)) {
 					using (StreamWriter output = new StreamWriter(fileStream)) {
-						foreach (BlockServerInfo s in servers_list) {
+						foreach (BlockServerInfo s in servers) {
 							output.Write(s.Guid);
 							output.Write(",");
 							output.WriteLine(s.Address.ToString());
@@ -85,7 +167,7 @@ namespace Deveel.Data.Net {
 			}
 		}
 		
-		protected override void PersistRootServers(IList<RootServerInfo> servers_list) {
+		protected override void PersistRootServers(IList<RootServerInfo> servers) {
 			try {
 				string f = Path.Combine(basePath, RegisteredRootServers);
 				if (File.Exists(f))
@@ -93,7 +175,7 @@ namespace Deveel.Data.Net {
 
 				using (FileStream fileStream = File.Create(f)) {
 					using (StreamWriter output = new StreamWriter(fileStream)) {
-						foreach (RootServerInfo s in servers_list)
+						foreach (RootServerInfo s in servers)
 							output.WriteLine(s.Address.ToString());
 						output.Flush();
 					}

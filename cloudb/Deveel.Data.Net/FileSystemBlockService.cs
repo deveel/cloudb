@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Threading;
 
 namespace Deveel.Data.Net {
@@ -29,6 +30,34 @@ namespace Deveel.Data.Net {
 			
 			File.Delete(fileName);
 		}
+
+		private static string FormatFileName(BlockId blockId) {
+			long blockIdH = blockId.High;
+			long blockIdL = blockId.Low;
+
+			StringBuilder b = new StringBuilder();
+			b.Append(blockIdH.ToString("X"));
+			string l = blockIdL.ToString("X");
+			int pad = 16 - l.Length;
+			b.Append("X");
+			for (int i = 0; i < pad; ++i) {
+				b.Append("0");
+			}
+			b.Append(l);
+			return b.ToString();
+		}
+
+		private static BlockId ParseFileName(string fileName) {
+			int p = fileName.IndexOf("X");
+			if (p == -1)
+				throw new FormatException("file name format error: " + fileName);
+
+			string h = fileName.Substring(0, p);
+			string l = fileName.Substring(p + 1);
+
+			// Return as a BlockId
+			return new BlockId(Convert.ToInt64(h, 16), Convert.ToInt64(l, 16));
+		}
 		
 		private void Compress() {
 			try {
@@ -54,9 +83,10 @@ namespace Deveel.Data.Net {
 							// If it's already compressed, remove it from the list
 							if (container.BlockStore is CompressedBlockStore) {
 								new_items.RemoveAt(i);
-							} else if (container.LastWriteTime <
-							           DateTime.Now.AddMilliseconds(-(3*60*1000))) {
-
+							}
+								// Don't compress if written to less than 3 minutes ago,
+								// and we confirm it can be compressed,
+							else if (IsKnownStaticBlock(container)) {
 								FileBlockStore mblock_store = (FileBlockStore) container.BlockStore;
 								string sourcef = mblock_store.FileName;
 								string destf = Path.Combine(Path.GetDirectoryName(sourcef),
@@ -171,26 +201,43 @@ namespace Deveel.Data.Net {
 
 			base.OnStart();
 		}
-		
-		protected override BlockContainer LoadBlock(long blockId) {
+
+		protected override byte[] CreateAvailabilityMap(BlockId[] blocks) {
+			byte[] result = new byte[blocks.Length];
+
+			// Use the OS filesystem file name lookup to determine if the block is
+			// stored here or not.
+
+			for (int i = 0; i < blocks.Length; ++i) {
+				bool found = true;
+				// Turn the block id into a filename,
+				string block_fname = FormatFileName(blocks[i]);
+				// Check for the compressed filename,
+				string blockFileName = Path.Combine(path, block_fname + ".mcd");
+				if (!File.Exists(blockFileName)) {
+					// Check for the none-compressed filename
+					blockFileName = Path.Combine(path, block_fname);
+					// If this file doesn't exist,
+					if (!File.Exists(blockFileName)) {
+						found = false;
+					}
+				}
+
+				// Set the value in the map
+				result[i] = found ? (byte)1 : (byte)0;
+			}
+
+			return result;
+		}
+
+		protected override BlockContainer LoadBlock(BlockId blockId) {
 			// If it's not found in the map,
 			// Turn the block id into a filename,
-			String block_fname = blockId.ToString();
+			string block_fname = FormatFileName(blockId);
 			string block_file_name = Path.Combine(path, block_fname + ".mcd");
 			IBlockStore block_store;
 			if (!File.Exists(block_file_name)) {
 				block_file_name = Path.Combine(path, block_fname);
-				// If this file doesn't exist,
-				if (!File.Exists(block_file_name)) {
-					// We check if the block_id is less than maximum id. If it is we
-					// generate an exception indicating this block doesn't exist on this
-					// service. This means something screwed up, either the manager service
-					// was erroneously told the block was located on this service but it
-					// isn't, or the file was deleted by the user.
-					if (blockId < LastBlockId)
-						throw new BlockReadException("Block " + blockId + " not stored on service");
-				}
-
 				block_store = new FileBlockStore(blockId, block_file_name);
 			} else {
 				block_store = new CompressedBlockStore(blockId, block_file_name);
@@ -208,9 +255,9 @@ namespace Deveel.Data.Net {
 			return container;
 		}
 		
-		protected override long[] ListBlocks() {
+		protected override BlockId[] ListBlocks() {
 			string[] dir = Directory.GetFiles(path);
-			List<long> blocks = new List<long>(dir.Length);
+			List<BlockId> blocks = new List<BlockId>(dir.Length);
 			foreach (string f in dir) {
 				string fileName = Path.GetFileName(f);
 				if (!fileName.Equals("block_guid") &&
@@ -220,15 +267,15 @@ namespace Deveel.Data.Net {
 					if (fileName.EndsWith(".mcd")) {
 						fileName = fileName.Substring(0, fileName.Length - 4);
 					}
-					long block_id = Int64.Parse(fileName);
-					blocks.Add(block_id);
+					BlockId blockId = ParseFileName(fileName);
+					blocks.Add(blockId);
 				}
 			}
 
 			return blocks.ToArray();
 		}
 		
-		protected override void OnCompleteBlockWrite(long blockId, int storeType) {
+		protected override void OnCompleteBlockWrite(BlockId blockId, int storeType) {
 			String tmpext;
 			if (storeType == 1) {
 				tmpext = ".tmpc1";
@@ -240,15 +287,15 @@ namespace Deveel.Data.Net {
 
 			// Make sure this process is exclusive
 			lock (BlockUploadSyncRoot) {
-				string block_fname = blockId.ToString();
-				string f = Path.Combine(path, block_fname + tmpext);
+				string blockFileName = FormatFileName(blockId);
+				string f = Path.Combine(path, blockFileName + tmpext);
 
 				if (!File.Exists(f))
 					throw new ApplicationException("File doesn't exist");
 
 				// Check the file we are renaming to doesn't exist,
-				string f_normal = Path.Combine(path, block_fname);
-				string f_compress = Path.Combine(path, block_fname + ".mcd");
+				string f_normal = Path.Combine(path, blockFileName);
+				string f_compress = Path.Combine(path, blockFileName + ".mcd");
 
 				if (File.Exists(f_normal) || File.Exists(f_compress))
 					throw new ApplicationException("Block file exists already");
@@ -268,7 +315,7 @@ namespace Deveel.Data.Net {
 			}
 		}
 		
-		protected override void OnWriteBlockPart(long blockId, long pos, int storeType, byte[] buffer, int length) {
+		protected override void OnWriteBlockPart(BlockId blockId, long pos, int storeType, byte[] buffer, int length) {
 			String tmpext;
 			if (storeType == 1) {
 				tmpext = ".tmpc1";
@@ -281,7 +328,7 @@ namespace Deveel.Data.Net {
 			// Make sure this process is exclusive
 			lock (BlockUploadSyncRoot) {
 				try {
-					string f = Path.Combine(path, blockId + tmpext);
+					string f = Path.Combine(path, FormatFileName(blockId) + tmpext);
 					if (pos == 0) {
 						if (File.Exists(f))
 							throw new ApplicationException("File '" + f + "' already exists.");

@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 
 using Deveel.Data.Caching;
-using Deveel.Data.Store;
 
 namespace Deveel.Data.Net {
 	public class MemoryNetworkCache : INetworkCache {
 		public MemoryNetworkCache(long max_cache_size) {
 			heap_cache = new LocalCache(Cache.ClosestPrime(4096), max_cache_size);
-			s2block_cache = new Dictionary<long, BlockCacheElement>(1024);
+			s2block_cache = new Dictionary<BlockId, BlockCacheElement>(1024);
+			pathInfoMap = new Dictionary<string, PathInfo>(255);
 		}
 
 		public MemoryNetworkCache()
@@ -16,7 +16,8 @@ namespace Deveel.Data.Net {
 		}
 
 		private readonly LocalCache heap_cache;
-		private readonly Dictionary<long, BlockCacheElement> s2block_cache;
+		private readonly Dictionary<BlockId, BlockCacheElement> s2block_cache;
+		private readonly Dictionary<string, PathInfo> pathInfoMap;
 
 		#region Implementation of ITreeNodeCache
 
@@ -42,7 +43,7 @@ namespace Deveel.Data.Net {
 
 		#region Implementation of INetworkCache
 
-		public void SetServers(long blockId, IList<BlockServerElement> servers, int ttlHint) {
+		public void SetServers(BlockId blockId, IList<BlockServerElement> servers, int ttlHint) {
 			BlockCacheElement ele = new BlockCacheElement();
 			ele.block_servers = servers;
 			ele.time_to_end = DateTime.Now.AddMilliseconds(ttlHint);
@@ -52,7 +53,7 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		public IList<BlockServerElement> GetServers(long blockId) {
+		public IList<BlockServerElement> GetServers(BlockId blockId) {
 			lock (s2block_cache) {
 				BlockCacheElement ele;
 				if (!s2block_cache.TryGetValue(blockId, out ele) ||
@@ -62,9 +63,24 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		public void RemoveServers(long blockId) {
+		public void RemoveServers(BlockId blockId) {
 			lock (s2block_cache) {
 				s2block_cache.Remove(blockId);
+			}
+		}
+
+		public PathInfo GetPathInfo(string pathName) {
+			lock (pathInfoMap) {
+				PathInfo pathInfo;
+				if (pathInfoMap.TryGetValue(pathName, out pathInfo))
+					return pathInfo;
+				return null;
+			}
+		}
+
+		public void SetPathInfo(string pathName, PathInfo pathInfo) {
+			lock (pathInfoMap) {
+				pathInfoMap[pathName] = pathInfo;
 			}
 		}
 
