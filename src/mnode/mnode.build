@@ -2,19 +2,18 @@
 <project name="mnode" default="build" xmlns="http://nant.sf.net/release/0.91-alpha2/nant.xsd">
 	<include buildfile="../common.build"/>
 	<target name="build">
-		<if test="${not kernel}">
-			<call target="-build-kernel"/>
-		</if>
-		<if test="${standalone}">
-			<property name="libs" value="../libs"/>
-		</if>
+		<call target="-build-kernel"/>
 		<if test="${system=='unix'}">
 			<property name="define" value="${define};UNIX"/>
 		</if>
 		<if test="${system == 'windows' or system == ''}">
 			<property name="define" value="${define};WINDOWS"/>
 		</if>
+		<if test="${debug}">
+		  <property name="define" value="${define};DEBUG"/>
+		</if>
 		<echo message="building application mnode to ${path::get-full-path(output)}; libraries from ${path::get-full-path(libs)} ..."/>
+		<echo message="producing debug information" if="${debug}"/>
 		<csc target="exe" output="${output}/mnode.exe" debug="${debug}" define="${define}" optimize="${not debug}" platform="${platform}" keyfile="mnode.snk">
 			<sources basedir="${sources}">
 				<include name="Properties/AssemblyInfo.cs"/>
@@ -30,7 +29,7 @@
 		</csc>
 		<copy file="${libs}/deveel-cli.dll" todir="${output}" overwrite="true"/>
 		<copy file="${conf}/node.conf" todir="${output}" overwrite="true"/>
-		<copy file="${conf}/network.conf" todir="${output}" overwrite="true"/>
+		<copy file="${conf}/network.conf" todir="${output}" overwrite="true"/>		
 	</target>
 	<target name="-package-bin" depends="build">
   </target>

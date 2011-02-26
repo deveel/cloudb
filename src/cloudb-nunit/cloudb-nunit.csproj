@@ -48,6 +48,7 @@
     <WarningLevel>4</WarningLevel>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
     <ConsolePause>false</ConsolePause>
+    <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -84,7 +85,6 @@
     <Compile Include="Deveel.Data.Net.Client\BinaryRpcSerializerTest.cs" />
     <Compile Include="Deveel.Data.Net.Client\XmlRpcMessageSerializerTest.cs" />
     <Compile Include="Deveel.Data.Net\FakeAdminService.cs">
-      <SubType>Component</SubType>
     </Compile>
     <Compile Include="Deveel.Data.Net\HttpMessageFormat.cs" />
     <Compile Include="Deveel.Data.Net\HttpNetworkTest.cs" />

@@ -30,7 +30,7 @@
 	<target name="-core-test">
 		<echo message="compiling the nunit test library for the kernel component."/>
 		<echo message="nunit reference from ${path::get-full-path(libs+'/../nunit')}"/>
-		<csc output="${output}\cloudb-nunit.dll" target="library" define="${define}">
+		<csc output="${output}\cloudb-nunit.dll" target="library" define="${define}" platform="${platform}">
 			<references>
 				<include name="${libs}/../nunit/nunit.framework.dll"/>
 				<include name="${output}\cloudb.dll"/>
