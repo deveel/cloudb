@@ -5,6 +5,9 @@ namespace Deveel.Data.Configuration {
 		private readonly ConfigSource config;
 		private readonly string key;
 
+		public ConfigurationException() {
+		}
+
 		public ConfigurationException(string message, Exception innerException)
 			: base(message, innerException) {
 		}

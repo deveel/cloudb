@@ -59,19 +59,19 @@
     <AssemblyOriginatorKeyFile>cadmin.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="deveel-cli, Version=1.0.4032.571, Culture=neutral, PublicKeyToken=36bd3c4d094c5302, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\libs\deveel-cli.dll</HintPath>
+    </Reference>
+    <Reference Include="deveelrl, Version=1.2.0.37360, Culture=neutral, PublicKeyToken=9fbac9d9ab2b152f, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\libs\deveelrl.dll</HintPath>
+    </Reference>
+    <Reference Include="shellapp, Version=0.7.4.0, Culture=neutral, PublicKeyToken=0c61288eb22659ba, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\libs\shellapp.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
-    <Reference Include="deveelrl, Version=1.2.0.37360, Culture=neutral, PublicKeyToken=9fbac9d9ab2b152f">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\libs\deveelrl.dll</HintPath>
-    </Reference>
-    <Reference Include="shellapp, Version=0.7.4.0, Culture=neutral, PublicKeyToken=null">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\libs\shellapp.dll</HintPath>
-    </Reference>
-    <Reference Include="deveel-cli, Version=1.0.3939.39851, Culture=neutral, PublicKeyToken=null">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\libs\deveel-cli.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Deveel.Data.Net\AboutCommand.cs" />
