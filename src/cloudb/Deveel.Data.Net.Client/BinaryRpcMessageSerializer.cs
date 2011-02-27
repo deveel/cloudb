@@ -16,7 +16,7 @@ namespace Deveel.Data.Net.Client {
 		}
 		
 		static BinaryRpcMessageSerializer() {
-						typeCodes = new Dictionary<byte, Type>();
+			typeCodes = new Dictionary<byte, Type>();
 			typeCodes[0] = typeof(DBNull);
 
 			typeCodes[1] = typeof(byte);

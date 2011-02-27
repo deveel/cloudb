@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Text;
 
 namespace Deveel.Data.Configuration {
 	public class ConfigSource : ICloneable {
@@ -24,8 +25,37 @@ namespace Deveel.Data.Configuration {
 		private readonly List<ConfigSource> children = new List<ConfigSource>();
 		private string[] keys;
 
+		private string fullName;
+
 		public string Name {
 			get { return name; }
+		}
+
+		public string FullName {
+			get {
+				if (fullName == null) {
+					List<string> names = new List<string>(12);
+					names.Add(name);
+
+					ConfigSource p;
+					while ((p = parent) != null) {
+						names.Add(p.Name);
+					}
+
+					StringBuilder sb = new StringBuilder();
+
+					for (int i = names.Count - 1; i >= 0; i--) {
+						sb.Append(names[i]);
+
+						if (i > 0)
+							sb.Append(".");
+					}
+
+					fullName = sb.ToString();
+				}
+
+				return fullName;
+			}
 		}
 
 		public ConfigSource Parent {

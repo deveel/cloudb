@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Reflection;
-using System.Security.Principal;
 
 using Deveel.Data.Diagnostics;
+using Deveel.Data.Net.Security;
 
 namespace Deveel.Data.Net.Client {
 	public abstract class PathClientService : Component {
@@ -33,7 +33,7 @@ namespace Deveel.Data.Net.Client {
 		private IMessageSerializer messageSerializer;
 		private readonly Logger log;
 
-		private IPathClientAuthorize authorize;
+		private IAuthenticator authenticator;
 
 		private NetworkClient client;
 		private readonly NetworkProfile network;
@@ -73,20 +73,9 @@ namespace Deveel.Data.Net.Client {
 			set { messageSerializer = value; }
 		}
 
-		public virtual IPathClientAuthorize Authorize {
-			get { return authorize; }
-			set { authorize = value; }
-		}
-
-		public virtual PathClienAuthorizeDelegate AuthorizeDelegate {
-			get { return (authorize != null && authorize is DelegatedAuthorize) ? ((DelegatedAuthorize) authorize).Delegate : null; }
-			set {
-				if (value == null && (authorize != null && authorize is DelegatedAuthorize)) {
-					authorize = null;
-				} else {
-					authorize = new DelegatedAuthorize(value);
-				}
-			}
+		public IAuthenticator Authenticator {
+			get { return authenticator; }
+			set { authenticator = value; }
 		}
 
 		public bool IsConnected {
@@ -171,7 +160,7 @@ namespace Deveel.Data.Net.Client {
 			return request;
 		}
 
-		protected ResponseMessage HandleRequest(RequestType type, string pathName, IDictionary<string, object> args, Stream requestStream) {
+		protected ResponseMessage HandleRequest(object context, RequestType type, string pathName, IDictionary<string, object> args, Stream requestStream) {
 			//TODO: allow having multiple handlers for the service ...
 			HandlerContainer handler = GetMethodHandler(pathName);
 			if (handler == null)
@@ -179,6 +168,12 @@ namespace Deveel.Data.Net.Client {
 
 			if (!handler.Handler.CanHandleClientType(Type))
 				throw new InvalidOperationException("The handler for the path '" + pathName + "' cannot support client of type '" + Type + "'.");
+
+			AuthResult authResult = Authenticate(type, pathName, args);
+			if (!authResult.Success) {
+				//TODO: return a response with the error details ...
+				throw new NotImplementedException();
+			}
 
 			IPathTransaction transaction;
 
@@ -196,11 +191,33 @@ namespace Deveel.Data.Net.Client {
 				}
 			}
 			request.Seal();
+
+			if (authenticator != null) {
+				AuthRequest authRequest = new AuthRequest(context, pathName);
+				foreach (KeyValuePair<string, object> pair in request.Attributes)
+					authRequest.AuthData.Add(pair);
+
+				AuthResult authResult = authenticator.Authenticate(authRequest);
+				if (authResult != null) {
+					if (!authResult.Success) {
+						Logger.Info(authenticator, String.Format("Unauthorized: {0} ({1})", authResult.Message, authResult.Code));
+
+						ResponseMessage responseMessage = request.CreateResponse("error");
+						responseMessage.Code = MessageResponseCode.Unauthorized;
+						//TODO: Extend MessageError to include an error specific code ...
+						responseMessage.Arguments.Add(new MessageError(authResult.Message));
+						return responseMessage;
+					}
+						
+					Logger.Info(authenticator, String.Format("Authorized: {0}", authResult.Message));
+				}
+			}
+
 			return handler.Handler.HandleRequest(request);
 		}
 		
-		protected ResponseMessage HandleRequest(RequestType type, string pathName, Stream requestStream) {
-			return HandleRequest(type, pathName, null, requestStream);
+		protected ResponseMessage HandleRequest(object context, RequestType type, string pathName, Stream requestStream) {
+			return HandleRequest(context, type, pathName, null, requestStream);
 		}
 
 		protected IPathTransaction CreateTransaction(string pathName) {
@@ -342,22 +359,6 @@ namespace Deveel.Data.Net.Client {
 
 				service.OnTransactionCommitted(context.PathName, Transaction, address);
 				return address;
-			}
-		}
-
-		#endregion
-
-		#region DelegatedAuthorize
-
-		private class DelegatedAuthorize : IPathClientAuthorize {
-			public readonly PathClienAuthorizeDelegate Delegate;
-
-			public DelegatedAuthorize(PathClienAuthorizeDelegate wrapped) {
-				Delegate = wrapped;
-			}
-
-			public bool IsAuthorized(IIdentity identity) {
-				return Delegate(identity);
 			}
 		}
 

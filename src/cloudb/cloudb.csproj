@@ -64,7 +64,10 @@
     <Compile Include="Deveel.Data.Caching\Cache.cs" />
     <Compile Include="Deveel.Data.Caching\ICache.cs" />
     <Compile Include="Deveel.Data.Configuration\ConfigFormat.cs" />
+    <Compile Include="Deveel.Data.Configuration\ConfigurationException.cs" />
     <Compile Include="Deveel.Data.Configuration\IConfigFormatter.cs" />
+    <Compile Include="Deveel.Data.Net.Security\InvalidUserPasswordException.cs" />
+    <Compile Include="Deveel.Data.Net.Security\IUser.cs" />
     <Compile Include="Deveel.Data.Configuration\PropertiesConfigFormatter.cs" />
     <Compile Include="Deveel.Data.Configuration\XmlConfigFormatter.cs" />
     <Compile Include="Deveel.Data.Diagnostics\Analytics.cs" />
@@ -78,13 +81,19 @@
     <Compile Include="Deveel.Data.Diagnostics\ILogger.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LogEntry.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LogWriter.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthRequest.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthResult.cs" />
     <Compile Include="Deveel.Data.Net.Client\BinaryMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Client\BinaryRpcMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Client\ClientRequestMessage.cs" />
     <Compile Include="Deveel.Data.Net.Client\IAttributesHandler.cs" />
+    <Compile Include="Deveel.Data.Net.Security\IAuthenticator.cs" />
+    <Compile Include="Deveel.Data.Net.Security\PublicKey.cs" />
+    <Compile Include="Deveel.Data.Net.Security\UserAuthenticationCode.cs" />
+    <Compile Include="Deveel.Data.Net.Client\UserAuthenticator.cs" />
+    <Compile Include="Deveel.Data.Net.Security\IUserDataSource.cs" />
     <Compile Include="Deveel.Data.Net.Client\IMessageProcessor.cs" />
     <Compile Include="Deveel.Data.Net.Client\IMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net.Client\IPathClientAuthorize.cs" />
     <Compile Include="Deveel.Data.Net.Client\IMessageStreamSupport.cs" />
     <Compile Include="Deveel.Data.Net.Client\IPathTransaction.cs" />
     <Compile Include="Deveel.Data.Net.Client\IRestMessageSerializer.cs" />
@@ -100,7 +109,6 @@
     <Compile Include="Deveel.Data.Net.Client\ResponseMessage.cs" />
     <Compile Include="Deveel.Data.Net.Client\MessageResponseCode.cs" />
     <Compile Include="Deveel.Data.Net.Client\MessageType.cs" />
-    <Compile Include="Deveel.Data.Net.Client\PathClientAuthorizeDelegate.cs" />
     <Compile Include="Deveel.Data.Net.Client\RestFormat.cs" />
     <Compile Include="Deveel.Data.Net.Client\TextMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Client\XmlRpcMessageSerializer.cs" />
@@ -123,7 +131,7 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Deveel.Data.Net.Client\IXmlSerializable.cs" />
-    <Compile Include="Deveel.Data.Net.Client\BinaryPathClientService.cs">
+    <Compile Include="Deveel.Data.Net.Client\TcpPathClientService.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Deveel.Data.Net.Client\XmlRestMessageSerializer.cs" />

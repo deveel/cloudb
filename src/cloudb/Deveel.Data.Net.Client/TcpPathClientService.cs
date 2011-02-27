@@ -9,8 +9,8 @@ using System.Threading;
 using Deveel.Data.Diagnostics;
 
 namespace Deveel.Data.Net.Client {
-	public class BinaryPathClientService : PathClientService {
-		public BinaryPathClientService(IServiceAddress address, TcpServiceAddress managerAddress, string password) 
+	public class TcpPathClientService : PathClientService {
+		public TcpPathClientService(IServiceAddress address, TcpServiceAddress managerAddress, string password) 
 			: base(address, managerAddress, new TcpServiceConnector(password)) {
 		}
 
@@ -85,9 +85,9 @@ namespace Deveel.Data.Net.Client {
 		#region TcpConnection
 
 		private class TcpConnection {
-			private readonly BinaryPathClientService service;
+			private readonly TcpPathClientService service;
 
-			public TcpConnection(BinaryPathClientService service) {
+			public TcpConnection(TcpPathClientService service) {
 				this.service = service;
 			}
 

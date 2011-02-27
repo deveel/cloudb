@@ -5,6 +5,7 @@ namespace Deveel.Data.Net.Client {
 		Success,
 		NotFound,
 		UnsupportedFormat,
+		Unauthorized,
 		Error
 	}
 }
