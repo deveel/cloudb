@@ -108,17 +108,6 @@ namespace Deveel.Data.Net.Client {
 				HttpListenerContext context = (HttpListenerContext)state;
 
 				try {
-					// Get the credentials if specified,
-					if (context.User != null) {
-						HttpListenerBasicIdentity identity = (HttpListenerBasicIdentity)context.User.Identity;
-						IPathClientAuthorize authorize = service.Authorize;
-						if (authorize != null && !authorize.IsAuthorized(identity)) {
-							context.Response.StatusCode = 401;
-							context.Response.Close();
-							return;
-						}
-					}
-
 					// The main command dispatch loop for this connection,
 
 					string method = context.Request.HttpMethod;
@@ -181,12 +170,16 @@ namespace Deveel.Data.Net.Client {
 						requestType == RequestType.Put)
 						requestStream = context.Request.InputStream;
 
-					ResponseMessage response = service.HandleRequest(requestType, pathName, args, requestStream);
+					ResponseMessage response = service.HandleRequest(context, requestType, pathName, args, requestStream);
 
 					if (requestStream != null)
 						requestStream.Close();
 
-					if (response.Code == MessageResponseCode.NotFound) {
+					if (response.Code == MessageResponseCode.Unauthorized) {
+						context.Response.StatusCode = 401;
+						context.Response.Close();		
+						return;
+					} else if (response.Code == MessageResponseCode.NotFound) {
 						context.Response.StatusCode = 404;
 					} else if (response.Code == MessageResponseCode.UnsupportedFormat) {
 						context.Response.StatusCode = 415;
