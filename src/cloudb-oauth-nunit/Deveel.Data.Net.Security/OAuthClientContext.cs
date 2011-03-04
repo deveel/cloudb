@@ -37,11 +37,9 @@ namespace Deveel.Data.Net.Security {
 			return request;
 		}
 
-		/*
 		public OAuthRequest CreateRequest(OAuthEndPoint resourceEndPoint) {
 			return CreateRequest(resourceEndPoint, null as IToken, null as IToken);
 		}
-		*/
 
 		public OAuthRequest CreateRequest(OAuthEndPoint resourceEndPoint, IToken requestToken) {
 			return CreateRequest(resourceEndPoint, requestToken, null);
@@ -74,7 +72,7 @@ namespace Deveel.Data.Net.Security {
 			return CreateRequest(resourceEndPoint, callbackUri, null, endUserId);
 		}
 
-		public OAuthRequest CreateRequest(OAuthEndPoint resourceEndPoint) {
+		public OAuthRequest CreateConsumerRequest(OAuthEndPoint resourceEndPoint) {
 			IToken requestToken = null, accessToken = null;
 			if (service != null)
 				requestToken = new EmptyToken(service.Consumer.Key, TokenType.Request);

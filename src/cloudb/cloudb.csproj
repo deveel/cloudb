@@ -67,6 +67,7 @@
     <Compile Include="Deveel.Data.Configuration\ConfigurationException.cs" />
     <Compile Include="Deveel.Data.Configuration\IConfigFormatter.cs" />
     <Compile Include="Deveel.Data.Configuration\IConfigurable.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthenticationException.cs" />
     <Compile Include="Deveel.Data.Net.Security\InvalidUserPasswordException.cs" />
     <Compile Include="Deveel.Data.Net.Security\IUser.cs" />
     <Compile Include="Deveel.Data.Configuration\PropertiesConfigFormatter.cs" />

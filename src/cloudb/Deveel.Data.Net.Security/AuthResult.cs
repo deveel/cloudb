@@ -5,6 +5,7 @@ namespace Deveel.Data.Net.Security {
 	public sealed class AuthResult {
 		private readonly bool success;
 		private readonly int code;
+		private readonly bool hasError;
 		private readonly IDictionary<string, object> authData;
 		private readonly string message;
 		private readonly IDictionary<string, object> outputData;
@@ -27,6 +28,15 @@ namespace Deveel.Data.Net.Security {
 
 		public AuthResult(bool success, int code)
 			: this(success, code, (string)null) {
+		}
+
+		public AuthResult(bool success)
+			: this(success, -1) {
+			hasError = false;
+		}
+
+		public bool HasError {
+			get { return hasError; }
 		}
 
 		public IDictionary<string, object> OutputData {

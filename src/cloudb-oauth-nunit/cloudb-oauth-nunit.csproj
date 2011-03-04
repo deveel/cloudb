@@ -44,6 +44,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Deveel.Data.Net.Security.Fake\FakeConsumer.cs" />
+    <Compile Include="Deveel.Data.Net.Security.Fake\FakeOAuthProvider.cs" />
     <Compile Include="Deveel.Data.Net.Security\AccessTokenReceivedEventArgs.cs" />
     <Compile Include="Deveel.Data.Net.Security\AuthorizationEventArgs.cs" />
     <Compile Include="Deveel.Data.Net.Security.Fake\FakeHttpContext.cs" />

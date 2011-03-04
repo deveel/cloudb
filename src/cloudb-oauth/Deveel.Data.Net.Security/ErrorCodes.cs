@@ -46,7 +46,8 @@ namespace Deveel.Data.Net.Security {
 
 		public static int GetCode(string problemType) {
 			int code;
-			if (!codes.TryGetValue(problemType, out code))
+			if (String.IsNullOrEmpty(problemType) || 
+				!codes.TryGetValue(problemType, out code))
 				code = Unknown;
 			return code;
 		}

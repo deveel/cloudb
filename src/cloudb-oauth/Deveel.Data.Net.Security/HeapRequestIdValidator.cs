@@ -2,17 +2,27 @@
 using System.Collections.Generic;
 using System.Threading;
 
+using Deveel.Data.Configuration;
+
 namespace Deveel.Data.Net.Security {
-	public sealed class HeapRequestIdValidator : IRequestIdValidator, IDisposable {
-		private readonly Timer purgeTimer;
+	public sealed class HeapRequestIdValidator : IRequestIdValidator, IDisposable, IConfigurable {
+		private Timer purgeTimer;
 		private readonly IDictionary<long, IList<RequestId>> requestCache;
-		private readonly long halfWindow;
+		private long halfWindow;
 
 		private static readonly object SyncRoot = new object();
 
-		public HeapRequestIdValidator(long timeWindow) {
+		public HeapRequestIdValidator(long timeWindow)
+			: this() {
+			SetupTimer(timeWindow);
+		}
+
+		public  HeapRequestIdValidator() {
 			requestCache = new Dictionary<long, IList<RequestId>>();
-			halfWindow = timeWindow/2;
+		}
+
+		public void SetupTimer(long timeWindow) {
+			halfWindow = timeWindow / 2;
 
 			TimeSpan span = new TimeSpan((int)(timeWindow * 1.5) * TimeSpan.TicksPerSecond);
 			purgeTimer = new Timer(Purge, null, span, span);
@@ -94,6 +104,7 @@ namespace Deveel.Data.Net.Security {
 			if (disposing) {
 				if (purgeTimer != null) {
 					purgeTimer.Dispose();
+					purgeTimer = null;
 				}
 			}
 		}
@@ -101,6 +112,11 @@ namespace Deveel.Data.Net.Security {
 		public void Dispose() {
 			Dispose(true);
 			GC.SuppressFinalize(this);
+		}
+
+		public void Configure(ConfigSource configSource) {
+			long timeWindow = configSource.GetInt64("timeWindow");
+			SetupTimer(timeWindow);
 		}
 	}
 }

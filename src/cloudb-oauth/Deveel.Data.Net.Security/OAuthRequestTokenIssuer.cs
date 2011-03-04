@@ -1,10 +1,10 @@
 ﻿using System;
 
-using Deveel.Data.Configuration;
-
 namespace Deveel.Data.Net.Security {
-	public class OAuthRequestTokenIssuer : OAuthTokenIssuer {
-		private bool allowOutOfBandCallback;
+	 class OAuthRequestTokenIssuer : OAuthTokenIssuer {
+		public OAuthRequestTokenIssuer(OAuthProvider provider) 
+			: base(provider) {
+		}
 
 		protected override void SetRequestToken(OAuthRequestContext requestContext) {
 		}
@@ -39,7 +39,7 @@ namespace Deveel.Data.Net.Security {
 
 			// Check to see if the request for a token is oob and that oob is allowed.
 			if (requestContext.Parameters.Callback.Equals("oob")) {
-				if (!allowOutOfBandCallback)
+				if (!Provider.AllowOutOfBandCallback)
 					throw new ParametersRejectedException("Out of band is not supported.", new string[] { OAuthParameterKeys.Callback });
 			} else {
 				Uri callbackUri;
@@ -47,24 +47,17 @@ namespace Deveel.Data.Net.Security {
 				if (!Uri.TryCreate(requestContext.Parameters.Callback, UriKind.Absolute, out callbackUri))
 					throw new ParametersRejectedException("Not a valid Uri.", new string[] { OAuthParameterKeys.Callback });
 
-				CallbackStore.SaveCallback(token, callbackUri);
+				Provider.CallbackStore.SaveCallback(token, callbackUri);
 			}
 
 			// Store the token
 			requestContext.RequestToken = token;
-			TokenStore.Add(token);
+			Provider.TokenStore.Add(token);
 
 			// Add to the response
 			requestContext.ResponseParameters[OAuthParameterKeys.CallbackConfirmed] = "true"; // The spec never defines when to send false or what will happen if you do.
 			requestContext.ResponseParameters[OAuthParameterKeys.Token] = token.Token;
 			requestContext.ResponseParameters[OAuthParameterKeys.TokenSecret] = token.Secret;
-		}
-
-
-		public override void Configure(ConfigSource config) {
-			base.Configure(config);
-
-			allowOutOfBandCallback = config.GetBoolean("oobCallback");
 		}
 	}
 }

@@ -1,7 +1,11 @@
 ﻿using System;
 
 namespace Deveel.Data.Net.Security {
-	public class OAuthAccessTokenIssuer : OAuthTokenIssuer {
+	class OAuthAccessTokenIssuer : OAuthTokenIssuer {
+		public OAuthAccessTokenIssuer(OAuthProvider provider) 
+			: base(provider) {
+		}
+
 		protected override void ParseParameters(IHttpContext httpContext, OAuthRequestContext requestContext) {
 			// Try to parse the parameters
 			OAuthParameters parameters = OAuthParameters.Parse(httpContext.Request, OAuthParameterSources.ServiceProviderDefault);
@@ -47,7 +51,20 @@ namespace Deveel.Data.Net.Security {
 		}
 
 		protected override void IssueToken(IHttpContext httpContext, OAuthRequestContext requestContext) {
-			throw new NotImplementedException();
+			// Generate an access token
+			IAccessToken accessToken = GenerateToken(TokenType.Access, httpContext, requestContext) as IAccessToken;
+			if (accessToken == null)
+				throw new InvalidOperationException();
+
+			// Mark the token as authorized
+			accessToken.ChangeStatus(TokenStatus.Authorized);
+
+			// Don't store the token
+			// Don't mark the request token as used
+
+			// Add to the response
+			requestContext.ResponseParameters[OAuthParameterKeys.Token] = accessToken.Token;
+			requestContext.ResponseParameters[OAuthParameterKeys.TokenSecret] = accessToken.Secret;
 		}
 	}
 }

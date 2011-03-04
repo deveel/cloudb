@@ -8,6 +8,8 @@ namespace Deveel.Data.Net {
 		private readonly string path;
 		private readonly string query;
 
+		private string cachedString;
+
 		public HttpServiceAddress(string host, int port, string path, string query) {
 			if (host == null)
 				throw new ArgumentNullException("host");
@@ -39,7 +41,7 @@ namespace Deveel.Data.Net {
 		}
 
 		public HttpServiceAddress(Uri uri)
-			: this(uri.Host, uri.Port, uri.LocalPath, uri.Query) {
+			: this(uri.Host, uri.Port, uri.AbsolutePath, uri.Query) {
 		}
 
 		public string Host {
@@ -99,73 +101,25 @@ namespace Deveel.Data.Net {
 		}
 
 		public override string ToString() {
-			StringBuilder sb = new StringBuilder();
-			sb.Append("http://");
-			sb.Append(host);
-			sb.Append(":");
-			sb.Append(port);
-			sb.Append("/");
-			if (!String.IsNullOrEmpty(path)) {
-				sb.Append(path);
-				if (String.IsNullOrEmpty(query))
-					sb.Append("/");
-			}
-			if (!String.IsNullOrEmpty(query)) {
-				sb.Append("?");
-				sb.Append(query);
+			if (cachedString == null) {
+				UriBuilder builder = new UriBuilder();
+				//TODO: allow also HTTPS
+				builder.Scheme = Uri.UriSchemeHttp;
+				builder.Host = host;
+				if (port > 0)
+					builder.Port = port;
+				builder.Path = path;
+				builder.Query = query;
+				cachedString = builder.ToString();
 			}
 
-			return sb.ToString();
+			return cachedString;
 		}
 
 		public static HttpServiceAddress Parse(string s) {
 			if (String.IsNullOrEmpty(s))
 				throw new ArgumentNullException("s");
-			
-			/*
-
-			int index = s.IndexOf(':');
-			if (index == -1)
-				throw new FormatException("Unable to determine the scheme.");
-
-			string scheme = s.Substring(0, index);
-			if (scheme != "http")
-				throw new FormatException("Scheme not supported.");
-
-			if (s.Length <= index + 3)
-				throw new FormatException("The string is too short.");
-
-			s = s.Substring(index + 3);
-
-			string host, path = null, query = null;
-			int port = -1;
-
-			host = s;
-
-			index = host.IndexOf('/');
-			if (index != -1) {
-				host = host.Substring(0, index);
-				path = host.Substring(index + 1);
-
-				index = path.IndexOf('?');
-				if (index!= -1) {
-					query = path.Substring(index + 1);
-					path = path.Substring(0, 1);
-				}
-			}
-
-
-			index = host.IndexOf(':');
-			if (index != -1) {
-				host = host.Substring(0, index);
-				if (!Int32.TryParse(host.Substring(index + 1), out  port))
-					throw new FormatException("Invalid port number.");
-			}
-			
-
-			return new HttpServiceAddress(host, port, path, query);
-			*/
-			
+						
 			Uri uri = new Uri(s);
 			if (uri.Scheme != Uri.UriSchemeHttp)
 				throw new FormatException("Invalid scheme: " + uri.Scheme);

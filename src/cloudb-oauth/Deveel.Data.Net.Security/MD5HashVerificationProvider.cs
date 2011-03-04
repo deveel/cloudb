@@ -4,9 +4,9 @@ using System.Text;
 
 namespace Deveel.Data.Net.Security {
 	public class MD5HashVerificationProvider : IVerificationProvider, IRequiresProviderContext {
-		private IOAuthProvider context;
+		private OAuthProvider context;
 
-		public IOAuthProvider Context {
+		public OAuthProvider Context {
 			get { return context; }
 			set { context = value; }
 		}

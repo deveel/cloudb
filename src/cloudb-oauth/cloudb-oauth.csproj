@@ -49,6 +49,7 @@
     <Compile Include="Deveel.Data.Net.Security\HeapTokenStore.cs" />
     <Compile Include="Deveel.Data.Net.Security\HttpContextWrapper.cs" />
     <Compile Include="Deveel.Data.Net.Security\IHttpResponse.cs" />
+    <Compile Include="Deveel.Data.Net.Security\IPathAccessVerifier.cs" />
     <Compile Include="Deveel.Data.Net.Security\IResourceAccessVerifier.cs" />
     <Compile Include="Deveel.Data.Net.Security\IAccessToken.cs" />
     <Compile Include="Deveel.Data.Net.Security\ICallbackStore.cs" />
@@ -58,7 +59,6 @@
     <Compile Include="Deveel.Data.Net.Security\IHttpRequest.cs" />
     <Compile Include="Deveel.Data.Net.Security\IIssuedToken.cs" />
     <Compile Include="Deveel.Data.Net.Security\INonceGenerator.cs" />
-    <Compile Include="Deveel.Data.Net.Security\IOAuthProvider.cs" />
     <Compile Include="Deveel.Data.Net.Security\IOAuthError.cs" />
     <Compile Include="Deveel.Data.Net.Security\IRequestIdValidator.cs" />
     <Compile Include="Deveel.Data.Net.Security\IRequestToken.cs" />

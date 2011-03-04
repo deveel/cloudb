@@ -2,14 +2,12 @@
 using System.Collections.Generic;
 
 namespace Deveel.Data.Net.Security {
-	public class OAuthRequestException : ApplicationException, IOAuthError {
-		private readonly int code;
+	public class OAuthRequestException : AuthenticationException, IOAuthError {
 		private readonly string problemType;
 		private readonly IDictionary<string, string> parameters;
 
 		public OAuthRequestException(string message, string problemType)
-			: base(message) {
-			code = ErrorCodes.GetCode(problemType);
+			: base(message, ErrorCodes.GetCode(problemType)) {
 			this.problemType = problemType;
 			parameters = new Dictionary<string, string>();
 		}
@@ -24,10 +22,6 @@ namespace Deveel.Data.Net.Security {
 
 		string IOAuthError.Advice {
 			get { return Message; }
-		}
-
-		public int Code {
-			get { return code; }
 		}
 
 		IDictionary<string,string> IOAuthError.Parameters {

@@ -2,7 +2,17 @@
 using System.Collections.Specialized;
 
 namespace Deveel.Data.Net.Security {
-	public abstract class OAuthTokenIssuer : OAuthProvider {
+	abstract class OAuthTokenIssuer {
+		private readonly OAuthProvider provider;
+
+		internal OAuthTokenIssuer(OAuthProvider provider) {
+			this.provider = provider;
+		}
+
+		public OAuthProvider Provider {
+			get { return provider; }
+		}
+
 		private static void SetSignProvider(OAuthRequestContext context) {
 			ISignProvider signingProvider = SignProviders.GetProvider(context.Parameters.SignatureMethod);
 
@@ -40,7 +50,7 @@ namespace Deveel.Data.Net.Security {
 		}
 		
 		protected virtual void SetConsumer(OAuthRequestContext context) {
-			IConsumer consumer = ConsumerStore.Get(context.Parameters.ConsumerKey);
+			IConsumer consumer = provider.ConsumerStore.Get(context.Parameters.ConsumerKey);
 			if (consumer == null)
 				throw new OAuthRequestException(null, OAuthProblemTypes.ConsumerKeyUnknown);
 
@@ -63,31 +73,31 @@ namespace Deveel.Data.Net.Security {
 			IToken token;
 			do {
 				if (tokenType == TokenType.Request) {
-					token = TokenGenerator.CreateRequestToken(requestContext.Consumer, requestContext.Parameters);
+					token = provider.TokenGenerator.CreateRequestToken(requestContext.Consumer, requestContext.Parameters);
 				} else {
-					token = TokenGenerator.CreateAccessToken(requestContext.Consumer, requestContext.RequestToken);
+					token = provider.TokenGenerator.CreateAccessToken(requestContext.Consumer, requestContext.RequestToken);
 				}
 			}
-			while (TokenStore.Get(token.Token, tokenType) != null);
+			while (provider.TokenStore.Get(token.Token, tokenType) != null);
 
 			return token;
 		}
 
 		protected virtual bool AllowRequest(IHttpContext context, OAuthRequestContext authContext) {
 			bool allow = true;
-			if (ResourceAccessVerifier != null)
-				allow = ResourceAccessVerifier.VerifyAccess(context, authContext);
+			if (provider.ResourceAccessVerifier != null)
+				allow = provider.ResourceAccessVerifier.VerifyAccess(context, authContext);
 			return allow;
 		}
 
 		protected virtual void SetRequestId(OAuthRequestContext context) {
 			long timestamp = Int64.Parse(context.Parameters.Timestamp);
-			context.RequestId = RequestIdValidator.ValidateRequest(context.Parameters.Nonce, timestamp,
+			context.RequestId = provider.RequestIdValidator.ValidateRequest(context.Parameters.Nonce, timestamp,
 																   context.Parameters.ConsumerKey, context.Parameters.Token);
 		}
 
 		protected virtual void SetRequestToken(OAuthRequestContext requestContext) {
-			IRequestToken token = TokenStore.Get(requestContext.Parameters.Token, TokenType.Request) as IRequestToken;
+			IRequestToken token = provider.TokenStore.Get(requestContext.Parameters.Token, TokenType.Request) as IRequestToken;
 			if (token == null)
 				throw new OAuthRequestException(null, OAuthProblemTypes.TokenRejected);
 
@@ -134,7 +144,7 @@ namespace Deveel.Data.Net.Security {
 		}
 
 		protected virtual void CheckVerifier(OAuthRequestContext requestContext) {
-			if (!VerificationProvider.IsValid(requestContext.RequestToken, requestContext.Parameters.Verifier))
+			if (!provider.VerificationProvider.IsValid(requestContext.RequestToken, requestContext.Parameters.Verifier))
 				throw new ParametersRejectedException("Invalid verifier for request token.", new string[] { OAuthParameterKeys.Verifier });
 		}
 

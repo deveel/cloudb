@@ -5,8 +5,14 @@ using System.Collections.Specialized;
 using Deveel.Data.Configuration;
 
 namespace Deveel.Data.Net.Security {
-	public sealed class OAuthAuthenticator : OAuthProvider, IAuthenticator {
+	public class OAuthAuthenticator : IAuthenticator {
 		private bool consumerRequests;
+		private IPathAccessVerifier accessVerifier;
+
+		public IPathAccessVerifier PathAccessVerifier {
+			get { return accessVerifier; }
+			set { accessVerifier = value; }
+		}
 
 		private void ParseParameters(IHttpContext httpContext, OAuthRequestContext context) {
 			// Try to parse the parameters
@@ -50,7 +56,7 @@ namespace Deveel.Data.Net.Security {
 
 			if (context.Parameters.Token == null && consumerRequests) {
 				accessToken = new EmptyAccessToken(context.Consumer.Key);
-			} else if ((accessToken = (IAccessToken) TokenStore.Get(context.Parameters.Token, TokenType.Access)) == null)
+			} else if ((accessToken = (IAccessToken) OAuthProvider.Current.TokenStore.Get(context.Parameters.Token, TokenType.Access)) == null)
 				throw new OAuthRequestException(null, OAuthProblemTypes.TokenRejected);
 
 			/*
@@ -78,8 +84,8 @@ namespace Deveel.Data.Net.Security {
 			}
 		}
 
-		private void SetConsumer(OAuthRequestContext context) {
-			IConsumer consumer = ConsumerStore.Get(context.Parameters.ConsumerKey);
+		private static void SetConsumer(OAuthRequestContext context) {
+			IConsumer consumer = OAuthProvider.Current.ConsumerStore.Get(context.Parameters.ConsumerKey);
 			if (consumer == null)
 				throw new OAuthRequestException(null, OAuthProblemTypes.ConsumerKeyUnknown);
 
@@ -98,9 +104,9 @@ namespace Deveel.Data.Net.Security {
 			}
 		}
 
-		private void SetRequestId(OAuthRequestContext context) {
+		private static void SetRequestId(OAuthRequestContext context) {
 			long timestamp = Int64.Parse(context.Parameters.Timestamp);
-			context.RequestId = RequestIdValidator.ValidateRequest(context.Parameters.Nonce, timestamp,
+			context.RequestId = OAuthProvider.Current.RequestIdValidator.ValidateRequest(context.Parameters.Nonce, timestamp,
 																   context.Parameters.ConsumerKey, context.Parameters.Token);
 		}
 
@@ -156,10 +162,34 @@ namespace Deveel.Data.Net.Security {
 			}
 		}
 
-		public override void Configure(ConfigSource config) {
-			base.Configure(config);
-
+		public void Configure(ConfigSource config) {
 			consumerRequests = config.GetBoolean("consumerRequests");
+
+			ConfigSource child = config.GetChild("accessVerifier");
+			if (child != null) {
+				string typeString = child.GetString("type");
+				if (String.IsNullOrEmpty(typeString))
+					throw new ConfigurationException("The 'accessVerifier' type was not specified.", child, "type");
+
+				Type type = Type.GetType(typeString, false, true);
+				if (type == null)
+					throw new ConfigurationException("The type '" + typeString + "' could not be found.", child, "type");
+
+				if (!typeof (IPathAccessVerifier).IsAssignableFrom(type))
+					throw new ConfigurationException(
+						"The type '" + type + "' cannot be is not an implementation of '" + typeof (IPathAccessVerifier) + "'.", child,
+						"type");
+
+				try {
+					accessVerifier = (IPathAccessVerifier) Activator.CreateInstance(type);
+					accessVerifier.Context = OAuthProvider.Current;
+					accessVerifier.Configure(child);
+				} catch (ConfigurationException) {
+					throw;
+				} catch (Exception e) {
+					throw new ConfigurationException("Error while initializing the type '" + type + "': " + e.Message, e);
+				}
+			}
 		}
 
 		public AuthResult Authenticate(AuthRequest authRequest) {
@@ -196,9 +226,26 @@ namespace Deveel.Data.Net.Security {
 
 			UpdateAccessToken(httpContext, context);
 
-			AuthResult result = new AuthResult(true, 0, String.Empty);
+			bool canAccess;
+
+			try {
+				canAccess = VerifyAccess(authRequest.PathName, httpContext, context);
+			} catch (AuthenticationException ex) {
+				AuthResult error = new AuthResult(false, ex.Code, ex.Message);
+				CopyParameters(context.ResponseParameters, error.OutputData);
+				return error;
+			}
+
+			AuthResult result = new AuthResult(canAccess);
 			CopyParameters(context.ResponseParameters, result.OutputData);
 			return result;
+		}
+
+		protected virtual bool VerifyAccess(string pathName, IHttpContext httpContext, OAuthRequestContext requestContext) {
+			if (accessVerifier == null)
+				return true;
+
+			return accessVerifier.CanAccess(pathName, httpContext, requestContext);
 		}
 	}
 }

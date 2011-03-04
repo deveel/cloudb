@@ -2,6 +2,6 @@
 
 namespace Deveel.Data.Net.Security {
 	public interface IRequiresProviderContext {
-		IOAuthProvider Context { get; set; }
+		OAuthProvider Context { get; set; }
 	}
 }
