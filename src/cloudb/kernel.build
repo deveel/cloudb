@@ -1,0 +1,106 @@
+<?xml version="1.0"?>
+<project default="build" name="kernel" xmlns="http://nant.sf.net/release/0.91-alpha2/nant.xsd">
+	<include buildfile="../common.build"/>
+	<target name="build">
+		<echo message="building cloudb core component to ${output}/cloudb.dll from sources ${sources} ..."/>
+		<csc debug="${debug}" optimize="${not debug}" output="${output}/cloudb.dll" target="library" define="${define}" keyfile="cloudb.snk">
+			<references>
+				<include name="System.dll"/>
+			</references>
+			<sources basedir="${sources}">
+				<include name="Properties/AssemblyInfo.cs"/>
+				<include name="ComponentAce.Compression.Libs.zlib/*.cs"/>
+				<include name="Deveel.Data/*.cs"/>
+				<include name="Deveel.Data.Caching/*.cs"/>
+				<include name="Deveel.Data.Configuration/*.cs"/>
+				<include name="Deveel.Data.Diagnostics/*.cs"/>
+				<include name="Deveel.Data.Net/*.cs"/>
+				<include name="Deveel.Data.Net.Client/*.cs"/>
+				<include name="Deveel.Data.Store/*.cs"/>
+				<include name="Deveel.Data.Util/*.cs"/>
+			</sources>
+		</csc>
+		<if test="${not notest}">
+			<call target="-core-test"/>
+		</if>
+	</target>
+	<target name="test" unless="${notest}" depends="build">
+		<call target="-core-test"/>
+	</target>
+	<target name="-core-test">
+		<echo message="compiling the nunit test library for the kernel component."/>
+		<echo message="nunit reference from ${path::get-full-path(libs+'/../nunit')}"/>
+		<csc output="${output}\cloudb-nunit.dll" target="library" define="${define}" platform="${platform}">
+			<references>
+				<include name="${libs}/../nunit/nunit.framework.dll"/>
+				<include name="${output}\cloudb.dll"/>
+			</references>
+			<sources basedir="${sources}\..\cloudb-nunit">
+				<include name="Deveel.Data\*.cs"/>
+				<include name="Deveel.Data.Configuration\*.cs"/>
+				<include name="Deveel.Data.Diagnostics\*.cs"/>
+				<include name="Deveel.Data.Net\*.cs"/>
+				<include name="Deveel.Data.Net.Client\*.cs"/>
+			</sources>
+		</csc>
+		<copy file="${libs}/../nunit/nunit.framework.dll" todir="${output}"/>
+		<exec program="${libs}/../nunit/nunit-console.exe" commandline="${output}/cloudb-nunit.dll /nologo /exclude:KnownUnstable"/>
+	</target>
+	<target name="-package-all" depends="build">
+		<tar destfile="${package.name}.tar.gz" compression="GZip">
+			<fileset prefix="src" basedir="${sources}">
+				<include name="ComponentAce.Compression.Libs.zlib/*.cs"/>
+				<include name="Deveel.Data/*.cs"/>
+				<include name="Deveel.Data.Caching/*.cs"/>
+				<include name="Deveel.Data.Configuration/*.cs"/>
+				<include name="Deveel.Data.Diagnostics/*.cs"/>
+				<include name="Deveel.Data.Net/*.cs"/>
+				<include name="Deveel.Data.Net.Client/*.cs"/>
+				<include name="Deveel.Data.Store/*.cs"/>
+				<include name="Deveel.Data.Util/*.cs"/>
+				<include name="Properties/AssemblyInfo.cs"/>
+				<include name="cloudb.csproj"/>
+				<include name="default.build"/>
+			</fileset>
+			<fileset prefix="bin" basedir="${output}">
+				<include name="cloudb.dll"/>
+			</fileset>
+		</tar>
+		<zip zipfile="${dist-path}/${package.name}.zip"/>
+	</target>
+	<target name="-package-bin" depends="build">
+		<tar destfile="${dist-path}/cloudb-${version}-bin.tar.gz">
+			<fileset basedir="${output}">
+				<include name="cloudb.dll"/>
+			</fileset>
+		</tar>
+		<zip zipfile="${dist-path}/cloudb-${version}-bin.zip"/>
+	</target>
+	<target name="-package-src">
+		<tar destfile="${dist-path}/${package.name}.tar.gz" compression="GZip">
+			<fileset basedir="${sources}">
+				<include name="ComponentAce.Compression.Libs.zlib/*.cs"/>
+				<include name="Deveel.Data/*.cs"/>
+				<include name="Deveel.Data.Caching/*.cs"/>
+				<include name="Deveel.Data.Configuration/*.cs"/>
+				<include name="Deveel.Data.Diagnostics/*.cs"/>
+				<include name="Deveel.Data.Net/*.cs"/>
+				<include name="Deveel.Data.Net.Client/*.cs"/>
+				<include name="Deveel.Data.Store/*.cs"/>
+				<include name="Deveel.Data.Util/*.cs"/>
+				<include name="Properties/AssemblyInfo.cs"/>
+				<include name="cloudb.csproj"/>
+				<include name="default.build"/>
+			</fileset>
+		</tar>
+		<zip zipfile="${dist-path}/${package.name}.zip"/>
+	</target>
+	<target name="clean">
+		<delete file="${output}/cloudb.dll"/>
+		<if test="${not notest}">
+			<delete file="${output}/cloudb-nunit.dll"/>
+			<delete file="${output}/nunit.framework.dll"/>
+			<delete dir="${output}/test-results"/>
+		</if>
+	</target>
+</project>
