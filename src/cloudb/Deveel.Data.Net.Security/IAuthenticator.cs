@@ -3,9 +3,7 @@
 using Deveel.Data.Configuration;
 
 namespace Deveel.Data.Net.Security {
-	public interface IAuthenticator {
-		void Init(ConfigSource config);
-
+	public interface IAuthenticator : IConfigurable {
 		AuthResult Authenticate(AuthRequest authRequest);
 	}
 }

@@ -7,12 +7,14 @@ namespace Deveel.Data.Net.Security {
 		private readonly int code;
 		private readonly IDictionary<string, object> authData;
 		private readonly string message;
+		private readonly IDictionary<string, object> outputData;
 
 		public AuthResult(bool success, int code, string message, IDictionary<string, object> authData) {
 			this.success = success;
 			this.code = code;
 			this.message = message;
 			this.authData = authData;
+			outputData = new Dictionary<string, object>();
 		}
 
 		public AuthResult(bool success, int code, IDictionary<string, object> authData)
@@ -25,6 +27,10 @@ namespace Deveel.Data.Net.Security {
 
 		public AuthResult(bool success, int code)
 			: this(success, code, (string)null) {
+		}
+
+		public IDictionary<string, object> OutputData {
+			get { return outputData; }
 		}
 
 		public string Message {

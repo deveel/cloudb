@@ -134,7 +134,7 @@ namespace Deveel.Data.Net.Client {
 						if (!String.IsNullOrEmpty(service.TransactionIdKey))
 							args[service.TransactionIdKey] = tid;
 
-						ResponseMessage response = service.HandleRequest(type, pathName, args, socketStream);
+						ResponseMessage response = service.HandleRequest(null, type, pathName, args, socketStream);
 
 						// Write and flush the output message,
 						service.MessageSerializer.Serialize(response, socketStream);

@@ -66,6 +66,7 @@
     <Compile Include="Deveel.Data.Configuration\ConfigFormat.cs" />
     <Compile Include="Deveel.Data.Configuration\ConfigurationException.cs" />
     <Compile Include="Deveel.Data.Configuration\IConfigFormatter.cs" />
+    <Compile Include="Deveel.Data.Configuration\IConfigurable.cs" />
     <Compile Include="Deveel.Data.Net.Security\InvalidUserPasswordException.cs" />
     <Compile Include="Deveel.Data.Net.Security\IUser.cs" />
     <Compile Include="Deveel.Data.Configuration\PropertiesConfigFormatter.cs" />
@@ -313,6 +314,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Deveel.Data.Diagnostics\ChangeLog" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Deveel.Data.Net.Security\ChangeLog" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />

@@ -143,6 +143,14 @@ namespace Deveel.Data.Configuration {
 			return GetString(key, String.Empty);
 		}
 
+		public bool GetBoolean(string key, bool defaultValue) {
+			return GetValue(key, defaultValue);
+		}
+
+		public bool GetBoolean(string key) {
+			return GetBoolean(key, false);
+		}
+
 		public char GetChar(string key, char defaultValue) {
 			return GetValue(key, defaultValue);
 		}

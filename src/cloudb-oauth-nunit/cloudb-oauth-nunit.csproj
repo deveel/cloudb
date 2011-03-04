@@ -1,0 +1,101 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="3.5" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.21022</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{8C6D8F57-814F-444B-8986-59183DF777F2}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>cloudb_oauth_nunit</RootNamespace>
+    <AssemblyName>cloudb-oauth-nunit</AssemblyName>
+    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>cloudb-oauth-nunit.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="nunit.framework, Version=2.5.9.10348, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\libs\nunit\nunit.framework.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Deveel.Data.Net.Security.Fake\FakeConsumer.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AccessTokenReceivedEventArgs.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthorizationEventArgs.cs" />
+    <Compile Include="Deveel.Data.Net.Security.Fake\FakeHttpContext.cs" />
+    <Compile Include="Deveel.Data.Net.Security.Fake\FakeHttpRequest.cs" />
+    <Compile Include="Deveel.Data.Net.Security.Fake\FakeHttpResponse.cs" />
+    <Compile Include="Deveel.Data.Net.Security\HeapRequestStateStore.cs" />
+    <Compile Include="Deveel.Data.Net.Security\IAuthorizationHandler.cs" />
+    <Compile Include="Deveel.Data.Net.Security\IRequestStateStore.cs" />
+    <Compile Include="Deveel.Data.Net.Security\IVerifierCollector.cs" />
+    <Compile Include="Deveel.Data.Net.Security\OAuthClientContext.cs" />
+    <Compile Include="Deveel.Data.Net.Security\OAuthEndPoint.cs" />
+    <Compile Include="Deveel.Data.Net.Security\OAuthRequest.cs" />
+    <Compile Include="Deveel.Data.Net.Security\OAuthResponse.cs" />
+    <Compile Include="Deveel.Data.Net.Security\OAuthService.cs" />
+    <Compile Include="Deveel.Data.Net.Security\OAuthAuthenticatorTest.cs" />
+    <Compile Include="Deveel.Data.Net.Security\OAuthToken.cs" />
+    <Compile Include="Deveel.Data.Net.Security\PreAccessTokenRequestEventArgs.cs" />
+    <Compile Include="Deveel.Data.Net.Security\PreProtectedResourceRequestEventArgs.cs" />
+    <Compile Include="Deveel.Data.Net.Security\PreRequestEventArgs.cs" />
+    <Compile Include="Deveel.Data.Net.Security\RequestState.cs" />
+    <Compile Include="Deveel.Data.Net.Security\RequestStateKey.cs" />
+    <Compile Include="Deveel.Data.Net.Security\RequestTokenReceivedEventArgs.cs" />
+    <Compile Include="Deveel.Data.Util\StreamCopier.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\cloudb-oauth\cloudb-oauth.csproj">
+      <Project>{0CE63EAC-68C0-446F-BFF8-93A6D28C7207}</Project>
+      <Name>cloudb-oauth</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\cloudbase\cloudbase.csproj">
+      <Project>{A2099A92-DA13-4440-B2F9-7890750E0E70}</Project>
+      <Name>cloudbase</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\cloudb\cloudb.csproj">
+      <Project>{A18511ED-5BA6-4811-B44F-F730FAD84CE8}</Project>
+      <Name>cloudb</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\nunit-common\nunit-common.csproj">
+      <Project>{41B421D9-85B1-45DF-9F24-7D056A3CEF5A}</Project>
+      <Name>nunit-common</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cloudb-oauth-nunit.snk" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

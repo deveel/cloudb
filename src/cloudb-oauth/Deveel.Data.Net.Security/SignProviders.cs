@@ -30,12 +30,12 @@ namespace Deveel.Data.Net.Security {
 				get { return "HMAC-SHA1"; }
 			}
 
-			public void Init(ConfigSource config) {
+			public void Configure(ConfigSource config) {
 			}
 
 			public string ComputeSignature(string signatureBase, string consumerSecret, string tokenSecret) {
 				using (HMACSHA1 crypto = new HMACSHA1()) {
-					string key = UriUtil.Encode(consumerSecret) + "&" + UriUtil.Encode(tokenSecret);
+					string key = Rfc3986.Encode(consumerSecret) + "&" + Rfc3986.Encode(tokenSecret);
 					crypto.Key = Encoding.ASCII.GetBytes(key);
 					string hash = Convert.ToBase64String(crypto.ComputeHash(Encoding.ASCII.GetBytes(signatureBase)));
 					crypto.Clear();
@@ -45,7 +45,7 @@ namespace Deveel.Data.Net.Security {
 
 			public bool ValidateSignature(string signatureBase, string signature, string consumerSecret, string tokenSecret) {
 				string expectedSignature = ComputeSignature(signatureBase, consumerSecret, tokenSecret);
-				string actualSignature = UriUtil.Decode(signature);
+				string actualSignature = Rfc3986.Decode(signature);
 				return expectedSignature == actualSignature;
 			}
 		}
@@ -59,19 +59,19 @@ namespace Deveel.Data.Net.Security {
 				get { return "PLAINTEXT"; }
 			}
 
-			public void Init(ConfigSource config) {
+			public void Configure(ConfigSource config) {
 			}
 
 			public string ComputeSignature(string signatureBase, string consumerSecret, string tokenSecret) {
 				StringBuilder signature = new StringBuilder();
 
 				if (!String.IsNullOrEmpty(consumerSecret))
-					signature.Append(UriUtil.Encode(consumerSecret));
+					signature.Append(Rfc3986.Encode(consumerSecret));
 
 				signature.Append("&");
 
 				if (!String.IsNullOrEmpty(tokenSecret))
-					signature.Append(UriUtil.Encode(tokenSecret));
+					signature.Append(Rfc3986.Encode(tokenSecret));
 
 				return signature.ToString();
 			}
@@ -105,7 +105,7 @@ namespace Deveel.Data.Net.Security {
 				}
 			}
 
-			public void Init(ConfigSource config) {
+			public void Configure(ConfigSource config) {
 				pfxFileName = config.GetString("pfxFile");
 				if (String.IsNullOrEmpty(pfxFileName))
 					throw new ConfigurationException(config, "pfxFile");

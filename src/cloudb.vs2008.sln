@@ -19,6 +19,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudb-log4net", "cloudb-lo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudb-oauth", "cloudb-oauth\cloudb-oauth.csproj", "{0CE63EAC-68C0-446F-BFF8-93A6D28C7207}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudb-oauth-nunit", "cloudb-oauth-nunit\cloudb-oauth-nunit.csproj", "{8C6D8F57-814F-444B-8986-59183DF777F2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "nunit-common", "nunit-common\nunit-common.csproj", "{41B421D9-85B1-45DF-9F24-7D056A3CEF5A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug.Unix|Any CPU = Debug.Unix|Any CPU
@@ -112,6 +116,24 @@ Global
 		{0CE63EAC-68C0-446F-BFF8-93A6D28C7207}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0CE63EAC-68C0-446F-BFF8-93A6D28C7207}.Release|Any CPU.Build.0 = Release|Any CPU
 		{0CE63EAC-68C0-446F-BFF8-93A6D28C7207}.Release|x86.ActiveCfg = Release|Any CPU
+		{8C6D8F57-814F-444B-8986-59183DF777F2}.Debug.Unix|Any CPU.ActiveCfg = Debug|Any CPU
+		{8C6D8F57-814F-444B-8986-59183DF777F2}.Debug.Unix|Any CPU.Build.0 = Debug|Any CPU
+		{8C6D8F57-814F-444B-8986-59183DF777F2}.Debug.Unix|x86.ActiveCfg = Debug|Any CPU
+		{8C6D8F57-814F-444B-8986-59183DF777F2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8C6D8F57-814F-444B-8986-59183DF777F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8C6D8F57-814F-444B-8986-59183DF777F2}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{8C6D8F57-814F-444B-8986-59183DF777F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8C6D8F57-814F-444B-8986-59183DF777F2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8C6D8F57-814F-444B-8986-59183DF777F2}.Release|x86.ActiveCfg = Release|Any CPU
+		{41B421D9-85B1-45DF-9F24-7D056A3CEF5A}.Debug.Unix|Any CPU.ActiveCfg = Debug|Any CPU
+		{41B421D9-85B1-45DF-9F24-7D056A3CEF5A}.Debug.Unix|Any CPU.Build.0 = Debug|Any CPU
+		{41B421D9-85B1-45DF-9F24-7D056A3CEF5A}.Debug.Unix|x86.ActiveCfg = Debug|Any CPU
+		{41B421D9-85B1-45DF-9F24-7D056A3CEF5A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{41B421D9-85B1-45DF-9F24-7D056A3CEF5A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{41B421D9-85B1-45DF-9F24-7D056A3CEF5A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{41B421D9-85B1-45DF-9F24-7D056A3CEF5A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{41B421D9-85B1-45DF-9F24-7D056A3CEF5A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{41B421D9-85B1-45DF-9F24-7D056A3CEF5A}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

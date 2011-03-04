@@ -30,7 +30,7 @@ namespace Deveel.Data.Net.Security {
 			return authData;
 		}
 
-		public virtual void Init(ConfigSource config) {
+		public virtual void Configure(ConfigSource config) {
 			ConfigSource dataConfig = config.GetChild("data");
 			string dataSourceTypeString = dataConfig.GetString("type");
 			if (String.IsNullOrEmpty(dataSourceTypeString))

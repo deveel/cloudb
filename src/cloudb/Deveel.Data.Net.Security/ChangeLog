@@ -1,0 +1,4 @@
+﻿2011-03-01  Antonello Provenzano  <antonello@deveel.com>
+	* AuthResult.cs: added property 'OutputData' to provide
+	authorization processors a patch to output data in the
+	stream.

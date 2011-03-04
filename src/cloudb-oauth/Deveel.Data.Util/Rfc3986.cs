@@ -5,9 +5,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Deveel.Data.Util {
-	public static class UriUtil {
-		public static readonly Regex Rfc3986EscapeSequence = new Regex("%([0-9A-Fa-f]{2})", RegexOptions.Compiled);
-
+	public static class Rfc3986 {
+		private static readonly Regex Rfc3986EscapeSequence = new Regex("%([0-9A-Fa-f]{2})", RegexOptions.Compiled);
 
 		public static string EncodeAndJoin(NameValueCollection values) {
 			if (values == null)

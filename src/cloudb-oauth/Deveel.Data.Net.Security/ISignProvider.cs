@@ -3,11 +3,9 @@
 using Deveel.Data.Configuration;
 
 namespace Deveel.Data.Net.Security {
-	public interface ISignProvider {
+	public interface ISignProvider : IConfigurable {
 		string SignatureMethod { get; }
 
-
-		void Init(ConfigSource config);
 
 		string ComputeSignature(string signatureBase, string consumerSecret, string tokenSecret);
 

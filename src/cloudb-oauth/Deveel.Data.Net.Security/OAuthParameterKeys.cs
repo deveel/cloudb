@@ -14,5 +14,22 @@ namespace Deveel.Data.Net.Security {
 		public const string Callback = "oauth_callback";
 		public const string CallbackConfirmed = "oauth_callback_confirmed";
 		public const string Realm = "realm";
+
+		public const string OAuthParameterPrefix = "oauth_";
+
+		public static readonly string[] ReservedParameterNames = new string[] {
+		                                                                      	Callback,
+		                                                                      	ConsumerKey,
+		                                                                      	Nonce,
+		                                                                      	Realm,
+		                                                                      	Signature,
+		                                                                      	SignatureMethod,
+		                                                                      	Timestamp,
+		                                                                      	Token,
+		                                                                      	TokenSecret,
+		                                                                      	Version,
+		                                                                      	Verifier
+		                                                                      };
+
 	}
 }

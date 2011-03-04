@@ -169,12 +169,6 @@ namespace Deveel.Data.Net.Client {
 			if (!handler.Handler.CanHandleClientType(Type))
 				throw new InvalidOperationException("The handler for the path '" + pathName + "' cannot support client of type '" + Type + "'.");
 
-			AuthResult authResult = Authenticate(type, pathName, args);
-			if (!authResult.Success) {
-				//TODO: return a response with the error details ...
-				throw new NotImplementedException();
-			}
-
 			IPathTransaction transaction;
 
 			if (TransactionIdKey != null && (args != null && args.ContainsKey(TransactionIdKey))) {
@@ -206,6 +200,12 @@ namespace Deveel.Data.Net.Client {
 						responseMessage.Code = MessageResponseCode.Unauthorized;
 						//TODO: Extend MessageError to include an error specific code ...
 						responseMessage.Arguments.Add(new MessageError(authResult.Message));
+						if (authResult.OutputData.Count > 0) {
+							foreach (KeyValuePair<string, object> pair in authResult.OutputData) {
+								responseMessage.Attributes.Add(pair.Key, pair.Value);
+							}
+						}
+
 						return responseMessage;
 					}
 						

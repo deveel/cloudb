@@ -81,18 +81,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Deveel.Data.Configuration\PropertiesConfigSourceTest.cs" />
-    <Compile Include="Deveel.Data.Diagnostics\SimpleConsoleLogger.cs" />
     <Compile Include="Deveel.Data.Net.Client\BinaryRpcSerializerTest.cs" />
     <Compile Include="Deveel.Data.Net.Client\XmlRpcMessageSerializerTest.cs" />
-    <Compile Include="Deveel.Data.Net\FakeAdminService.cs">
-    </Compile>
-    <Compile Include="Deveel.Data.Net\HttpMessageFormat.cs" />
-    <Compile Include="Deveel.Data.Net\HttpNetworkTest.cs" />
-    <Compile Include="Deveel.Data.Net\NetworkStoreType.cs" />
-    <Compile Include="Deveel.Data.Net\FakeServiceAddress.cs" />
-    <Compile Include="Deveel.Data.Net\FakeServiceAddressHandler.cs" />
-    <Compile Include="Deveel.Data.Net\FakeServiceConnector.cs" />
     <Compile Include="Deveel.Data.Net\FakeNetworkTest.cs" />
+    <Compile Include="Deveel.Data.Net\HttpNetworkTest.cs" />
     <Compile Include="Deveel.Data.Net\NetworkTestBase.cs" />
     <Compile Include="Deveel.Data.Net\TcpNetworkTest.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LoggerTest.cs" />
@@ -108,6 +100,10 @@
     <ProjectReference Include="..\cloudb\cloudb.csproj">
       <Project>{A18511ED-5BA6-4811-B44F-F730FAD84CE8}</Project>
       <Name>cloudb</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\nunit-common\nunit-common.csproj">
+      <Project>{41B421D9-85B1-45DF-9F24-7D056A3CEF5A}</Project>
+      <Name>nunit-common</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

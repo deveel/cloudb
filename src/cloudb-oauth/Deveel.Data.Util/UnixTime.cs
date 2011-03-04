@@ -1,7 +1,7 @@
 ﻿using System;
 
 namespace Deveel.Data.Net.Security {
-	static class UnixTime {
+	public static class UnixTime {
 		private static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, 0);
 
 		public static int ToUnixTime(DateTime time) {
