@@ -8,3 +8,17 @@
 /src/cadmin/bin
 /src/cloudbase/obj
 /src/cloudbase/bin
+/src/cloudb/obj
+/src/cloudb/bin
+/src/cloudbase-nunit/obj
+/src/cloudbase-nunit/bin
+/src/cloudb-json/obj
+/src/cloudb-json/bin
+/src/cloudb-log4net/obj
+/src/cloudb-log4net/bin
+/src/cloudb-nunit/obj
+/src/cloudb-nunit/bin
+/src/mnode/obj
+/src/mnode/bin
+*.user
+*.suo
