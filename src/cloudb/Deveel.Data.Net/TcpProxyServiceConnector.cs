@@ -6,6 +6,7 @@ using System.Text;
 
 using Deveel.Data.Diagnostics;
 using Deveel.Data.Net.Client;
+using Deveel.Data.Net.Serialization;
 
 namespace Deveel.Data.Net {
 	public class TcpProxyServiceConnector : IServiceConnector {

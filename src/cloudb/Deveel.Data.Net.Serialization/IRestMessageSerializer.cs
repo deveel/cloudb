@@ -1,6 +1,8 @@
 ﻿using System;
 
-namespace Deveel.Data.Net.Client {
+using Deveel.Data.Net.Client;
+
+namespace Deveel.Data.Net.Serialization {
 	public interface IRestMessageSerializer : ITextMessageSerializer {
 		RestFormat Format { get; }
 	}

@@ -2,6 +2,8 @@
 using System.IO;
 using System.Text;
 
+using Deveel.Data.Net.Serialization;
+
 using NUnit.Framework;
 
 namespace Deveel.Data.Net.Client {

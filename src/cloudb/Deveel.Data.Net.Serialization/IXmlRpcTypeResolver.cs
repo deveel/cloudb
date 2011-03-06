@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Xml;
 
-namespace Deveel.Data.Net.Client {
+namespace Deveel.Data.Net.Serialization {
 	public interface IXmlRpcTypeResolver {
 		Type ResolveType(string elementName);
 		

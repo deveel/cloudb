@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace Deveel.Data.Net.Client {
-	public sealed class BinaryRpcMessageSerializer : BinaryMessageSerializer, IMessageStreamSupport {
+using Deveel.Data.Net.Client;
+
+namespace Deveel.Data.Net.Serialization {
+	public sealed class BinaryRpcMessageSerializer : BinaryMessageSerializer, IRpcMessageSerializer {
 		private static readonly Dictionary<byte, Type> typeCodes;
 
 		public BinaryRpcMessageSerializer(Encoding encoding)
@@ -16,7 +18,7 @@ namespace Deveel.Data.Net.Client {
 		}
 		
 		static BinaryRpcMessageSerializer() {
-						typeCodes = new Dictionary<byte, Type>();
+			typeCodes = new Dictionary<byte, Type>();
 			typeCodes[0] = typeof(DBNull);
 
 			typeCodes[1] = typeof(byte);
@@ -41,6 +43,10 @@ namespace Deveel.Data.Net.Client {
 			typeCodes[102] = typeof(DataAddress);
 			typeCodes[103] = typeof(NodeSet);
 			typeCodes[104] = typeof(MessageError);
+		}
+
+		public bool SupportsMessageStream {
+			get { return true; }
 		}
 		
 		private static Type GetType(byte code) {
@@ -274,48 +280,76 @@ namespace Deveel.Data.Net.Client {
 		}
 
 		protected override Message Deserialize(BinaryReader reader, MessageType messageType) {
-			Message message;
-			string messageName = reader.ReadString();
-			if (messageType == MessageType.Request) {
-				message = new RequestMessage(messageName);
-			} else {
-				message = new ResponseMessage(messageName);
+			int type = reader.ReadInt32();
+			if (type == 2) {
+				MessageStream stream = new MessageStream(messageType);
+				int sz = reader.ReadInt32();
+				for (int i = 0; i < sz; i++) {
+					stream.AddMessage(Deserialize(reader, messageType));
+				}
+
+				return stream as Message;
+			}
+			
+			if (type == 1) {
+				Message message;
+				string messageName = reader.ReadString();
+				if (messageType == MessageType.Request) {
+					message = new RequestMessage(messageName);
+				} else {
+					message = new ResponseMessage(messageName);
+				}
+
+				int sz = reader.ReadInt32();
+				for (int i = 0; i < sz; i++)
+					message.Arguments.Add(ReadArgument(reader));
+
+				int v = reader.ReadInt32();
+				if (v != 8)
+					throw new FormatException();
+
+				return message;
 			}
 
-			int sz = reader.ReadInt32();
-			for (int i = 0; i < sz; i++)
-				message.Arguments.Add(ReadArgument(reader));
-
-			int v = reader.ReadInt32();
-			if (v != 8)
-				throw new FormatException();
-			
-			return message;
+			throw new FormatException("Unable to determine the format of the message.");
 		}
 
 		protected override void Serialize(Message message, BinaryWriter writer) {
-			string messageName = message.Name;
-			if (String.IsNullOrEmpty(messageName)) {
-				if (message is RequestMessage)
-					throw new ArgumentException("A request message must have a name.");
+			if (message is MessageStream) {
+				MessageStream messageStream = (MessageStream)message;
 
-				Message request = ((ResponseMessage) message).Request;
-				if (request == null)
-					throw new ArgumentException("An unnamed response must belong to a request context.");
-				
-				messageName = request.Name;
+				writer.Write(2);
+				int sz = messageStream.MessageCount;
+				writer.Write(sz);
+
+				foreach (Message child in messageStream) {
+					Serialize(child, writer);
+				}
+			} else {
+				writer.Write(1);
+				string messageName = message.Name;
+				if (String.IsNullOrEmpty(messageName)) {
+					if (message is RequestMessage)
+						throw new ArgumentException("A request message must have a name.");
+
+					Message request = ((ResponseMessage) message).Request;
+					if (request == null)
+						throw new ArgumentException("An unnamed response must belong to a request context.");
+
+					messageName = request.Name;
+				}
+
+				writer.Write(messageName);
+
+				int sz = message.Arguments.Count;
+				writer.Write(sz);
+				for (int i = 0; i < sz; i++) {
+					MessageArgument argument = message.Arguments[i];
+					WriteArgument(argument, writer);
+				}
+
+				writer.Write(8);
 			}
-			
-			writer.Write(messageName);
-
-			int sz = message.Arguments.Count;
-			writer.Write(sz);
-			for (int i = 0; i < sz; i++) {
-				MessageArgument argument = message.Arguments[i];
-				WriteArgument(argument, writer);
-			}
-
-			writer.Write(8);
 		}
 	}
 }

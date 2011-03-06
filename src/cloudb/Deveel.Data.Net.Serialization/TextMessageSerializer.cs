@@ -2,7 +2,9 @@
 using System.IO;
 using System.Text;
 
-namespace Deveel.Data.Net.Client {
+using Deveel.Data.Net.Client;
+
+namespace Deveel.Data.Net.Serialization {
 	public abstract class TextMessageSerializer : ITextMessageSerializer {
 		private Encoding encoding;
 		

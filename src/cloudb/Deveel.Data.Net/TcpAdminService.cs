@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 
 using Deveel.Data.Net.Client;
+using Deveel.Data.Net.Serialization;
 
 namespace Deveel.Data.Net {
 	public class TcpAdminService : AdminService {

@@ -3,19 +3,20 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.NetworkInformation;
-using System.Net.Sockets;
 using System.Text;
 
 using Deveel.Data.Diagnostics;
 using Deveel.Data.Net.Client;
+using Deveel.Data.Net.Serialization;
 using Deveel.Data.Store;
 using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
 	internal class NetworkTreeSystem : ITreeSystem {
 		internal NetworkTreeSystem(IServiceConnector connector, IServiceAddress managerAddress, INetworkCache networkCache) {
-			if (!(connector.MessageSerializer is IMessageStreamSupport))
-				throw new ArgumentException("The message serializer specified by the connector is not valid (must be RPC).");
+			if (!(connector.MessageSerializer is IRpcMessageSerializer) || 
+				!((IRpcMessageSerializer)connector.MessageSerializer).SupportsMessageStream)
+				throw new ArgumentException("The message serializer specified by the connector is not valid (must be IRPC).");
 			
 			this.connector = connector;
 			this.managerAddress = managerAddress;

@@ -6,6 +6,7 @@ using System.Reflection;
 
 using Deveel.Data.Diagnostics;
 using Deveel.Data.Net.Security;
+using Deveel.Data.Net.Serialization;
 
 namespace Deveel.Data.Net.Client {
 	public abstract class PathClientService : Component {

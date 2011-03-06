@@ -5,6 +5,8 @@ using System.Net;
 using System.Text;
 using System.Threading;
 
+using Deveel.Data.Net.Serialization;
+
 namespace Deveel.Data.Net.Client {
 	public sealed class RestPathClientService : PathClientService {
 		private HttpListener listener;

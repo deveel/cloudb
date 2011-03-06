@@ -5,8 +5,10 @@ using System.IO;
 using System.Text;
 using System.Xml;
 
-namespace Deveel.Data.Net.Client {
-	public sealed class XmlRpcMessageSerializer : XmlMessageSerializer, IMessageStreamSupport {
+using Deveel.Data.Net.Client;
+
+namespace Deveel.Data.Net.Serialization {
+	public sealed class XmlRpcMessageSerializer : XmlMessageSerializer, IRpcMessageSerializer {
 		private readonly List<IXmlRpcTypeResolver> resolvers = new List<IXmlRpcTypeResolver>();
 		
 		public XmlRpcMessageSerializer(string encoding)
@@ -33,6 +35,10 @@ namespace Deveel.Data.Net.Client {
 				if (value != null)
 					resolvers.Add(value);
 			}
+		}
+
+		public bool SupportsMessageStream {
+			get { return true; }
 		}
 		
 		public void AddTypeResolver(IXmlRpcTypeResolver resolver) {
@@ -379,10 +385,10 @@ namespace Deveel.Data.Net.Client {
 		private static bool ReadBoolean(XmlReader xmlReader) {
 			string value = ReadString(xmlReader);
 			if (value == "1" ||
-				String.Compare(value, "true", true) == 0)
+			    String.Compare(value, "true", true) == 0)
 				return true;
 			if (value == "0" ||
-				String.Compare(value, "false", true) == 0)
+			    String.Compare(value, "false", true) == 0)
 				return false;
 
 			throw new FormatException("Invalid boolean value (" + value + ")");
@@ -582,23 +588,23 @@ namespace Deveel.Data.Net.Client {
 			} else if (elementName == "boolean") {
 				value = ReadBoolean(xmlReader);
 			} else if (elementName == "i1" ||
-				elementName == "byte") {
+			           elementName == "byte") {
 				value = ReadInt1(xmlReader);
 			} else if (elementName == "i2" ||
-				elementName == "short") {
+			           elementName == "short") {
 				value = ReadInt2(xmlReader);
 			} else if (elementName == "i4" ||
-				elementName == "int") {
+			           elementName == "int") {
 				value = ReadInt4(xmlReader);
 			} else if (elementName == "i8" ||
-				elementName == "long") {
+			           elementName == "long") {
 				value = ReadInt8(xmlReader);
 			} else if (elementName == "float") {
 				value = ReadFloat(xmlReader);
 			} else if (elementName == "double") {
 				value = ReadDouble(xmlReader);
 			} else if (elementName == "dateTime" ||
-				elementName == "dateTime.iso8601") {
+			           elementName == "dateTime.iso8601") {
 				value = ReadDateTime(xmlReader);
 			} else if (elementName == "string") {
 				value = ReadString(xmlReader);
@@ -661,9 +667,9 @@ namespace Deveel.Data.Net.Client {
 				XmlNodeType nodeType = xmlReader.NodeType;
 
 				if (nodeType == XmlNodeType.DocumentType ||
-					nodeType == XmlNodeType.Document ||
-					nodeType == XmlNodeType.Comment ||
-					nodeType == XmlNodeType.XmlDeclaration)
+				    nodeType == XmlNodeType.Document ||
+				    nodeType == XmlNodeType.Comment ||
+				    nodeType == XmlNodeType.XmlDeclaration)
 					continue;
 
 				if (nodeType == XmlNodeType.Element) {
@@ -716,7 +722,7 @@ namespace Deveel.Data.Net.Client {
 				} else if (nodeType == XmlNodeType.EndElement) {
 					string elementName = xmlReader.LocalName;
 					if (elementName == "methodCall" ||
-						elementName == "methodResponse")
+					    elementName == "methodResponse")
 						break;
 					continue;
 				} else {

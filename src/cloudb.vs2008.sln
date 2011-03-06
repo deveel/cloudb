@@ -17,8 +17,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudbase-nunit", "cloudbas
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudb-log4net", "cloudb-log4net\cloudb-log4net.csproj", "{70D79060-3F5A-4CF4-A8F0-6B83F364BED8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudb+obj", "cloudb+obj\cloudb+obj.csproj", "{D05BF11D-E684-4D42-8EAA-4A2EA7EF77D7}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug.Unix|Any CPU = Debug.Unix|Any CPU
@@ -103,15 +101,6 @@ Global
 		{70D79060-3F5A-4CF4-A8F0-6B83F364BED8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{70D79060-3F5A-4CF4-A8F0-6B83F364BED8}.Release|Any CPU.Build.0 = Release|Any CPU
 		{70D79060-3F5A-4CF4-A8F0-6B83F364BED8}.Release|x86.ActiveCfg = Release|Any CPU
-		{D05BF11D-E684-4D42-8EAA-4A2EA7EF77D7}.Debug.Unix|Any CPU.ActiveCfg = Debug|Any CPU
-		{D05BF11D-E684-4D42-8EAA-4A2EA7EF77D7}.Debug.Unix|Any CPU.Build.0 = Debug|Any CPU
-		{D05BF11D-E684-4D42-8EAA-4A2EA7EF77D7}.Debug.Unix|x86.ActiveCfg = Debug|Any CPU
-		{D05BF11D-E684-4D42-8EAA-4A2EA7EF77D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D05BF11D-E684-4D42-8EAA-4A2EA7EF77D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D05BF11D-E684-4D42-8EAA-4A2EA7EF77D7}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{D05BF11D-E684-4D42-8EAA-4A2EA7EF77D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D05BF11D-E684-4D42-8EAA-4A2EA7EF77D7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D05BF11D-E684-4D42-8EAA-4A2EA7EF77D7}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

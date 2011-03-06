@@ -9,6 +9,7 @@ using System.Xml;
 using Deveel.Data.Configuration;
 using Deveel.Data.Diagnostics;
 using Deveel.Data.Net.Client;
+using Deveel.Data.Net.Serialization;
 
 using NUnit.Framework;
 
@@ -121,7 +122,7 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		private Deveel.Data.Net.Client.IMessageSerializer GetMethodSerializer() {
+		private IMessageSerializer GetMethodSerializer() {
 			if (format == HttpMessageFormat.Json)
 				throw new NotSupportedException();
 			if (format == HttpMessageFormat.Xml)

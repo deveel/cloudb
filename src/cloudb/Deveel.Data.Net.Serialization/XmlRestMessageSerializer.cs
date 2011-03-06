@@ -5,7 +5,9 @@ using System.IO;
 using System.Text;
 using System.Xml;
 
-namespace Deveel.Data.Net.Client {
+using Deveel.Data.Net.Client;
+
+namespace Deveel.Data.Net.Serialization {
 	public sealed class XmlRestMessageSerializer : XmlMessageSerializer {
 		public XmlRestMessageSerializer(string encoding)
 			: base(encoding) {
@@ -213,7 +215,7 @@ namespace Deveel.Data.Net.Client {
 				XmlNodeType valueNodeType = reader.NodeType;
 
 				if (valueNodeType == XmlNodeType.Comment ||
-					valueNodeType == XmlNodeType.Whitespace)
+				    valueNodeType == XmlNodeType.Whitespace)
 					continue;
 
 				if (valueNodeType == XmlNodeType.Attribute) {

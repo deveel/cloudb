@@ -1,12 +1,8 @@
 ﻿using System;
-using System.IO;
 using System.Text;
-using System.Xml;
 
-namespace Deveel.Data.Net.Client {
+namespace Deveel.Data.Net.Serialization {
 	public abstract class XmlMessageSerializer : TextMessageSerializer {
-		private Encoding encoding;
-
 		protected XmlMessageSerializer(string encoding)
 			: base(encoding) {
 		}
