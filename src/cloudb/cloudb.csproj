@@ -57,7 +57,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
@@ -93,6 +92,7 @@
     <Compile Include="Deveel.Data.Net.Client\UserAuthenticator.cs" />
     <Compile Include="Deveel.Data.Net.Security\IUserDataSource.cs" />
     <Compile Include="Deveel.Data.Net.Client\IMessageProcessor.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\IJsonSerializable.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\IMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Client\IPathTransaction.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\IRestMessageSerializer.cs" />
