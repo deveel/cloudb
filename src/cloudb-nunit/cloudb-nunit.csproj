@@ -86,7 +86,6 @@
     <Compile Include="Deveel.Data.Net.Serialization\JsonRpcMessageSerializerTest.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\XmlRpcMessageSerializerTest.cs" />
     <Compile Include="Deveel.Data.Net\FakeAdminService.cs">
-      <SubType>Component</SubType>
     </Compile>
     <Compile Include="Deveel.Data.Net\HttpMessageFormat.cs" />
     <Compile Include="Deveel.Data.Net\HttpNetworkTest.cs" />
