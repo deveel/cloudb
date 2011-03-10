@@ -22,3 +22,8 @@
 /src/cloudb+obj/obj
 *.user
 *.suo
+/src/cloudb-oauth/obj
+/src/cloudb-oauth/bin
+/src/cloudb-oauth-nunit/obj
+/src/cloudb-oauth-nunit/bin
+/src/_ReSharper.cloudb.vs2010
