@@ -17,7 +17,7 @@ using System.Text;
 
 namespace LitJson
 {
-    internal enum JsonToken
+    public enum JsonToken
     {
         None,
 
@@ -39,7 +39,7 @@ namespace LitJson
     }
 
 
-    internal class JsonReader
+    public class JsonReader
     {
         #region Fields
         private static IDictionary<int, IDictionary<int, int[]>> parse_table;

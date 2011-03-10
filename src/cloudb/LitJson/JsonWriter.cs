@@ -36,7 +36,7 @@ namespace LitJson
         public int  Padding;
     }
 
-    internal class JsonWriter
+    public class JsonWriter
     {
         #region Fields
         private static NumberFormatInfo number_format;

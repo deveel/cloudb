@@ -22,3 +22,6 @@
 /src/mnode/bin
 *.user
 *.suo
+/src/_ReSharper.cloudb.vs2010
+/src/cloudb+obj/obj
+/src/cloudb+obj/bin

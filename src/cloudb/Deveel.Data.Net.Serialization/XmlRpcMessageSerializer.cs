@@ -829,7 +829,7 @@ namespace Deveel.Data.Net.Serialization {
 					IServiceAddress address = (IServiceAddress)value;
 					serializer.WriteValue(address.ToString(), null, writer);
 				} else if (elementName == "singleNodeSet" ||
-				           elementName == "compressedNodeSet") {
+						   elementName == "compressedNodeSet") {
 					NodeSet nodeSet = (NodeSet)value;
 					if (nodeSet is SingleNodeSet) {
 						writer.WriteStartElement("singleNodeSet");
@@ -838,21 +838,21 @@ namespace Deveel.Data.Net.Serialization {
 					} else {
 						throw new FormatException("NodeSet type not yet supported");
 					}
-				
+
 					writer.WriteStartElement("nids");
-					for(int i = 0; i < nodeSet.NodeIds.Length; i++) {
+					for (int i = 0; i < nodeSet.NodeIds.Length; i++) {
 						serializer.WriteValue(nodeSet.NodeIds[i], null, writer);
 					}
 					writer.WriteEndElement();
-					
+
 					writer.WriteStartElement("data");
 					serializer.WriteValue(nodeSet.Buffer, null, writer);
 					writer.WriteEndElement();
-				
+
 					writer.WriteEndElement();
+				} else {
+					throw new FormatException();
 				}
-				
-				throw new FormatException();
 			}
 			
 			public object ReadValue(XmlReader reader, Type type) {
