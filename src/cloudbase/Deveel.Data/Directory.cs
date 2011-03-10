@@ -4,8 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-using Deveel.Data.Store;
-
 namespace Deveel.Data {
 	internal class Directory {
 		private readonly ITransaction transaction;
@@ -31,7 +29,7 @@ namespace Deveel.Data {
 			comparer = new ItemComparer(this);
 		}
 
-		private DataFile GetFile(Key key) {
+		private IDataFile GetFile(Key key) {
 			return transaction.GetFile(key, FileAccess.ReadWrite);
 		}
 
@@ -40,7 +38,7 @@ namespace Deveel.Data {
 		}
 
 		private long UniqueId() {
-			DataFile df = GetFile(metaKey);
+			IDataFile df = GetFile(metaKey);
 			StringDictionary pset = new StringDictionary(df);
 			long v = pset.GetValue("v", 16);
 			pset.SetValue("v", v + 1);
@@ -49,7 +47,7 @@ namespace Deveel.Data {
 
 		private string GetFileName(long id) {
 			Key k = GetKey(id);
-			DataFile df = GetFile(k);
+			IDataFile df = GetFile(k);
 			try {
 				BinaryReader din = new BinaryReader(new DataFileStream(df), Encoding.Unicode);
 				return din.ReadString();
@@ -80,7 +78,7 @@ namespace Deveel.Data {
 			iset.Insert(fileName, id, comparer);
 
 			Key item_key = GetKey(id);
-			DataFile df = GetFile(item_key);
+			IDataFile df = GetFile(item_key);
 			try {
 				BinaryWriter dout = new BinaryWriter(new DataFileStream(df), Encoding.Unicode);
 				dout.Write(fileName);
@@ -106,7 +104,7 @@ namespace Deveel.Data {
 
 			// Delete the associated datafile
 			Key k = GetKey(id);
-			DataFile df = GetFile(k);
+			IDataFile df = GetFile(k);
 			df.Delete();
 
 			return k;
@@ -130,7 +128,7 @@ namespace Deveel.Data {
 				throw new ApplicationException("File not found: " + name);
 			
 			Key k = GetKey(id);
-			DataFile df = GetFile(k);
+			IDataFile df = GetFile(k);
 			
 			// Find out how large the header is, without actually reading it. This is
 			// an optimization to improve queries that want to only find the size of
@@ -163,14 +161,14 @@ namespace Deveel.Data {
 
 			// Get the source data file item,
 			Key sourceKey = GetKey(id);
-			DataFile sourceFile = GetFile(sourceKey);
+			IDataFile sourceFile = GetFile(sourceKey);
 
 			// Add the item to the destination directory set
 			Key destKey = dest.CreateFile(name);
 			if (destKey == null)
 				throw new ApplicationException("Destination file '" + name + "' not found.");
 
-			DataFile destFile = dest.GetFile(destKey);
+			IDataFile destFile = dest.GetFile(destKey);
 
 			// Copy the data,
 			sourceFile.ReplicateTo(destFile);
@@ -351,10 +349,10 @@ namespace Deveel.Data {
 		public
 #endif
  class SubDataFile : DataFile {
-			private readonly DataFile file;
+			private readonly IDataFile file;
 			private readonly long start;
 
-			public SubDataFile(DataFile file, long start) {
+			public SubDataFile(IDataFile file, long start) {
 				this.file = file;
 				this.start = start;
 			}
@@ -388,11 +386,11 @@ namespace Deveel.Data {
 				file.SetLength(start);
 			}
 
-			public override void CopyTo(DataFile destFile, long size) {
+			public override void CopyTo(IDataFile destFile, long size) {
 				file.CopyTo(destFile, size);
 			}
 
-			public override void ReplicateTo(DataFile target) {
+			public override void ReplicateTo(IDataFile target) {
 				// This is a little complex. If 'target' is an instance of SubDataFile
 				// we use the raw 'ReplicateTo' method on the data files and preserve
 				// the header on the target by making a copy of it before the ReplicateTo
@@ -405,7 +403,7 @@ namespace Deveel.Data {
 					SubDataFile target_file = (SubDataFile)target;
 					long header_size = target_file.start;
 					if (header_size <= 8192) {
-						DataFile target_df = target_file.file;
+						IDataFile target_df = target_file.file;
 						// Make a copy of the header in the target,
 						int ihead_size = (int)header_size;
 						byte[] header = new byte[ihead_size];

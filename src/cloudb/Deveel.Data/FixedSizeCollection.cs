@@ -1,25 +1,38 @@
 ﻿using System;
+using System.IO;
+using System.Text;
 
 using Deveel.Data.Caching;
-using Deveel.Data.Store;
 
 namespace Deveel.Data {
 	public abstract class FixedSizeCollection {
-		protected FixedSizeCollection(DataFile data, int recordSize) {
+		protected FixedSizeCollection(IDataFile data, int recordSize) {
 			if (recordSize <= 0)
 				throw new ArgumentException();
 
 			this.data = data;
+			input = new BinaryReader(new DataFileStream(data), Encoding.Unicode);
+			output = new BinaryWriter(new DataFileStream(data), Encoding.Unicode);
 			this.recordSize = recordSize;
 			keyPositionCache = new MemoryCache(513, 750, 15);
 		}
 
-		private readonly DataFile data;
+		private readonly IDataFile data;
+		private readonly BinaryReader input;
+		private readonly BinaryWriter output;
 		private readonly int recordSize;
 		private readonly Cache keyPositionCache;
 
-		protected DataFile DataFile {
+		protected IDataFile DataFile {
 			get { return data; }
+		}
+
+		protected BinaryReader Input {
+			get { return input; }
+		}
+
+		protected BinaryWriter Output {
+			get { return output; }
 		}
 
 		public int RecordSize {
@@ -42,11 +55,10 @@ namespace Deveel.Data {
 				if (high - low <= 2) {
 					for (long i = low; i <= high; ++i) {
 						int cmp = CompareRecordTo(i, key);
-						if (cmp == 0) {
+						if (cmp == 0)
 							return i;
-						} else if (cmp > 0) {
+						if (cmp > 0)
 							return -(i + 1);
-						}
 					}
 					return -(high + 2);
 				}

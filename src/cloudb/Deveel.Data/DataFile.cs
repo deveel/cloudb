@@ -15,7 +15,7 @@ namespace Deveel.Data {
 	/// operation, or by setting a current position different from the original one.
 	/// </para>
 	/// </remarks>
-	public abstract class DataFile {
+	public abstract class DataFile : IDataFile {
 		/// <summary>
 		/// Gets the length of the portion of data pointed by this file.
 		/// </summary>
@@ -160,8 +160,8 @@ namespace Deveel.Data {
 		/// target files will point to the end of the copied sequence.
 		/// </para>
 		/// </remarks>
-		public abstract void CopyTo(DataFile destFile, long size);
+		public abstract void CopyTo(IDataFile destFile, long size);
 
-		public abstract void ReplicateTo(DataFile target);
+		public abstract void ReplicateTo(IDataFile target);
 	}
 }

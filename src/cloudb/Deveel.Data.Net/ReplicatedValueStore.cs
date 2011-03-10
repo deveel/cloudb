@@ -749,7 +749,7 @@ namespace Deveel.Data.Net {
 				ITransaction t = blockDatabase.CreateTransaction();
 
 				try {
-					DataFile keyListDf = t.GetFile(KeyUidMapKey, FileAccess.ReadWrite);
+					IDataFile keyListDf = t.GetFile(KeyUidMapKey, FileAccess.ReadWrite);
 					StringDictionary keyList = new StringDictionary(keyListDf);
 					ISortedCollection<string> keySet = keyList.Keys;
 
@@ -783,7 +783,7 @@ namespace Deveel.Data.Net {
 
 				try {
 					// Create the UIDList object,
-					DataFile uidListDf = transaction.GetFile(UidListKey, FileAccess.ReadWrite);
+					IDataFile uidListDf = transaction.GetFile(UidListKey, FileAccess.ReadWrite);
 					UIDList uidList = new UIDList(uidListDf);
 
 					return uidList.LastUID;
@@ -802,7 +802,7 @@ namespace Deveel.Data.Net {
 
 				try {
 					// Create the UIDList object,
-					DataFile uidListDf = transaction.GetFile(UidListKey, FileAccess.ReadWrite);
+					IDataFile uidListDf = transaction.GetFile(UidListKey, FileAccess.ReadWrite);
 					UIDList uidList = new UIDList(uidListDf);
 
 					// Go to the position of the uid,
@@ -901,11 +901,11 @@ namespace Deveel.Data.Net {
 				ITransaction t = blockDatabase.CreateTransaction();
 
 				try {
-					DataFile bidUidListDf = t.GetFile(BlockidUidMapKey, FileAccess.ReadWrite);
+					IDataFile bidUidListDf = t.GetFile(BlockidUidMapKey, FileAccess.ReadWrite);
 					BlockIdUIDList blockidUidList = new BlockIdUIDList(bidUidListDf);
-					DataFile keyListDf = t.GetFile(KeyUidMapKey, FileAccess.ReadWrite);
+					IDataFile keyListDf = t.GetFile(KeyUidMapKey, FileAccess.ReadWrite);
 					StringDictionary keyList = new StringDictionary(keyListDf);
-					DataFile uidListDf = t.GetFile(UidListKey, FileAccess.ReadWrite);
+					IDataFile uidListDf = t.GetFile(UidListKey, FileAccess.ReadWrite);
 					UIDList uidList = new UIDList(uidListDf);
 
 					long size = blockidUidList.Count;
@@ -949,7 +949,7 @@ namespace Deveel.Data.Net {
 		}
 
 		private long[] GetUIDForBlock(ITransaction t, BlockId blockId) {
-			DataFile bidUidListDf = t.GetFile(BlockidUidMapKey, FileAccess.ReadWrite);
+			IDataFile bidUidListDf = t.GetFile(BlockidUidMapKey, FileAccess.ReadWrite);
 			BlockIdUIDList blockidUidList = new BlockIdUIDList(bidUidListDf);
 
 			long pos = blockidUidList.IndexOfBlockId(blockId);
@@ -960,7 +960,7 @@ namespace Deveel.Data.Net {
 		}
 
 		private long[] GetUIDForKey(ITransaction t, string key) {
-			DataFile keyListDf = t.GetFile(KeyUidMapKey, FileAccess.ReadWrite);
+			IDataFile keyListDf = t.GetFile(KeyUidMapKey, FileAccess.ReadWrite);
 			StringDictionary keyList = new StringDictionary(keyListDf);
 
 			string val = keyList.GetValue(key);
@@ -978,17 +978,18 @@ namespace Deveel.Data.Net {
 			Key hashKey = new Key(13, 0, hashCode);
 
 			// The DataFile
-			DataFile dfile = t.GetFile(hashKey, FileAccess.ReadWrite);
+			IDataFile dfile = t.GetFile(hashKey, FileAccess.ReadWrite);
+			BinaryReader reader = new BinaryReader(new DataFileStream(dfile));
 
 			long pos = 0;
 			long size = dfile.Length;
 			while (pos < size) {
 				dfile.Position = pos;
-				int sz = dfile.ReadInt32();
+				int sz = reader.ReadInt32();
 
 				// Get the stored uid,
-				long inuidH = dfile.ReadInt64();
-				long inuidL = dfile.ReadInt64();
+				long inuidH = reader.ReadInt64();
+				long inuidL = reader.ReadInt64();
 
 				// If the uid matches,
 				if (inuidH == uid[0] && inuidL == uid[1]) {
@@ -1011,17 +1012,18 @@ namespace Deveel.Data.Net {
 			Key hashKey = new Key(13, 0, hashCode);
 
 			// The DataFile
-			DataFile dfile = t.GetFile(hashKey, FileAccess.ReadWrite);
+			IDataFile dfile = t.GetFile(hashKey, FileAccess.ReadWrite);
+			BinaryReader reader = new BinaryReader(new DataFileStream(dfile));
 
 			long pos = 0;
 			long size = dfile.Length;
 			while (pos < size) {
 				dfile.Position = pos;
-				int sz = dfile.ReadInt32();
+				int sz = reader.ReadInt32();
 
 				// Get the stored uid,
-				long inuidH = dfile.ReadInt64();
-				long inuidL = dfile.ReadInt64();
+				long inuidH = reader.ReadInt64();
+				long inuidL = reader.ReadInt64();
 
 				// If the uid matches,
 				if (inuidH == uid[0] && inuidL == uid[1]) {
@@ -1044,7 +1046,7 @@ namespace Deveel.Data.Net {
 		}
 
 		private BlockId GetLastBlockId(ITransaction t) {
-			DataFile bidUidListDf = t.GetFile(BlockidUidMapKey, FileAccess.Read);
+			IDataFile bidUidListDf = t.GetFile(BlockidUidMapKey, FileAccess.Read);
 			BlockIdUIDList blockidUidList = new BlockIdUIDList(bidUidListDf);
 
 			long pos = blockidUidList.Count - 1;
@@ -1056,7 +1058,7 @@ namespace Deveel.Data.Net {
 
 		private void InsertToUIDList(ITransaction t, long[] uid) {
 			// Create the UIDList object,
-			DataFile uidListDf = t.GetFile(UidListKey, FileAccess.ReadWrite);
+			IDataFile uidListDf = t.GetFile(UidListKey, FileAccess.ReadWrite);
 			UIDList uidList = new UIDList(uidListDf);
 
 			// Inserts the uid in the list
@@ -1074,7 +1076,9 @@ namespace Deveel.Data.Net {
 			Key hashKey = new Key(13, 0, hashCode);
 
 			// The DataFile
-			DataFile dfile = t.GetFile(hashKey, FileAccess.ReadWrite);
+			IDataFile dfile = t.GetFile(hashKey, FileAccess.ReadWrite);
+			BinaryWriter writer = new BinaryWriter(new DataFileStream(dfile));
+
 			// The size of the entry being added,
 			int sz = 20 + value.Length;
 
@@ -1082,23 +1086,23 @@ namespace Deveel.Data.Net {
 			dfile.Position = dfile.Length;
 			// Insert the entry,
 			// Put the size of the value entry,
-			dfile.Write(sz);
+			writer.Write(sz);
 			// The 128-bit uid,
-			dfile.Write(uid[0]);
-			dfile.Write(uid[1]);
+			writer.Write(uid[0]);
+			writer.Write(uid[1]);
 			// The value content,
 			dfile.Write(value, 0, value.Length);
 		}
 
 		private void InsertBlockIdRef(ITransaction t, BlockId block_id, long[] uid) {
-			DataFile bidUidListDf = t.GetFile(BlockidUidMapKey, FileAccess.ReadWrite);
+			IDataFile bidUidListDf = t.GetFile(BlockidUidMapKey, FileAccess.ReadWrite);
 			BlockIdUIDList blockidUidList = new BlockIdUIDList(bidUidListDf);
 
 			blockidUidList.AddBlockIdRef(block_id, uid);
 		}
 
 		private void InsertKeyRef(ITransaction t, string key, string value, long[] uid) {
-			DataFile keyListDf = t.GetFile(KeyUidMapKey, FileAccess.ReadWrite);
+			IDataFile keyListDf = t.GetFile(KeyUidMapKey, FileAccess.ReadWrite);
 			StringDictionary keyList = new StringDictionary(keyListDf);
 
 			// Put it in the property set,
@@ -1165,7 +1169,7 @@ namespace Deveel.Data.Net {
 		#region UIDList
 
 		private class UIDList : FixedSizeCollection {
-			public UIDList(DataFile data)
+			public UIDList(IDataFile data)
 				: base(data, 16) {
 			}
 
@@ -1175,8 +1179,8 @@ namespace Deveel.Data.Net {
 
 			public long[] GetUID(long pos) {
 				SetPosition(pos);
-				long highV = DataFile.ReadInt64();
-				long lowV = DataFile.ReadInt64();
+				long highV = Input.ReadInt64();
+				long lowV = Input.ReadInt64();
 				return new long[] { highV, lowV };
 			}
 
@@ -1194,8 +1198,8 @@ namespace Deveel.Data.Net {
 					pos = -(pos + 1);
 					InsertEmptyRecord(pos);
 					SetPosition(pos);
-					DataFile.Write(uid[0]);
-					DataFile.Write(uid[1]);
+					Output.Write(uid[0]);
+					Output.Write(uid[1]);
 				} else {
 					throw new ApplicationException("UID already in list");
 				}
@@ -1203,8 +1207,8 @@ namespace Deveel.Data.Net {
 
 			private Quadruple GetInt128BitKey(long recordPos) {
 				SetPosition(recordPos);
-				long highV = DataFile.ReadInt64();
-				long lowV = DataFile.ReadInt64();
+				long highV = Input.ReadInt64();
+				long lowV = Input.ReadInt64();
 				return new Quadruple(highV, lowV);
 			}
 
@@ -1226,7 +1230,7 @@ namespace Deveel.Data.Net {
 
 		private class BlockIdUIDList : FixedSizeCollection {
 
-			public BlockIdUIDList(DataFile data)
+			public BlockIdUIDList(IDataFile data)
 				: base(data, 32) {
 			}
 
@@ -1246,27 +1250,27 @@ namespace Deveel.Data.Net {
 					// Go to position to overwrite current value
 					SetPosition(pos);
 				}
-				DataFile df = DataFile;
-				df.Write(blockId.High);
-				df.Write(blockId.Low);
-				df.Write(uid[0]);
-				df.Write(uid[1]);
+
+				Output.Write(blockId.High);
+				Output.Write(blockId.Low);
+				Output.Write(uid[0]);
+				Output.Write(uid[1]);
 			}
 
 			public BlockId GetBlockId(long recordPos) {
 				SetPosition(recordPos);
-				DataFile df = DataFile;
-				long highV = df.ReadInt64();
-				long lowV = df.ReadInt64();
+
+				long highV = Input.ReadInt64();
+				long lowV = Input.ReadInt64();
 				return new BlockId(highV, lowV);
 			}
 
 			public long[] GetUID(long recordPos) {
 				SetPosition(recordPos);
-				DataFile df = DataFile;
-				df.Position = df.Position + 16;
-				long highV = df.ReadInt64();
-				long lowV = df.ReadInt64();
+
+				DataFile.Position = DataFile.Position + 16;
+				long highV = Input.ReadInt64();
+				long lowV = Input.ReadInt64();
 				return new long[] { highV, lowV };
 			}
 

@@ -74,7 +74,7 @@ namespace Deveel.Data {
 			parent.Delete();
 		}
 
-		public override void CopyTo(DataFile destFile, long size) {
+		public override void CopyTo(IDataFile destFile, long size) {
 			transaction.CheckValid();
 
 			if (destFile is DbFile) {
@@ -86,7 +86,7 @@ namespace Deveel.Data {
 			}
 		}
 
-		public override void ReplicateTo(DataFile target) {
+		public override void ReplicateTo(IDataFile target) {
 			transaction.CheckValid();
 			if (target is DbFile) {
 				DbFile targetFile = (DbFile)target;

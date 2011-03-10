@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Globalization;
 
-using Deveel.Data.Store;
-
 namespace Deveel.Data {
 	public sealed class DbTableSchema {
 		private readonly DbTable table;
@@ -292,8 +290,8 @@ namespace Deveel.Data {
 			p.SetValue(columnName + ".collator", null);
 			
 			// Delete the index file,
-			DataFile index_file = table.GetFile(table.GetIndexIdKey(columnid));
-			index_file.Delete();
+			IDataFile indexFile = table.GetFile(table.GetIndexIdKey(columnid));
+			indexFile.Delete();
 			
 			cachedIndexes = null;
 			

@@ -314,6 +314,7 @@ namespace Deveel.Data.Net {
 			lock (lockDb) {
 				if (!lockDb.TryGetValue(pathName, out pathAccess)) {
 					pathAccess = CreatePathAccess(pathName);
+					pathAccess.service = this;
 					
 					// Put it input the local map
 					lockDb[pathName] = pathAccess;
@@ -641,6 +642,7 @@ namespace Deveel.Data.Net {
 			private readonly List<object> proposalQueue;
 			private readonly object accessLock = new object();
 			private bool completeAndSynchronized;
+			internal RootService service;
 
 			private byte[] buf = new byte[32];
 

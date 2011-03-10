@@ -292,7 +292,7 @@ namespace Deveel.Data {
 			return nodeId.IsInMemory;
 		}
 
-		private static void ByteBufferCopyTo(DataFile source, DataFile target, long size) {
+		private static void ByteBufferCopyTo(IDataFile source, IDataFile target, long size) {
 			long pos = target.Position;
 			// Make room to insert the data
 			target.Shift(size);
@@ -302,13 +302,13 @@ namespace Deveel.Data {
 			// While there is data to copy,
 			while (size > 0) {
 				// Read an amount of data from the source
-				int to_read = (int)System.Math.Min(buf.Length, size);
+				int toRead = (int)System.Math.Min(buf.Length, size);
 				// Read it into the buffer
-				source.Read(buf, 0, to_read);
+				source.Read(buf, 0, toRead);
 				// Write from the buffer out to the target
-				target.Write(buf, 0, to_read);
+				target.Write(buf, 0, toRead);
 				// Update the ref
-				size = size - to_read;
+				size = size - toRead;
 			}
 		}
 
@@ -1214,7 +1214,7 @@ namespace Deveel.Data {
 
 		#region Implementation of ITransaction
 
-		public DataFile GetFile(Key key, FileAccess access) {
+		public IDataFile GetFile(Key key, FileAccess access) {
 			CheckErrorState();
 			try {
 				if (OutOfUserDataRange(key))
@@ -1790,7 +1790,7 @@ namespace Deveel.Data {
 				}
 			}
 
-			public override void CopyTo(DataFile destFile, long size) {
+			public override void CopyTo(IDataFile destFile, long size) {
 				tnx.CheckErrorState();
 
 				try {
@@ -1853,7 +1853,7 @@ namespace Deveel.Data {
 				}
 			}
 
-			public override void ReplicateTo(DataFile target) {
+			public override void ReplicateTo(IDataFile target) {
 				// TODO: Placeholder implementation,
 				target.Position = 0;
 				target.Delete();
@@ -2074,7 +2074,7 @@ namespace Deveel.Data {
 				}
 			}
 
-			public DataFile GetFile(FileAccess access) {
+			public IDataFile GetFile(FileAccess access) {
 				transaction.CheckErrorState();
 				try {
 
@@ -2093,7 +2093,7 @@ namespace Deveel.Data {
 				}
 			}
 
-			public DataFile GetFile(Key key, FileAccess access) {
+			public IDataFile GetFile(Key key, FileAccess access) {
 				transaction.CheckErrorState();
 				try {
 
@@ -2104,7 +2104,6 @@ namespace Deveel.Data {
 					}
 
 					return transaction.GetFile(key, access);
-
 				} catch (OutOfMemoryException e) {
 					throw transaction.SetErrorState(e);
 				}
@@ -2140,8 +2139,8 @@ namespace Deveel.Data {
 				while (pos < sz) {
 					Position = pos;
 					Key key = CurrentKey;
-					DataFile df = GetFile(FileAccess.Read);
-					DataFile target_df = target.GetFile(key, FileAccess.ReadWrite);
+					IDataFile df = GetFile(FileAccess.Read);
+					IDataFile target_df = target.GetFile(key, FileAccess.ReadWrite);
 					df.ReplicateTo(target_df);
 					pos = MoveNext();
 				}

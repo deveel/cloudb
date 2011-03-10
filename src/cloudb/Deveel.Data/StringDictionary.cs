@@ -3,8 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 
-using Deveel.Data.Store;
-
 namespace Deveel.Data {
 	public sealed class StringDictionary {
 		private readonly StringCollection collection;
@@ -12,7 +10,7 @@ namespace Deveel.Data {
 		private static readonly PropertyComparer DefaultPropertyComparer = new PropertyComparer();
 		private static readonly KeyComparer DefaultKeyComparer = new KeyComparer();
 
-		public StringDictionary(DataFile file) {
+		public StringDictionary(IDataFile file) {
 			collection = new StringCollection(file, DefaultPropertyComparer);
 		}
 

@@ -4,7 +4,6 @@ using System.IO;
 using System.Runtime.CompilerServices;
 
 using Deveel.Data.Net;
-using Deveel.Data.Store;
 
 namespace Deveel.Data {
 	public sealed class BasePath : IPath {
@@ -14,7 +13,7 @@ namespace Deveel.Data {
 			// Turn it into a transaction
 			ITransaction transaction = connection.CreateTransaction(current_root);
 			// Initialize the magic property set, etc
-			DataFile df = transaction.GetFile(DbTransaction.MagicKey, FileAccess.ReadWrite);
+			IDataFile df = transaction.GetFile(DbTransaction.MagicKey, FileAccess.ReadWrite);
 			StringDictionary magicSet = new StringDictionary(df);
 			magicSet.SetValue("type", "BasePath");
 			magicSet.SetValue("version", "1.0");

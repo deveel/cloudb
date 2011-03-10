@@ -3,8 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 
-using Deveel.Data.Store;
-
 namespace Deveel.Data {
 	[DbTrusted]
 	public sealed class DbTable : IEnumerable<DbRow> {
@@ -118,7 +116,7 @@ namespace Deveel.Data {
 		
 		private void AddRowToRowSet(long rowid) {
 			// Get the index object
-			DataFile df = GetFile(RowIndexKey);
+			IDataFile df = GetFile(RowIndexKey);
 			SortedIndex row_set = new SortedIndex(df);
 			// Add the row in rowid value sorted order
 			row_set.InsertSortKey(rowid);
@@ -126,13 +124,13 @@ namespace Deveel.Data {
 		
 		private void RemoveRowFromRowSet(long rowid) {
 			// Get the index object
-			DataFile df = GetFile(RowIndexKey);
+			IDataFile df = GetFile(RowIndexKey);
 			SortedIndex row_set = new SortedIndex(df);
 			// Remove the row in rowid value sorted order
 			row_set.RemoveSortKey(rowid);
 		}
 
-		private static void CopyDataFile(DataFile s, DataFile d) {
+		private static void CopyDataFile(IDataFile s, IDataFile d) {
 			s.ReplicateTo(d);
 		}
 
@@ -248,7 +246,7 @@ namespace Deveel.Data {
 		
 		internal void PrepareCommit() {
 			// Write the transaction log for this table,
-			DataFile df = GetFile(AddLogKey);
+			IDataFile df = GetFile(AddLogKey);
 			df.Delete();
 			
 			SortedIndex addlist = new SortedIndex(df);
@@ -288,20 +286,20 @@ namespace Deveel.Data {
 			return new Key(1, id, columnid);
 		}
 				
-		internal DataFile GetFile(Key k) {
+		internal IDataFile GetFile(Key k) {
 			return transaction.Parent.GetFile(k, FileAccess.ReadWrite);
 		}
 		
 		internal String GetCellValue(long rowid, long columnid) {
 			Key row_key = GetRowIdKey(rowid);
-			DataFile rowFile = GetFile(row_key);
+			IDataFile rowFile = GetFile(row_key);
 			RowBuilder rowBuilder = new RowBuilder(rowFile);
 			return rowBuilder.GetValue(columnid);
 		}
 		
 		internal void BuildIndex(long columnid, IIndexedObjectComparer<string> index_collator) {
 			// Get the index object
-			DataFile df = GetFile(GetIndexIdKey(columnid));
+			IDataFile df = GetFile(GetIndexIdKey(columnid));
 			
 			// Get the index and clear it,
 			SortedIndex index = new SortedIndex(df);
@@ -354,7 +352,7 @@ namespace Deveel.Data {
 			
 			// Create a new rowid
 			long rowid = UniqueId();
-			DataFile df = GetFile(GetRowIdKey(rowid));
+			IDataFile df = GetFile(GetRowIdKey(rowid));
 			
 			// Build the row,
 			RowBuilder builder = new RowBuilder(df);
@@ -411,7 +409,7 @@ namespace Deveel.Data {
 			// Add this event to the transaction log,
 			OnTransactionEvent("DeleteRow", row.RowId);
 			OnTransactionEvent("InsertRow", rowid);
-			DataFile row_df = GetFile(GetRowIdKey(row.RowId));
+			IDataFile row_df = GetFile(GetRowIdKey(row.RowId));
 			row_df.Delete();
 			++version;
 		}
@@ -431,8 +429,8 @@ namespace Deveel.Data {
 			// Remove the row from any indexes defined on the table,
 			RemoveRowFromIndexSet(rowid);
 			// Delete the row file
-			DataFile row_df = GetFile(GetRowIdKey(rowid));
-			row_df.Delete();
+			IDataFile rowDf = GetFile(GetRowIdKey(rowid));
+			rowDf.Delete();
 
 			// Add this event to the transaction log
 			OnTransactionEvent("DeleteRow", rowid);
@@ -474,9 +472,9 @@ namespace Deveel.Data {
 		#region RowBuilder
 		
 		private sealed class RowBuilder {
-			private readonly DataFile file;
+			private readonly IDataFile file;
 			
-			public RowBuilder(DataFile file) {
+			public RowBuilder(IDataFile file) {
 				this.file = file;
 			}
 			
@@ -522,6 +520,7 @@ namespace Deveel.Data {
 			public void SetValue(long columnid, string value) {
 				file.Position = 0;
 				BinaryReader din = new BinaryReader(new DataFileStream(file, FileAccess.Read));
+				BinaryWriter writer = new BinaryWriter(new DataFileStream(file, FileAccess.Write));
 				
 				try {
 					int size = Math.Min((int) file.Length, Int32.MaxValue);
@@ -542,17 +541,17 @@ namespace Deveel.Data {
 					// Ok to add column,
 					file.Position = 0;
 					if (size == 0) {
-						file.Write(1);
-						file.Write(columnid);
-						file.Write(0);
+						writer.Write(1);
+						writer.Write(columnid);
+						writer.Write(0);
 					} else {
-						int count = file.ReadInt32();
+						int count = din.ReadInt32();
 						++count;
 						file.Position = 0;
-						file.Write(count);
+						writer.Write(count);
 						file.Shift(12);
-						file.Write(columnid);
-						file.Write((int) (file.Length - (count * 12) - 4));
+						writer.Write(columnid);
+						writer.Write((int) (file.Length - (count * 12) - 4));
 						file.Position = file.Length;
 					}
 					

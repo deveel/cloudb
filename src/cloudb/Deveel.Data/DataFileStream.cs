@@ -1,18 +1,18 @@
 ﻿using System;
 using System.IO;
 
-namespace Deveel.Data.Store {
+namespace Deveel.Data {
 	public sealed class DataFileStream : Stream {
-		public DataFileStream(DataFile file, FileAccess access) {
+		public DataFileStream(IDataFile file, FileAccess access) {
 			this.file = file;
 			this.access = access;
 		}
 
-		public DataFileStream(DataFile file)
+		public DataFileStream(IDataFile file)
 			: this(file, FileAccess.ReadWrite) {
 		}
 
-		private readonly DataFile file;
+		private readonly IDataFile file;
 		private readonly FileAccess access;
 
 		#region Overrides of Stream
@@ -28,19 +28,19 @@ namespace Deveel.Data.Store {
 				throw new NotSupportedException();
 
 			if (origin == SeekOrigin.Current) {
-				long p = file.Position;
-				long s = file.Length;
+				long p = File.Position;
+				long s = File.Length;
 				long to_skip = Math.Min(offset, s - p);
-				file.Position = p + to_skip;
+				File.Position = p + to_skip;
 				return p + to_skip;
 			}
 
-			file.Position = offset;
+			File.Position = offset;
 			return offset;
 		}
 
 		public override void SetLength(long value) {
-			file.SetLength(value);
+			File.SetLength(value);
 		}
 
 		public override int Read(byte[] buffer, int offset, int count) {
@@ -50,8 +50,8 @@ namespace Deveel.Data.Store {
 			if (count == 0)
 				return 0;
 
-			long p = file.Position;
-			long s = file.Length;
+			long p = File.Position;
+			long s = File.Length;
 			// The amount to read, either the length of the array or the amount of
 			// data left available, whichever is smaller.
 			long to_read = Math.Min(count, s - p);
@@ -61,7 +61,7 @@ namespace Deveel.Data.Store {
 
 			// Fill up the array
 			int act_read = (int)to_read;
-			return file.Read(buffer, offset, act_read);
+			return File.Read(buffer, offset, act_read);
 
 		}
 
@@ -69,7 +69,7 @@ namespace Deveel.Data.Store {
 			if (!CanWrite)
 				throw new InvalidOperationException("The current stream is not writeable.");
 
-			file.Write(buffer, offset, count);
+			File.Write(buffer, offset, count);
 		}
 
 		public override bool CanRead {
@@ -85,12 +85,16 @@ namespace Deveel.Data.Store {
 		}
 
 		public override long Length {
-			get { return file.Length; }
+			get { return File.Length; }
 		}
 
 		public override long Position {
-			get { return file.Position; }
-			set { file.Position = value; }
+			get { return File.Position; }
+			set { File.Position = value; }
+		}
+
+		public IDataFile File {
+			get { return file; }
 		}
 
 		#endregion

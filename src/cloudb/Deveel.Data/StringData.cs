@@ -2,9 +2,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Text;
-
-using Deveel.Data.Store;
 
 namespace Deveel.Data {
 	/// <summary>
@@ -23,11 +22,15 @@ namespace Deveel.Data {
 		/// Constructs the string, wrapped around the given <see cref="DataFile"/>.
 		/// </summary>
 		/// <param name="file">The data file that wraps this string data container.</param>
-		public StringData(DataFile file) {
+		public StringData(IDataFile file) {
 			this.file = file;
+			reader = new BinaryReader(new DataFileStream(file, FileAccess.Read), Encoding.Unicode);
+			writer = new BinaryWriter(new DataFileStream(file, FileAccess.Write), Encoding.Unicode);
 		}
 
-		private readonly DataFile file;
+		private readonly BinaryReader reader;
+		private readonly BinaryWriter writer;
+		private readonly IDataFile file;
 
 		/// <summary>
 		/// Gets the number of characters stored in this string.
@@ -44,11 +47,11 @@ namespace Deveel.Data {
 		}
 
 		internal char ReadChar() {
-			return file.ReadChar();
+			return reader.ReadChar();
 		}
 
 		internal void Write(char value) {
-			file.Write(value);
+			writer.Write(value);
 		}
 
 		internal void SetPosition(long pos) {
@@ -74,7 +77,7 @@ namespace Deveel.Data {
 			// Position and write the characters
 			SetPosition(pos);
 			for (int i = 0; i < len; ++i)
-				file.Write(str[i]);
+				writer.Write(str[i]);
 		}
 
 		/// <summary>
@@ -92,7 +95,7 @@ namespace Deveel.Data {
 			StringBuilder buf = new StringBuilder();
 			SetPosition(pos);
 			for (int i = 0; i < sz; ++i)
-				buf.Append(file.ReadChar());
+				buf.Append(reader.ReadChar());
 			return buf.ToString();
 		}
 
@@ -225,7 +228,7 @@ namespace Deveel.Data {
 						throw new InvalidOperationException();
 
 					data.SetPosition(pos);
-					return data.file.ReadChar();
+					return data.reader.ReadChar();
 				}
 			}
 

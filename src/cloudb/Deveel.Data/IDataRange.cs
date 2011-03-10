@@ -1,8 +1,6 @@
 ﻿using System;
 using System.IO;
 
-using Deveel.Data.Store;
-
 namespace Deveel.Data {
 	/// <summary>
 	/// A <see cref="IDataRange"/> is a sorted set of consecutive keys 
@@ -21,9 +19,9 @@ namespace Deveel.Data {
 
 		Key CurrentKey { get; }
 
-		DataFile GetFile(FileAccess access);
+		IDataFile GetFile(FileAccess access);
 
-		DataFile GetFile(Key key, FileAccess access);
+		IDataFile GetFile(Key key, FileAccess access);
 
 		void Delete();
 

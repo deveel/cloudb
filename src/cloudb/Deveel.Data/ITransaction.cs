@@ -1,8 +1,6 @@
 ﻿using System;
 using System.IO;
 
-using Deveel.Data.Store;
-
 namespace Deveel.Data {
 	/// <summary>
 	/// A transaction is an isolated snapshot view of the database that
@@ -40,7 +38,7 @@ namespace Deveel.Data {
 		/// to access or modify the underlying data within the context of the
 		/// current transaction.
 		/// </returns>
-		DataFile GetFile(Key key, FileAccess access);
+		IDataFile GetFile(Key key, FileAccess access);
 		
 		/// <summary>
 		/// This method is a convenience that indicates the transaction object the

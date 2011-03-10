@@ -3,7 +3,6 @@ using System.IO;
 
 using Deveel.Data.Net;
 using Deveel.Data.Net.Client;
-using Deveel.Data.Store;
 
 namespace Deveel.Data {
 	public sealed class DbSession : IPathContext {
@@ -32,7 +31,7 @@ namespace Deveel.Data {
 		private void CheckPath(ITransaction transaction) {
 			if (!checkDone) {
 				lock(this) {
-					DataFile df = transaction.GetFile(DbTransaction.MagicKey, FileAccess.Read);
+					IDataFile df = transaction.GetFile(DbTransaction.MagicKey, FileAccess.Read);
 					StringDictionary magic_set = new StringDictionary(df);
 					string type = magic_set.GetValue("type");
 					string version = magic_set.GetValue("version");

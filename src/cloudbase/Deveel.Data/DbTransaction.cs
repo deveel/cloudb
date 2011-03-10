@@ -4,7 +4,6 @@ using System.IO;
 
 using Deveel.Data.Net;
 using Deveel.Data.Net.Client;
-using Deveel.Data.Store;
 
 namespace Deveel.Data {
 	public sealed class DbTransaction : IPathTransaction {
@@ -169,13 +168,13 @@ namespace Deveel.Data {
 		}
 
 		internal TextReader GetLogReader() {
-			DataFile file = transaction.GetFile(TransactionLogKey, FileAccess.Read);
+			IDataFile file = transaction.GetFile(TransactionLogKey, FileAccess.Read);
 			return new StringDataReader(new StringData(file));
 		}
 
 		internal void RefreshLog() {
 			// Output the change log to the proposed transaction to commit,
-			DataFile file = transaction.GetFile(TransactionLogKey, FileAccess.Write);
+			IDataFile file = transaction.GetFile(TransactionLogKey, FileAccess.Write);
 			file.Delete();
 			StringData logFile = new StringData(file);
 
@@ -192,7 +191,7 @@ namespace Deveel.Data {
 
 		private void ClearLog() {
 			// Output the change log to the proposed transaction to commit,
-			DataFile file = transaction.GetFile(TransactionLogKey, FileAccess.Write);
+			IDataFile file = transaction.GetFile(TransactionLogKey, FileAccess.Write);
 			file.Delete();
 			StringData logFile = new StringData(file);
 
