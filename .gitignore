@@ -25,3 +25,15 @@
 /src/_ReSharper.cloudb.vs2010
 /src/cloudb+obj/obj
 /src/cloudb+obj/bin
+/src/cloudb-nunit-common/obj
+/src/cloudb-nunit-common/bin
+/src/cloudb+sql/Deveel.Data.Sql.Parser/TokenMgrError.cs
+/src/cloudb+sql/Deveel.Data.Sql.Parser/ParseException.cs
+/src/cloudb+sql/Deveel.Data.Sql.Parser/SimpleCharStream.cs
+/src/cloudb+sql/Deveel.Data.Sql.Parser/SqlParser.cs
+/src/cloudb+sql/Deveel.Data.Sql.Parser/SqlParserConstants.cs
+/src/cloudb+sql/Deveel.Data.Sql.Parser/SqlParserTokenManager.cs
+/src/cloudb+sql/Deveel.Data.Sql.Parser/Token.cs
+/src/cloudb+sql/obj
+/src/cloudb+sql/bin
+/src/cloudb+sql-nunit/obj

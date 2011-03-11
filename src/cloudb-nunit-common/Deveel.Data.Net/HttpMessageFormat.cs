@@ -2,7 +2,7 @@
 
 namespace Deveel.Data.Net {
 	public enum HttpMessageFormat {
-		Xml,
-		Json
+		Json,
+		Xml
 	}
 }

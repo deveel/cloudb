@@ -87,9 +87,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\cloudb-nunit\cloudb-nunit.csproj">
-      <Project>{05D455D6-1EA4-4C27-A4F2-797A518FE00A}</Project>
-      <Name>cloudb-nunit</Name>
+    <ProjectReference Include="..\cloudb-nunit-common\cloudb-nunit-common.csproj">
+      <Project>{56F8D1EF-4148-4FAF-A4C2-691765047A3A}</Project>
+      <Name>cloudb-nunit-common</Name>
     </ProjectReference>
     <ProjectReference Include="..\cloudbase\cloudbase.csproj">
       <Project>{A2099A92-DA13-4440-B2F9-7890750E0E70}</Project>
