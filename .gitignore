@@ -27,3 +27,9 @@
 /src/cloudb-oauth-nunit/obj
 /src/cloudb-oauth-nunit/bin
 /src/_ReSharper.cloudb.vs2010
+/src/cloudb+sql-nunit/obj
+/src/cloudb+sql-nunit/bin
+/src/cloudb+sql/bin
+/src/cloudb+sql/obj
+/src/cloudb-nunit-common/obj
+/src/cloudb-nunit-common/bin

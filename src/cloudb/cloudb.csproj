@@ -166,6 +166,7 @@
     <Compile Include="Deveel.Data.Net\MemoryServiceFactory.cs" />
     <Compile Include="Deveel.Data.Net\MessageCommunicator.cs" />
     <Compile Include="Deveel.Data.Net\PathInfo.cs" />
+    <Compile Include="Deveel.Data.Net\PathStats.cs" />
     <Compile Include="Deveel.Data.Net\ReplicatedValueStore.cs" />
     <Compile Include="Deveel.Data.Net\ServiceMessageQueue.cs" />
     <Compile Include="Deveel.Data.Net\ServiceNotConnectedException.cs" />

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -9,31 +10,21 @@ using Deveel.Data.Configuration;
 using Deveel.Data.Diagnostics;
 
 namespace Deveel.Data.Net {
-	internal class MachineNodeService : ServiceBase {
+	partial class MachineNodeService : ServiceBase {
 		private static TcpAdminService service;
+		private readonly CommandLine commandLine;
+		private readonly EventLog eventLog;
 
 		public const string DisplayName = "CloudB Machine Node";
 		public const string Name = "mnode";
 		public const string Description = "The system service that makes this machine one of the nodes of a CloudB network.";
 
-		public MachineNodeService() {
-			ServiceName = Name;
-			AutoLog = true;
+		public MachineNodeService(CommandLine commandLine) {
+			this.commandLine = commandLine;
 
-			CanPauseAndContinue = true;
-			CanStop = true;
-		}
+			eventLog = new EventLog("CloudB Machine Node", ".", "CloudB Machine Node");
 
-		private static Options GetOptions() {
-			Options options = new Options();
-			options.AddOption("nodeconfig", true, "The node configuration file (default: node.conf).");
-			options.AddOption("netconfig", true, "The network configuration file (default: network.conf).");
-			options.AddOption("host", true, "The interface address to bind the socket on the local machine " +
-							  "(optional - if not given binds to all interfaces)");
-			options.AddOption("port", true, "The port to bind the socket.");
-			options.AddOption("storage", true, "The type of storage used to persist node information and data");
-			options.AddOption("protocol", true, "The connection protocol used by this node to listen connections");
-			return options;
+			InitializeComponent();
 		}
 
 		private static IServiceFactory GetServiceFactory(string storage, ConfigSource nodeConfigSource) {
@@ -54,21 +45,19 @@ namespace Deveel.Data.Net {
 		}
 
 		protected override void OnStart(string[] args) {
-			CommandLine commandLine;
-			Options options = GetOptions();
+			eventLog.WriteEntry("Starting the service.", EventLogEntryType.Information);
 
 			string nodeConfig, netConfig;
 			string hostArg, portArg;
 
 			try {
-				ICommandLineParser parser = new GnuParser(options);
-				commandLine = parser.Parse(args);
-
 				nodeConfig = commandLine.GetOptionValue("nodeconfig", "node.conf");
 				netConfig = commandLine.GetOptionValue("netconfig", "network.conf");
 				hostArg = commandLine.GetOptionValue("host");
 				portArg = commandLine.GetOptionValue("port");
-			} catch (ParseException) {
+			} catch (ParseException e) {
+				eventLog.WriteEntry("Parse Error: " + e.Message, EventLogEntryType.Error);
+				ExitCode = 1;
 				throw new ApplicationException("Invalid arguments passed.");
 			}
 
@@ -112,7 +101,7 @@ namespace Deveel.Data.Net {
 				}
 
 				if (host == null)
-					throw new ApplicationException("Error: couldn't determine the host address.");
+					throw new ApplicationException("Could not determine the host address.");
 
 				int port;
 				if (!Int32.TryParse(portArg, out  port))
@@ -121,37 +110,68 @@ namespace Deveel.Data.Net {
 				string storage = commandLine.GetOptionValue("storage", null);
 				IServiceFactory serviceFactory = GetServiceFactory(storage, nodeConfigSource);
 
-				Console.Out.WriteLine("Machine Node, " + host + " : " + port);
 				service = new TcpAdminService(serviceFactory, host, port, password);
 				service.Config = netConfigSource;
 				service.Start();
-			} catch (Exception) {
+
+				eventLog.WriteEntry("TCP/IP service started successfully: " + host + ":" + port, EventLogEntryType.Information);
+				eventLog.WriteEntry("Storage system: " + storage);
+			} catch (Exception e) {
 				if (service != null)
 					service.Dispose();
+
+				eventLog.WriteEntry("Error on start: " + e.Message, EventLogEntryType.Error);
 				throw;
 			}
 		}
 
 		protected override void OnStop() {
-			if (service != null) {
-				service.Stop();
-				service.Dispose();
-				service = null;
+			eventLog.WriteEntry("Stopping the service", EventLogEntryType.Information);
+
+			try {
+				if (service != null) {
+					service.Stop();
+					service.Dispose();
+					service = null;
+				}
+
+				eventLog.WriteEntry("Service successfully stopped");
+			} catch (Exception e) {
+				eventLog.WriteEntry("Error while stopping the service: " + e.Message, EventLogEntryType.Error);
+				ExitCode = 1;
+				throw;
 			}
 		}
 
-		protected override void OnShutdown() {
-			OnStop();
-		}
-
 		protected override void OnContinue() {
-			if (service != null)
-				service.Start();
+			eventLog.WriteEntry("Continue the execution of the service.");
+
+			try {
+				if (service != null)
+					service.Start();
+
+				eventLog.WriteEntry("Service continued its execution");
+			} catch (Exception e) {
+				eventLog.WriteEntry("Error on continue of the execution of the service: " + e.Message, EventLogEntryType.Error);
+				throw;
+			}
 		}
 
 		protected override void OnPause() {
-			if (service != null)
-				service.Stop();
+			eventLog.WriteEntry("Entering in pause mode of the service.");
+
+			try {
+				if (service != null)
+					service.Stop();
+				eventLog.WriteEntry("Service paused");
+			} catch (Exception e) {
+				eventLog.WriteEntry("Error while pause the service: " + e.Message, EventLogEntryType.Error);
+				throw;
+			}
+		}
+
+		public void Start(string[] args) {
+			OnStart(args);
 		}
 	}
 }

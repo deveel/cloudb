@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Configuration.Install;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -9,13 +11,17 @@ using System.Runtime.InteropServices;
 #if UNIX
 using Mono.Unix.Native;
 #endif
+using System.Security.Principal;
 using System.ServiceProcess;
+using System.Text;
 using System.Threading;
 
 using Deveel.Configuration;
 using Deveel.Data.Configuration;
 using Deveel.Data.Diagnostics;
 using Deveel.Data.Util;
+
+using Microsoft.Win32;
 
 namespace Deveel.Data.Net {
 	public static class MachineNode {
@@ -39,6 +45,7 @@ namespace Deveel.Data.Net {
 			                 "the service.");
 			options.AddOption("password", true, "The password credential used to authorize installation and " +
 			                 "uninstallation of the service in this machine.");
+			options.AddOption("service", false, "Starts the node as a service (used internally)");
 			options.AddOption("uninstall", false, "Uninstalls a service for the node that was previously installed.");
 			options.AddOption("storage", true, "The type of storage used to persist node information and data");
 			options.AddOption("protocol", true, "The connection protocol used by this node to listen connections");
@@ -84,17 +91,6 @@ namespace Deveel.Data.Net {
 
 		[STAThread]
 		private static int Main(string[] args) {
-			AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(OnUnhandledException);
-			SetEventHandlers();
-
-			ProductInfo libInfo = ProductInfo.GetProductInfo(typeof (TcpAdminService));
-			ProductInfo nodeInfo = ProductInfo.GetProductInfo(typeof (MachineNode));
-
-			Console.Out.WriteLine("{0} {1} ( {2} )", nodeInfo.Title, nodeInfo.Version, nodeInfo.Copyright);
-			Console.Out.WriteLine(nodeInfo.Description);
-			Console.Out.WriteLine();
-			Console.Out.WriteLine("{0} {1} ( {2} )", libInfo.Title, libInfo.Version, libInfo.Copyright);
-
 			string nodeConfig = null, netConfig = null;
 			string hostArg = null, portArg = null;
 
@@ -104,6 +100,7 @@ namespace Deveel.Data.Net {
 			CommandLine commandLine = null;
 
 			bool failed = false;
+			bool isService = false;
 
 			try {
 				ICommandLineParser parser = new GnuParser(options);
@@ -121,21 +118,63 @@ namespace Deveel.Data.Net {
 			if (commandLine != null) {
 				if (commandLine.HasOption("install")) {
 					try {
-						Install(commandLine.GetOptionValue("user"), commandLine.GetOptionValue("password"));
-					} catch (Exception e) {
-						Console.Error.WriteLine("Error installing service: " + e.Message);
-						return 1;
-					}
-				} else if (commandLine.HasOption("uninstall")) {
-					try {
-						Uninstall();
+						Install(commandLine);
+						Console.Out.WriteLine("Service installed succesfully.");
 						return 0;
 					} catch (Exception e) {
-						Console.Error.WriteLine("Error uninstalling service: " + e.Message);
+						Console.Error.WriteLine("Error installing service: " + e.Message);
+#if DEBUG
+						Console.Error.WriteLine(e.StackTrace);
+#endif
 						return 1;
 					}
 				}
+				if (commandLine.HasOption("uninstall")) {
+					try {
+						Uninstall();
+						Console.Out.WriteLine("Service uninstalled succesfully.");
+						return 0;
+					} catch (Exception e) {
+						Console.Error.WriteLine("Error uninstalling service: " + e.Message);
+#if DEBUG
+						Console.Error.WriteLine(e.StackTrace);
+#endif
+						return 1;
+					}
+				}
+
+				isService = commandLine.HasOption("service");
 			}
+
+			if (isService) {
+				MachineNodeService mnodeService = new MachineNodeService(commandLine);
+
+				try {
+					if (Environment.UserInteractive) {
+						mnodeService.Start(args);
+						Console.Out.WriteLine("Press any key to stop...");
+						Console.Read();
+						mnodeService.Stop();
+					} else {
+						ServiceBase.Run(mnodeService);
+					}
+				} catch(Exception) {
+					return 1;
+				}
+
+				return 0;
+			}
+
+			AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(OnUnhandledException);
+			SetEventHandlers();
+
+			ProductInfo libInfo = ProductInfo.GetProductInfo(typeof (TcpAdminService));
+			ProductInfo nodeInfo = ProductInfo.GetProductInfo(typeof (MachineNode));
+
+			Console.Out.WriteLine("{0} {1} ( {2} )", nodeInfo.Title, nodeInfo.Version, nodeInfo.Copyright);
+			Console.Out.WriteLine(nodeInfo.Description);
+			Console.Out.WriteLine();
+			Console.Out.WriteLine("{0} {1} ( {2} )", libInfo.Title, libInfo.Version, libInfo.Copyright);
 
 			// Check arguments that can be null,
 			if (netConfig == null) {
@@ -278,41 +317,139 @@ namespace Deveel.Data.Net {
 			Environment.Exit(1);
 		}
 
-		private static void Install(string user, string password) {
-			ServiceProcessInstaller processInstaller = new ServiceProcessInstaller();
-			if (!String.IsNullOrEmpty(user)) {
-				processInstaller.Account = ServiceAccount.NetworkService;
-				processInstaller.Username = user;
-				processInstaller.Password = password;
-			} else {
-				processInstaller.Account = ServiceAccount.NetworkService;
+		private static EventLogInstaller FindInstaller(InstallerCollection installers) {
+			foreach (Installer installer in installers) {
+				if (installer is EventLogInstaller) {
+					return (EventLogInstaller)installer;
+				}
+
+				EventLogInstaller eventLogInstaller = FindInstaller(installer.Installers);
+				if (eventLogInstaller != null) {
+					return eventLogInstaller;
+				}
+			}
+			return null;
+		}
+
+		private static string GetServiceCommandLine(CommandLine commandLine) {
+			bool nodeConfigFound = false, netConfigFound = false;
+
+			Option[] options = commandLine.Options;
+			List<Option> normOptions = new List<Option>(options.Length);
+			for (int i = 0; i < options.Length; i++) {
+				Option opt = options[i];
+				if ((opt.Name == "user" || opt.LongName == "user") ||
+					(opt.Name == "user" || opt.LongName == "password") ||
+					(opt.Name == "service" || opt.LongName == "service") ||
+					(opt.Name == "install" || opt.LongName == "install"))
+					continue;
+
+				if (opt.Name == "nodeconfig" || opt.LongName == "nodeconfig") {
+					nodeConfigFound = true;
+				} else if (opt.Name == "netconfig" || opt.LongName == "netconfig") {
+					netConfigFound = true;
+				}
+
+				normOptions.Add(opt);
 			}
 
-			string execPath = Path.Combine(Environment.CurrentDirectory, "mnode.exe");
-			string assemblyPath = String.Format("/assemblypath={0}", execPath);
-			InstallContext context = new InstallContext(null, new string[] { assemblyPath });
+			if (!nodeConfigFound)
+				normOptions.Add(new Option("nodeconfig", true, ""));
+			if (!netConfigFound)
+				normOptions.Add(new Option("netconfig", true, ""));
 
-			ServiceInstaller installer = new ServiceInstaller();
+			StringBuilder sb = new StringBuilder();
+
+			for (int i = 0; i < normOptions.Count; i++) {
+				Option opt = normOptions[i];
+				sb.Append("-");
+				if (opt.HasLongName) {
+					sb.Append("-");
+					sb.Append(opt.LongName);
+				} else {
+					sb.Append(opt.Name);
+				}
+
+				if (opt.HasArgument) {
+					sb.Append(" ");
+
+					string value;
+					if (opt.Name == "netconfig") {
+						value = NormalizeFilePath(commandLine.GetOptionValue(opt.Name, "./network.conf"));
+					} else if (opt.Name == "nodeconfig") {
+						value = NormalizeFilePath(commandLine.GetOptionValue(opt.Name, "./node.conf"));
+					} else {
+						value = commandLine.GetOptionValue(opt.Name);
+					}
+
+					sb.Append(value);
+				}
+
+				if (i < normOptions.Count - 1)
+					sb.Append(" ");
+			}
+
+			return sb.ToString();
+		}
+
+		private static void Install(CommandLine commandLine) {
+			string options = GetServiceCommandLine(commandLine);
+
+			string logFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "install.log");
+			string assemblyPath = typeof (MachineNode).Assembly.Location;
+			InstallContext context = new InstallContext(logFile,
+			                                            new string[] {
+			                                                         	String.Format("/assemblypath={0}", assemblyPath),
+			                                                         	String.Format("/logfile={0}", logFile)
+			                                                         });
+			if (!String.IsNullOrEmpty(options))
+				context.Parameters["AdditionalOptions"] = options;
+
+			ListDictionary savedState = new ListDictionary();
+
+			AssemblyInstaller installer = new AssemblyInstaller(typeof (MachineNodeService).Assembly, new string[0]);
 			installer.Context = context;
-			installer.DisplayName = MachineNodeService.DisplayName;
-			installer.Description = MachineNodeService.Description;
-			installer.ServiceName = MachineNodeService.Name;
-			installer.StartType = ServiceStartMode.Automatic;
-			installer.Parent = processInstaller;
+			installer.UseNewContext = false;
+			installer.AfterInstall += AfterInstall;
+			installer.Install(savedState);
+			installer.Commit(savedState);
+		}
 
-			ListDictionary state = new ListDictionary();
-			installer.Install(state);
+		private static void AfterInstall(object sender, InstallEventArgs e) {
+			AssemblyInstaller installer = (AssemblyInstaller)sender;
+#if WINDOWS
+			RegistryKey system = Registry.LocalMachine.OpenSubKey("System");
+			RegistryKey currentControlSet = system.OpenSubKey("CurrentControlSet");
+			RegistryKey servicesKey = currentControlSet.OpenSubKey("Services");
+			RegistryKey serviceKey = servicesKey.OpenSubKey(MachineNodeService.Name, true);
+
+			string options = null;
+			if (installer.Context.Parameters.ContainsKey("AdditionalOptions"))
+				options = installer.Context.Parameters["AdditionalOptions"];
+
+			StringBuilder sb = new StringBuilder((string)serviceKey.GetValue("ImagePath"));
+			sb.Append(" ");
+			sb.Append("-service");
+			if (!String.IsNullOrEmpty(options)) {
+				sb.Append(" ");
+				sb.Append(options);
+			}
+
+			serviceKey.SetValue("ImagePath", sb.ToString());
+#endif
 		}
 
 		private static void Uninstall() {
-			InstallContext context = new InstallContext(null, null);
-			ServiceInstaller installer = new ServiceInstaller();
+			string logFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "uninstall.log");
+			InstallContext context = new InstallContext(logFile, new string[] {String.Format("/logfile={0}", logFile)});
+			AssemblyInstaller installer = new AssemblyInstaller(typeof (MachineNodeService).Assembly,
+			                                                    new string[] {String.Format("/logfile={0}", logFile)});
 			installer.Context = context;
-			installer.ServiceName = MachineNodeService.Name;
-			ListDictionary state = new ListDictionary();
-			installer.Uninstall(state);
+			installer.UseNewContext = false;
+			installer.Uninstall(null);
+			installer.Commit(null);
 		}
-		
+
 #if WINDOWS
 		[DllImport("kernel32")]
 		private static extern bool SetConsoleCtrlHandler(HandlerRoutine Handler, bool Add);
