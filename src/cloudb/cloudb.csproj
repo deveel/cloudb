@@ -123,6 +123,9 @@
     </Compile>
     <Compile Include="Deveel.Data.Net\BlockServerElement.cs" />
     <Compile Include="Deveel.Data.Net\BlockServerTable.cs" />
+    <Compile Include="Deveel.Data.Net\ClientCommandEventArgs.cs" />
+    <Compile Include="Deveel.Data.Net\ClientConnectionEventArgs.cs" />
+    <Compile Include="Deveel.Data.Net\ClientConnection.cs" />
     <Compile Include="Deveel.Data.Net\CommitFaultException.cs" />
     <Compile Include="Deveel.Data.Net\CompressedBlockStore.cs" />
     <Compile Include="Deveel.Data.Net\CompressedNodeSet.cs" />

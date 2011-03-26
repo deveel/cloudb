@@ -66,8 +66,10 @@ namespace Deveel.Data.Net {
 
 						Logger.Info("Connection from " + ipAddress);
 
-						if (IPAddress.IsLoopback(ipAddress) || 
-							IsAddressAllowed(ipAddress.ToString())) {
+						bool authorized = IPAddress.IsLoopback(ipAddress) ||
+						                  IsAddressAllowed(ipAddress.ToString());
+
+						if (OnClientConnect(ipAddress.ToString(), authorized)) {
 							// Dispatch the connection to the thread pool,
 							TcpConnection c = new TcpConnection(this, s);
 							if (connections == null)
@@ -139,11 +141,14 @@ namespace Deveel.Data.Net {
 			private readonly TcpAdminService service;
 			private readonly Socket socket;
 			private readonly Random random;
+			private readonly string remoteEndPoint;
 			private bool open;
 
 			public TcpConnection(TcpAdminService service, Socket socket) {
 				this.service = service;
 				this.socket = socket;
+
+				remoteEndPoint = socket.RemoteEndPoint.ToString();
 				open = true;
 				random = new Random();
 			}
@@ -203,17 +208,21 @@ namespace Deveel.Data.Net {
 						// Read the command destination,
 						char destination = reader.ReadChar();
 						// Exit thread command,
-						if (destination == 'e')
+						if (destination == 'e') {
+							service.OnClientDisconnect(remoteEndPoint);
 							return;
+						}
 
 						// Read the message stream object
 						IMessageSerializer serializer = service.MessageSerializer;
 						RequestMessage requestMessage = (RequestMessage) serializer.Deserialize(reader.BaseStream, MessageType.Request);
 
+						service.OnClientRequest(service.ServiceType, remoteEndPoint, requestMessage);
+
 						Message responseMessage;
 
 						// For analytics
-						DateTime benchmark_start = DateTime.Now;
+						DateTime benchmarkStart = DateTime.Now;
 
 						// Destined for the administration module,
 						if (destination == 'a') {
@@ -247,10 +256,12 @@ namespace Deveel.Data.Net {
 							throw new IOException("Unknown destination: " + destination);
 						}
 
+						service.OnClientResponse(remoteEndPoint, responseMessage);
+
 						// Update the stats
-						DateTime benchmark_end = DateTime.Now;
-						TimeSpan time_took = benchmark_end - benchmark_start;
-						service.Analytics.AddEvent(benchmark_end, time_took);
+						DateTime benchmarkEnd = DateTime.Now;
+						TimeSpan timeTook = benchmarkEnd - benchmarkStart;
+						service.Analytics.AddEvent(benchmarkEnd, timeTook);
 
 						// Write and flush the output message,
 						serializer.Serialize(responseMessage, writer.BaseStream);

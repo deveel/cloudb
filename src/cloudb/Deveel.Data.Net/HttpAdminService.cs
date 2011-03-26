@@ -43,18 +43,21 @@ namespace Deveel.Data.Net {
 
 						Logger.Info("Connection opened with HTTP client " + ipAddress);
 
-						// Check it's allowed,
-						if (context.Request.IsLocal ||
-							IsAddressAllowed(ipAddress.ToString())) {
+						string ipAddressString = ipAddress.ToString();
+						bool authorized = context.Request.IsLocal || IsAddressAllowed(ipAddressString);
+
+						authorized = OnClientConnect(ipAddressString, authorized);
+
+						// Check it's allowed,)
+						if (authorized) {
 							// Dispatch the connection to the thread pool,
 							HttpConnection c = new HttpConnection(this);
 							ThreadPool.QueueUserWorkItem(c.Work, context);
 						} else {
 							context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
 							context.Response.Close();
-							Logger.Error(String.Format("The client IP address {0} is not authorized", ipAddress));
+							Logger.Error(String.Format("The client IP address {0} is not authorized", ipAddressString));
 						}
-
 					} catch (IOException e) {
 						Logger.Warning(e);
 					}
@@ -131,6 +134,8 @@ namespace Deveel.Data.Net {
 
 					// The main command dispatch loop for this connection,
 					while (true) {
+						IPAddress ipAddress = context.Request.RemoteEndPoint.Address;
+
 						// Read the command destination,
 						string serviceTypeString =  context.Request.Headers["Service-Type"];
 						if (String.IsNullOrEmpty(serviceTypeString) ||
@@ -143,47 +148,51 @@ namespace Deveel.Data.Net {
 						IMessageSerializer serializer = service.Serializer;
 						RequestMessage requestMessage = (RequestMessage) serializer.Deserialize(context.Request.InputStream, MessageType.Request);
 
-						Message message_out;
+						Message responseMessage;
+
+						service.OnClientRequest(serviceType, ipAddress.ToString(), requestMessage);
 
 						// For analytics
-						DateTime benchmark_start = DateTime.Now;
+						DateTime benchmarkStart = DateTime.Now;
 
 						// Destined for the administration module,
 						if (serviceType == ServiceType.Admin) {
-							message_out = service.Processor.Process(requestMessage);
+							responseMessage = service.Processor.Process(requestMessage);
 						}
 							// For a block service in this machine
 						else if (serviceType == ServiceType.Block) {
 							if (service.Block == null) {
-								message_out = NoServiceError(requestMessage);
+								responseMessage = NoServiceError(requestMessage);
 							} else {
-								message_out = service.Block.Processor.Process(requestMessage);
+								responseMessage = service.Block.Processor.Process(requestMessage);
 							}
 
 						}
 							// For a manager service in this machine
 						else if (serviceType == ServiceType.Manager) {
 							if (service.Manager == null) {
-								message_out = NoServiceError(requestMessage);
+								responseMessage = NoServiceError(requestMessage);
 							} else {
-								message_out = service.Manager.Processor.Process(requestMessage);
+								responseMessage = service.Manager.Processor.Process(requestMessage);
 							}
 						}
 							// For a root service in this machine
 						else if (serviceType == ServiceType.Root) {
 							if (service.Root == null) {
-								message_out = NoServiceError(requestMessage);
+								responseMessage = NoServiceError(requestMessage);
 							} else {
-								message_out = service.Root.Processor.Process(requestMessage);
+								responseMessage = service.Root.Processor.Process(requestMessage);
 							}
 						} else {
 							throw new InvalidOperationException("Invalid destination service.");
 						}
 
+						service.OnClientResponse(ipAddress.ToString(), responseMessage);
+
 						// Update the stats
-						DateTime benchmark_end = DateTime.Now;
-						TimeSpan time_took = benchmark_end - benchmark_start;
-						service.Analytics.AddEvent(benchmark_end, time_took);
+						DateTime benchmarkEnd = DateTime.Now;
+						TimeSpan timeTook = benchmarkEnd - benchmarkStart;
+						service.Analytics.AddEvent(benchmarkEnd, timeTook);
 
 						// Write and flush the output message,
 						context.Response.StatusCode = (int)HttpStatusCode.OK;
@@ -192,9 +201,11 @@ namespace Deveel.Data.Net {
 							context.Response.ContentEncoding = Encoding.GetEncoding(textSerializer.ContentEncoding);
 							context.Response.ContentType = textSerializer.ContentType;
 						}
-						serializer.Serialize(message_out, context.Response.OutputStream);
+						serializer.Serialize(responseMessage, context.Response.OutputStream);
 						context.Response.OutputStream.Flush();
 						context.Response.Close();
+
+						service.OnClientDisconnect(ipAddress.ToString());
 					} // while (true)
 
 				} catch (IOException e) {
