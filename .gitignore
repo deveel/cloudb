@@ -37,3 +37,5 @@
 /src/cloudb+sql/obj
 /src/cloudb+sql/bin
 /src/cloudb+sql-nunit/obj
+
+/src/cdbcli/obj
