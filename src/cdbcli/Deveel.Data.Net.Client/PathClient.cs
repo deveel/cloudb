@@ -22,52 +22,33 @@ using Deveel.Data.Util;
 
 using Microsoft.Win32;
 
-namespace Deveel.Data.Net {
-	public static class MachineNode {
-		private static TcpAdminService service;
+namespace Deveel.Data.Net.Client {
+	public static class PathClient {
+		private static PathClientService service;
 
 #if WINDOWS
 		private static HandlerRoutine ExitCallback;
 #endif
 
 		private static AutoResetEvent waitHandle;
-				
+
 		private static Options GetOptions() {
 			Options options = new Options();
-			options.AddOption("nodeconfig", true, "The node configuration file (default: node.conf).");
 			options.AddOption("netconfig", true, "The network configuration file (default: network.conf).");
 			options.AddOption("host", true, "The interface address to bind the socket on the local machine " +
 							  "(optional - if not given binds to all interfaces)");
 			options.AddOption("port", true, "The port to bind the socket.");
 			options.AddOption("install", false, "Installs the node as a service in this machine");
 			options.AddOption("user", true, "The user name for the authorization credentials to install/uninstall " +
-			                 "the service.");
+							 "the service.");
 			options.AddOption("password", true, "The password credential used to authorize installation and " +
-			                 "uninstallation of the service in this machine.");
+							 "uninstallation of the service in this machine.");
 			options.AddOption("service", false, "Starts the node as a service (used internally)");
 			options.AddOption("uninstall", false, "Uninstalls a service for the node that was previously installed.");
-			options.AddOption("storage", true, "The type of storage used to persist node information and data");
 			options.AddOption("protocol", true, "The connection protocol used by this node to listen connections");
 			return options;
 		}
-		
-		private static IServiceFactory GetServiceFactory(string storage, ConfigSource nodeConfigSource) {
-			if (storage == "file") {
-				string nodeDir = nodeConfigSource.GetString("node_directory", Environment.CurrentDirectory);
-				return new FileSystemServiceFactory(nodeDir);
-			}
-			if (storage == "memory")
-				return new MemoryServiceFactory();
-			
-			if (String.IsNullOrEmpty(storage) &&
-			   	nodeConfigSource != null) {
-				storage = nodeConfigSource.GetString("storage", "file");
-				return GetServiceFactory(storage, nodeConfigSource);
-			}
-			
-			return null;
-		}
-		
+
 		private static void SetEventHandlers() {
 #if WINDOWS
 			ExitCallback = new HandlerRoutine(ConsoleCtrlCheck);
@@ -88,9 +69,8 @@ namespace Deveel.Data.Net {
 			return fileName;
 		}
 
-		[STAThread]
-		private static int Main(string[] args) {
-			string nodeConfig = null, netConfig = null;
+		public static int Main(string[] args) {
+			string netConfig = null;
 			string hostArg = null, portArg = null;
 
 			StringWriter wout = new StringWriter();
@@ -105,7 +85,6 @@ namespace Deveel.Data.Net {
 				ICommandLineParser parser = new GnuParser(options);
 				commandLine = parser.Parse(args);
 
-				nodeConfig = commandLine.GetOptionValue("nodeconfig", "./node.conf");
 				netConfig = commandLine.GetOptionValue("netconfig", "./network.conf");
 				hostArg = commandLine.GetOptionValue("host");
 				portArg = commandLine.GetOptionValue("port");
@@ -146,18 +125,18 @@ namespace Deveel.Data.Net {
 			}
 
 			if (isService) {
-				MachineNodeService mnodeService = new MachineNodeService(commandLine);
+				CloudBClientService clientService = new CloudBClientService(commandLine);
 
 				try {
 					if (Environment.UserInteractive) {
-						mnodeService.Start(args);
+						clientService.Start(args);
 						Console.Out.WriteLine("Press any key to stop...");
 						Console.Read();
-						mnodeService.Stop();
+						clientService.Stop();
 					} else {
-						ServiceBase.Run(mnodeService);
+						ServiceBase.Run(clientService);
 					}
-				} catch(Exception) {
+				} catch (Exception) {
 					return 1;
 				}
 
@@ -167,8 +146,8 @@ namespace Deveel.Data.Net {
 			AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(OnUnhandledException);
 			SetEventHandlers();
 
-			ProductInfo libInfo = ProductInfo.GetProductInfo(typeof (TcpAdminService));
-			ProductInfo nodeInfo = ProductInfo.GetProductInfo(typeof (MachineNode));
+			ProductInfo libInfo = ProductInfo.GetProductInfo(typeof(PathClientService));
+			ProductInfo nodeInfo = ProductInfo.GetProductInfo(typeof(PathClient));
 
 			Console.Out.WriteLine("{0} {1} ( {2} )", nodeInfo.Title, nodeInfo.Version, nodeInfo.Copyright);
 			Console.Out.WriteLine(nodeInfo.Description);
@@ -179,10 +158,8 @@ namespace Deveel.Data.Net {
 			if (netConfig == null) {
 				wout.WriteLine("Error, no network configuration given.");
 				failed = true;
-			} else if (nodeConfig == null) {
-				wout.WriteLine("Error, no node configuration file given.");
-				failed = true;
 			}
+
 			if (portArg == null) {
 				wout.WriteLine("Error, no port address given.");
 				failed = true;
@@ -191,13 +168,9 @@ namespace Deveel.Data.Net {
 			if (!failed) {
 				//TODO: support for remote (eg. HTTP, FTP, TCP/IP) configurations)
 
-				nodeConfig = NormalizeFilePath(nodeConfig);
 				netConfig = NormalizeFilePath(netConfig);
 
-				if (!File.Exists(nodeConfig)) {
-					wout.WriteLine("Error, node configuration file not found ({0}).", nodeConfig);
-					failed = true;
-				} else if (!File.Exists(netConfig)) {
+				if (!File.Exists(netConfig)) {
 					wout.WriteLine("Error, node configuration file not found ({0}).", netConfig);
 					failed = true;
 				}
@@ -221,17 +194,6 @@ namespace Deveel.Data.Net {
 
 			try {
 #if DEBUG
-				Console.Out.WriteLine("Retrieving node configuration from {0}", nodeConfig);
-#endif
-
-				// Get the node configuration file,
-				ConfigSource nodeConfigSource = new ConfigSource();
-				using (FileStream fin = new FileStream(nodeConfig, FileMode.Open, FileAccess.Read, FileShare.None)) {
-					//TODO: make it configurable ...
-					nodeConfigSource.LoadProperties(new BufferedStream(fin));
-				}
-
-#if DEBUG
 				Console.Out.WriteLine("Retrieving network configuration from {0}", netConfig);
 #endif
 
@@ -242,15 +204,6 @@ namespace Deveel.Data.Net {
 					//TODO: make it configurable ...
 					netConfigSource.LoadProperties(stream);
 				}
-
-				string password = nodeConfigSource.GetString("network_password", null);
-				if (password == null) {
-					Console.Out.WriteLine("Error: couldn't determine the network password.");
-					return 1;
-				}
-
-				// configure the loggers
-				Logger.Init(nodeConfigSource);
 
 				//TODO: support also IPv6
 
@@ -281,12 +234,11 @@ namespace Deveel.Data.Net {
 				}
 
 				string storage = commandLine.GetOptionValue("storage", null);
-				IServiceFactory serviceFactory = GetServiceFactory(storage, nodeConfigSource);
 
-				Console.Out.WriteLine("Machine Node, " + host + " : " + port);
-				service = new TcpAdminService(serviceFactory, host, port, password);
-				service.Config = netConfigSource;
-				service.Start();
+				Console.Out.WriteLine("Path Client Service, " + host + " : " + port);
+				//TODO:
+				service = new TcpPathClientService(null, null, null);
+				service.Init();
 
 				waitHandle = new AutoResetEvent(false);
 				waitHandle.WaitOne();
@@ -311,128 +263,17 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		static void OnUnhandledException(object sender, UnhandledExceptionEventArgs e) {
+		private static void OnUnhandledException(object sender, UnhandledExceptionEventArgs e) {
 			Console.Error.WriteLine("Unhandled exception: {0}", e.ExceptionObject);
 			Environment.Exit(1);
 		}
 
-		private static string GetServiceCommandLine(CommandLine commandLine) {
-			bool nodeConfigFound = false, netConfigFound = false;
-
-			Option[] options = commandLine.Options;
-			List<Option> normOptions = new List<Option>(options.Length);
-			for (int i = 0; i < options.Length; i++) {
-				Option opt = options[i];
-				if ((opt.Name == "user" || opt.LongName == "user") ||
-					(opt.Name == "user" || opt.LongName == "password") ||
-					(opt.Name == "service" || opt.LongName == "service") ||
-					(opt.Name == "install" || opt.LongName == "install"))
-					continue;
-
-				if (opt.Name == "nodeconfig" || opt.LongName == "nodeconfig") {
-					nodeConfigFound = true;
-				} else if (opt.Name == "netconfig" || opt.LongName == "netconfig") {
-					netConfigFound = true;
-				}
-
-				normOptions.Add(opt);
-			}
-
-			if (!nodeConfigFound)
-				normOptions.Add(new Option("nodeconfig", true, ""));
-			if (!netConfigFound)
-				normOptions.Add(new Option("netconfig", true, ""));
-
-			StringBuilder sb = new StringBuilder();
-
-			for (int i = 0; i < normOptions.Count; i++) {
-				Option opt = normOptions[i];
-				sb.Append("-");
-				if (opt.HasLongName) {
-					sb.Append("-");
-					sb.Append(opt.LongName);
-				} else {
-					sb.Append(opt.Name);
-				}
-
-				if (opt.HasArgument) {
-					sb.Append(" ");
-
-					string value;
-					if (opt.Name == "netconfig") {
-						value = NormalizeFilePath(commandLine.GetOptionValue(opt.Name, "./network.conf"));
-					} else if (opt.Name == "nodeconfig") {
-						value = NormalizeFilePath(commandLine.GetOptionValue(opt.Name, "./node.conf"));
-					} else {
-						value = commandLine.GetOptionValue(opt.Name);
-					}
-
-					sb.Append(value);
-				}
-
-				if (i < normOptions.Count - 1)
-					sb.Append(" ");
-			}
-
-			return sb.ToString();
+		private static void Uninstall() {
+			throw new NotImplementedException();
 		}
 
 		private static void Install(CommandLine commandLine) {
-			string options = GetServiceCommandLine(commandLine);
-
-			string logFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "install.log");
-			string assemblyPath = typeof (MachineNode).Assembly.Location;
-			InstallContext context = new InstallContext(logFile,
-			                                            new string[] {
-			                                                         	String.Format("/assemblypath={0}", assemblyPath),
-			                                                         	String.Format("/logfile={0}", logFile)
-			                                                         });
-			if (!String.IsNullOrEmpty(options))
-				context.Parameters["AdditionalOptions"] = options;
-
-			ListDictionary savedState = new ListDictionary();
-
-			AssemblyInstaller installer = new AssemblyInstaller(typeof (MachineNodeService).Assembly, new string[0]);
-			installer.Context = context;
-			installer.UseNewContext = false;
-			installer.AfterInstall += AfterInstall;
-			installer.Install(savedState);
-			installer.Commit(savedState);
-		}
-
-		private static void AfterInstall(object sender, InstallEventArgs e) {
-			AssemblyInstaller installer = (AssemblyInstaller)sender;
-#if WINDOWS
-			RegistryKey system = Registry.LocalMachine.OpenSubKey("System");
-			RegistryKey currentControlSet = system.OpenSubKey("CurrentControlSet");
-			RegistryKey servicesKey = currentControlSet.OpenSubKey("Services");
-			RegistryKey serviceKey = servicesKey.OpenSubKey(MachineNodeService.Name, true);
-
-			string options = null;
-			if (installer.Context.Parameters.ContainsKey("AdditionalOptions"))
-				options = installer.Context.Parameters["AdditionalOptions"];
-
-			StringBuilder sb = new StringBuilder((string)serviceKey.GetValue("ImagePath"));
-			sb.Append(" ");
-			sb.Append("-service");
-			if (!String.IsNullOrEmpty(options)) {
-				sb.Append(" ");
-				sb.Append(options);
-			}
-
-			serviceKey.SetValue("ImagePath", sb.ToString());
-#endif
-		}
-
-		private static void Uninstall() {
-			string logFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "uninstall.log");
-			InstallContext context = new InstallContext(logFile, new string[] {String.Format("/logfile={0}", logFile)});
-			AssemblyInstaller installer = new AssemblyInstaller(typeof (MachineNodeService).Assembly,
-			                                                    new string[] {String.Format("/logfile={0}", logFile)});
-			installer.Context = context;
-			installer.UseNewContext = false;
-			installer.Uninstall(null);
-			installer.Commit(null);
+			throw new NotImplementedException();
 		}
 
 #if WINDOWS

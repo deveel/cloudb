@@ -15,6 +15,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudb", "cloudb\cloudb.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudbase", "cloudbase\cloudbase.csproj", "{A2099A92-DA13-4440-B2F9-7890750E0E70}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cdbcli", "cdbcli\cdbcli.csproj", "{920DE5AB-7A87-4708-A0DC-E13EBFA92D79}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cdbclilib", "cdbclilib\cdbclilib.csproj", "{E463A8D7-636A-41BE-965F-EE1D776C9A03}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug.Unix|Any CPU = Debug.Unix|Any CPU
@@ -90,6 +94,24 @@ Global
 		{A2099A92-DA13-4440-B2F9-7890750E0E70}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A2099A92-DA13-4440-B2F9-7890750E0E70}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A2099A92-DA13-4440-B2F9-7890750E0E70}.Release|x86.ActiveCfg = Release|Any CPU
+		{920DE5AB-7A87-4708-A0DC-E13EBFA92D79}.Debug.Unix|Any CPU.ActiveCfg = Debug|Any CPU
+		{920DE5AB-7A87-4708-A0DC-E13EBFA92D79}.Debug.Unix|Any CPU.Build.0 = Debug|Any CPU
+		{920DE5AB-7A87-4708-A0DC-E13EBFA92D79}.Debug.Unix|x86.ActiveCfg = Debug|Any CPU
+		{920DE5AB-7A87-4708-A0DC-E13EBFA92D79}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{920DE5AB-7A87-4708-A0DC-E13EBFA92D79}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{920DE5AB-7A87-4708-A0DC-E13EBFA92D79}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{920DE5AB-7A87-4708-A0DC-E13EBFA92D79}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{920DE5AB-7A87-4708-A0DC-E13EBFA92D79}.Release|Any CPU.Build.0 = Release|Any CPU
+		{920DE5AB-7A87-4708-A0DC-E13EBFA92D79}.Release|x86.ActiveCfg = Release|Any CPU
+		{E463A8D7-636A-41BE-965F-EE1D776C9A03}.Debug.Unix|Any CPU.ActiveCfg = Debug|Any CPU
+		{E463A8D7-636A-41BE-965F-EE1D776C9A03}.Debug.Unix|Any CPU.Build.0 = Debug|Any CPU
+		{E463A8D7-636A-41BE-965F-EE1D776C9A03}.Debug.Unix|x86.ActiveCfg = Debug|Any CPU
+		{E463A8D7-636A-41BE-965F-EE1D776C9A03}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E463A8D7-636A-41BE-965F-EE1D776C9A03}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E463A8D7-636A-41BE-965F-EE1D776C9A03}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E463A8D7-636A-41BE-965F-EE1D776C9A03}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E463A8D7-636A-41BE-965F-EE1D776C9A03}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E463A8D7-636A-41BE-965F-EE1D776C9A03}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
