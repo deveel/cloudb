@@ -43,7 +43,7 @@ namespace Deveel.Data.Net.Serialization {
 			expected.Append("\"method\":\"testMethod\",");
 			expected.Append("\"params\":[");
 			expected.Append("34,");
-			expected.Append("20090722T11:09:56");
+			expected.Append("{\"$type\":\"dateTime\",\"format\":\"yyyyMMddTHH:mm:s\",\"value\":\"20090722T11:09:56\"}");
 			expected.Append("]");
 			expected.Append("}");
 

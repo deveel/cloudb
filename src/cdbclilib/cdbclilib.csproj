@@ -36,6 +36,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Deveel.Data.Net.Client\EmbeddedPathClient.cs" />
     <Compile Include="Deveel.Data.Net.Client\PathStreamWriter.cs" />
     <Compile Include="Deveel.Data.Net.Client\PathStruct.cs" />
     <Compile Include="Deveel.Data.Net.Client\PathValue.cs" />

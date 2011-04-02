@@ -128,7 +128,7 @@ namespace Deveel.Data.Net.Client {
 
 					int index = pathName.IndexOf('?');
 
-					Dictionary<string, object> args = new Dictionary<string, object>();
+					Dictionary<string, PathValue> args = new Dictionary<string, PathValue>();
 					if (index != -1) {
 						//TODO: extract the transaction id from the query ...
 						string query = pathName.Substring(index + 1);
@@ -140,11 +140,11 @@ namespace Deveel.Data.Net.Client {
 								string s = sp[i].Trim();
 								int idx = s.IndexOf('=');
 								if (idx == -1) {
-									args[s] = String.Empty;
+									args[s] = PathValue.Null;
 								} else {
 									string key = s.Substring(0, index);
 									string value = s.Substring(index + 1);
-									args[key] = value;
+									args[key] = new PathValue(value);
 								}
 							}
 						}
@@ -161,10 +161,10 @@ namespace Deveel.Data.Net.Client {
 						if (index != -1) {
 							string id = resourceId.Substring(index + 1);
 							resourceId = resourceId.Substring(0, index);
-							args[RequestMessage.ItemIdName] = id;
+							args[RequestMessage.ItemIdName] = new PathValue(id);
 						}
 
-						args[RequestMessage.ResourceIdName] = resourceId;
+						args[RequestMessage.ResourceIdName] = new PathValue(resourceId);
 					}
 
 					Stream requestStream = null;

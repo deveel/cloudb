@@ -161,7 +161,7 @@ namespace Deveel.Data.Net.Client {
 			return request;
 		}
 
-		protected ResponseMessage HandleRequest(object context, RequestType type, string pathName, IDictionary<string, object> args, Stream requestStream) {
+		protected ResponseMessage HandleRequest(object context, RequestType type, string pathName, IDictionary<string, PathValue> args, Stream requestStream) {
 			//TODO: allow having multiple handlers for the service ...
 			HandlerContainer handler = GetMethodHandler(pathName);
 			if (handler == null)
@@ -173,7 +173,7 @@ namespace Deveel.Data.Net.Client {
 			IPathTransaction transaction;
 
 			if (TransactionIdKey != null && (args != null && args.ContainsKey(TransactionIdKey))) {
-				int tid = Convert.ToInt32(args[TransactionIdKey]);
+				int tid = args[TransactionIdKey].ToInt32();
 				transaction = GetTransaction(pathName, tid);
 			} else {
 				transaction = CreateTransaction(pathName);
@@ -181,7 +181,7 @@ namespace Deveel.Data.Net.Client {
 
 			ClientRequestMessage request = GetMethodRequest(type, ((PathTransaction) transaction), requestStream);
 			if (args != null) {
-				foreach(KeyValuePair<string, object> pair in args) {
+				foreach(KeyValuePair<string, PathValue> pair in args) {
 					request.Attributes.Add(pair.Key, pair.Value);
 				}
 			}

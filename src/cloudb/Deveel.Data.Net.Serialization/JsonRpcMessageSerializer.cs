@@ -329,7 +329,7 @@ namespace Deveel.Data.Net.Serialization {
 		}
 
 		private void WriteValue(MessageArgument argument, JsonWriter writer) {
-			WriteValue(argument, argument.Format, writer);
+			WriteValue(argument.Value, argument.Format, writer);
 		}
 
 		private void Serialize(Message message, JsonWriter writer, bool inStream) {
@@ -362,7 +362,37 @@ namespace Deveel.Data.Net.Serialization {
 				}
 				writer.WriteArrayEnd();
 			} else {
-				
+				writer.WritePropertyName("result");
+				IList<MessageArgument> args = message.Arguments;
+				if (args.Count == 0) {
+					writer.Write(null);
+				} else if (args.Count == 1) {
+					if (message.HasError) {
+						writer.Write(null);
+						writer.WritePropertyName("error");
+						writer.WriteObjectStart();
+						writer.WritePropertyName("message");
+						writer.Write(message.ErrorMessage);
+						writer.WritePropertyName("source");
+						writer.Write(message.Error.Source);
+						writer.WritePropertyName("stackTrace");
+						//TODO: does the string needs to be normalized?
+						writer.Write(message.ErrorStackTrace);
+						writer.WriteObjectEnd();
+					} else {
+						WriteValue(args[0], writer);
+						writer.WritePropertyName("error");
+						writer.Write(null);
+					}
+				} else {
+					// here we are sure we don't have an error, so skip
+					// any check about it
+					writer.WriteArrayStart();
+					foreach (MessageArgument argument in message.Arguments) {
+						WriteValue(argument, writer);
+					}
+					writer.WriteArrayEnd();
+				}
 			}
 
 			if (!inStream)

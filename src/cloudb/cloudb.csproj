@@ -65,6 +65,10 @@
     <Compile Include="Deveel.Data.Configuration\ConfigFormat.cs" />
     <Compile Include="Deveel.Data.Configuration\ConfigurationException.cs" />
     <Compile Include="Deveel.Data.Configuration\IConfigFormatter.cs" />
+    <Compile Include="Deveel.Data.Net.Client\PathStruct.cs" />
+    <Compile Include="Deveel.Data.Net.Client\PathValue.cs" />
+    <Compile Include="Deveel.Data.Net.Client\PathValueType.cs" />
+    <Compile Include="Deveel.Data.Net.Client\PathValue_Conversion.cs" />
     <Compile Include="Deveel.Data.Net.Security\InvalidUserPasswordException.cs" />
     <Compile Include="Deveel.Data.Net.Security\IUser.cs" />
     <Compile Include="Deveel.Data.Configuration\PropertiesConfigFormatter.cs" />
