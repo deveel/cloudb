@@ -1,6 +1,7 @@
 ﻿using System;
 
 using Deveel.Data.Configuration;
+using Deveel.Data.Net.Serialization;
 
 using NUnit.Framework;
 
@@ -45,7 +46,12 @@ namespace Deveel.Data.Net {
 		}
 
 		protected override IServiceConnector CreateConnector() {
-			return new HttpServiceConnector("foo", "foo");
+			HttpServiceConnector connector = new HttpServiceConnector();
+			if (format == HttpMessageFormat.Json)
+				connector.MessageSerializer = new JsonRpcMessageSerializer();
+			else if (format == HttpMessageFormat.Xml)
+				connector.MessageSerializer = new XmlRpcMessageSerializer();
+			return connector;
 		}
 	}
 }

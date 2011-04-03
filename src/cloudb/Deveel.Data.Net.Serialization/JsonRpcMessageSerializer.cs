@@ -197,9 +197,8 @@ namespace Deveel.Data.Net.Serialization {
 				JsonWriter jsonWriter = new JsonWriter(sb);
 				jsonWriter.WriteObjectStart();
 
-				Type type = null;
-				IJsonRpcTypeResolver resolver = null;
-
+				Type type;
+				IJsonRpcTypeResolver resolver;
 				ReadInto(reader, jsonWriter, true, out type, out resolver);
 
 				jsonWriter.TextWriter.Flush();
