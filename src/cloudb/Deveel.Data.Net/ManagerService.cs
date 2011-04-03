@@ -1146,6 +1146,16 @@ namespace Deveel.Data.Net {
 							response.Arguments.Add(address);
 							break;
 						}
+						case "registerManagerServers": {
+							service.RegisterManagerServers((IServiceAddress[])request.Arguments[0].Value);
+							response.Arguments.Add(1L);
+							break;
+						}
+						case "unregisterManagerServers": {
+							service.UnregisterManagerServer((IServiceAddress)request.Arguments[0].Value);
+							response.Arguments.Add(1L);
+							break;
+						}
 						case "registerBlockServer": {
 							IServiceAddress address = (IServiceAddress) request.Arguments[0].Value;
 							service.RegisterBlockServer(address);

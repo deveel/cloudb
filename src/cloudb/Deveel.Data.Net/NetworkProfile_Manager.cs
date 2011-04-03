@@ -75,14 +75,18 @@ namespace Deveel.Data.Net {
 
 			string messageName;
 			if (serviceType == ServiceType.Manager)
-				messageName = "registerManagerServer";
+				messageName = "registerManagerServers";
 			else if (serviceType == ServiceType.Root)
 				messageName = "registerRootServer";
 			else 
 				messageName = "registerBlockServer";
 
 			RequestMessage request = new RequestMessage(messageName);
-			request.Arguments.Add(address);
+			if (serviceType == ServiceType.Manager) {
+				request.Arguments.Add(new IServiceAddress[] {address});
+			} else {
+				request.Arguments.Add(address);
+			}
 
 			for (int i = 0; i < currentManagers.Length; i++) {
 				Message m = Command(currentManagers[i].Address, ServiceType.Manager, request);

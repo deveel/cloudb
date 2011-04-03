@@ -38,8 +38,8 @@ namespace Deveel.Data {
 
 		public bool IsSpecial {
 			get {
-				int res_bits = ReservedBits;
-				return (res_bits >= 2 && res_bits < 8);
+				int resBits = ReservedBits;
+				return (resBits >= 2 && resBits < 8);
 			}
 		}
 

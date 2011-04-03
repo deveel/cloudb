@@ -10,8 +10,8 @@ namespace Deveel.Data.Net {
 			: base(storeType) {
 		}
 
-		protected override IServiceAddress LocalAddress {
-			get { return FakeServiceAddress.Local; }
+		protected override IServiceAddress[] LocalAddresses {
+			get { return new IServiceAddress[] {FakeServiceAddress.Local1}; }
 		}
 
 		protected override AdminService CreateAdminService(NetworkStoreType storeType) {

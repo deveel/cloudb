@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 
 namespace Deveel.Data.Net {
 	public sealed class FakeServiceAddressHandler : IServiceAddressHandler {
@@ -15,19 +16,25 @@ namespace Deveel.Data.Net {
 		}
 		
 		public IServiceAddress FromString(string s) {
-			return (s == "@FAKE@") ? new FakeServiceAddress() : null;
+			if (!s.StartsWith("@FAKE"))
+				return null;
+			s = s.Substring(5);
+			s = s.Substring(0, s.Length - 1);
+			return new FakeServiceAddress(s);
 		}
 		
 		public IServiceAddress FromBytes(byte[] bytes) {
-			return new FakeServiceAddress();
+			string id = Encoding.ASCII.GetString(bytes);
+			return new FakeServiceAddress(id);
 		}
 		
 		public string ToString(IServiceAddress address) {
-			return "@FAKE@";
+			return address.ToString();
 		}
 		
 		public byte[] ToBytes(IServiceAddress address) {
-			return new byte[0];
+			FakeServiceAddress fakeAddress = (FakeServiceAddress) address;
+			return Encoding.ASCII.GetBytes(fakeAddress.Id);
 		}
 	}
 }

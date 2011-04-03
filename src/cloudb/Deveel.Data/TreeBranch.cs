@@ -46,7 +46,7 @@ namespace Deveel.Data {
 		}
 
 		public bool IsReadOnly {
-			get { return id.IsInMemory; }
+			get { return !id.IsInMemory; }
 		}
 
 		public bool IsEmpty {

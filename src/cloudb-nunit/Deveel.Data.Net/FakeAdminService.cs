@@ -6,7 +6,7 @@ using Deveel.Data.Net.Client;
 namespace Deveel.Data.Net {
 	public sealed class FakeAdminService : AdminService {		
 		public FakeAdminService(FakeServiceConnector connector, NetworkStoreType storeType)
-			: base(FakeServiceAddress.Local, connector, new FakeServiceFactory(storeType)) {
+			: base(FakeServiceAddress.Local1, connector, new FakeServiceFactory(storeType)) {
 		}
 		
 		public FakeAdminService(FakeServiceConnector connector)

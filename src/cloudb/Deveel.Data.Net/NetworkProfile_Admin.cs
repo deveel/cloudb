@@ -27,11 +27,11 @@ namespace Deveel.Data.Net {
 					} else {
 						// Get the message replies,
 						string b = response.Arguments[0].ToString();
-						bool is_block = !b.Equals("block=no");
-						String m = response.Arguments[1].ToString();
-						bool is_manager = !m.Equals("manager=no");
+						bool isBlock = !b.Equals("block=no");
+						string m = response.Arguments[1].ToString();
+						bool isManager = !m.Equals("manager=no");
 						string r = response.Arguments[2].ToString();
-						bool is_root = !r.Equals("root=no");
+						bool isRoot = !r.Equals("root=no");
 
 						long used_mem = response.Arguments[3].ToInt64();
 						long total_mem = response.Arguments[4].ToInt64();
@@ -39,11 +39,11 @@ namespace Deveel.Data.Net {
 						long total_disk = response.Arguments[6].ToInt64();
 
 						ServiceType type = new ServiceType();
-						if (is_block)
+						if (isBlock)
 							type |= ServiceType.Block;
-						if (is_manager)
+						if (isManager)
 							type |= ServiceType.Manager;
-						if (is_root)
+						if (isRoot)
 							type |= ServiceType.Root;
 
 						// Populate the lists,
