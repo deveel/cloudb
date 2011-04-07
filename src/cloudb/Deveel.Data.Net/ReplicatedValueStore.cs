@@ -81,7 +81,7 @@ namespace Deveel.Data.Net {
 			}
 
 			if (timer == null)
-				timer = new Timer(DoInit, null, 500, Timeout.Infinite);
+				timer = new Timer(DoInit, null, 0, 500);
 		}
 
 		private void DoInit(object state) {

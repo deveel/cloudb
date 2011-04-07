@@ -1,5 +1,5 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="3.5" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -21,7 +21,6 @@
     <DebugSymbols>true</DebugSymbols>
     <StartArguments>-port 35500</StartArguments>
     <StartWorkingDirectory>..\test\</StartWorkingDirectory>
-    <SignAssembly>false</SignAssembly>
     <AssemblyOriginatorKeyFile>mnode.snk</AssemblyOriginatorKeyFile>
     <FileUpgradeFlags>
     </FileUpgradeFlags>
@@ -57,23 +56,34 @@
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\Debug.Unix\</OutputPath>
     <DefineConstants>TRACE;DEBUG;UNIX</DefineConstants>
-    <DebugType>Full</DebugType>
+    <DebugType>full</DebugType>
     <PlatformTarget>AnyCPU</PlatformTarget>
+    <WarningLevel>4</WarningLevel>
+    <Optimize>false</Optimize>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DefineConstants>TRACE;DEBUG;WINDOWS</DefineConstants>
+    <OutputPath>bin\Debug</OutputPath>
+    <DebugType>none</DebugType>
+    <WarningLevel>4</WarningLevel>
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>none</DebugType>
+    <OutputPath>bin\Release</OutputPath>
+    <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="deveel-cli, Version=1.0.4032.571, Culture=neutral, PublicKeyToken=36bd3c4d094c5302, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\libs\deveel-cli.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration.Install" />
     <Reference Include="System.Data" />
     <Reference Include="System.Management" />
     <Reference Include="System.ServiceProcess" />
     <Reference Include="System.Xml" />
+    <Reference Include="deveel-cli, Version=1.0.4032.571, Culture=neutral, PublicKeyToken=36bd3c4d094c5302">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\libs\deveel-cli.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Deveel.Data.Net\MachineNode.cs" />

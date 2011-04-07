@@ -70,14 +70,21 @@
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <Reference Include="deveel-cli, Version=1.0.3938.15205, Culture=neutral, PublicKeyToken=null">
-      <HintPath>..\libs\deveel-cli.dll</HintPath>
+    <Reference Include="deveel-cli, Version=1.0.4032.571, Culture=neutral, PublicKeyToken=36bd3c4d094c5302">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\libs\deveel-cli.dll</HintPath>
     </Reference>
-    <Reference Include="Mono.Posix" />
+    <Reference Include="System.ServiceProcess" />
+    <Reference Include="System.Configuration.Install" />
+    <Reference Include="Mono.Posix, Version=2.0.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Deveel.Data.Net\MachineNode.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Deveel.Data.Net\MachineNodeService.cs" />
+    <Compile Include="Deveel.Data.Net\MachineNodeService.Designer.cs" />
+    <Compile Include="Deveel.Data.Net\ProjectInstaller.cs" />
+    <Compile Include="Deveel.Data.Net\ProjectInstaller.Designer.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\cloudb\cloudb.csproj">
@@ -94,4 +101,10 @@
   <Target Name="AfterBuild">
   </Target>
   -->
+  <ItemGroup>
+    <None Include="Deveel.Data.Net\MachineNodeService.resources" />
+    <None Include="Deveel.Data.Net\MachineNodeService.resx" />
+    <None Include="Deveel.Data.Net\ProjectInstaller.resources" />
+    <None Include="Deveel.Data.Net\ProjectInstaller.resx" />
+  </ItemGroup>
 </Project>
