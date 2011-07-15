@@ -39,3 +39,4 @@
 /src/cloudb+sql-nunit/obj
 
 /src/cdbcli/obj
+/package.build
