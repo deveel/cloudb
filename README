@@ -20,6 +20,30 @@ See COPYING for details of the license. If the license is not
 present go to http://www.gnu.org/licenses/lgpl-3.0.txt to receive 
 a copy of the license.
 
+Components
+==========
+
+The composition of the application is complex and includes more
+than one executable and components. The foundations of this
+architecture are the following ones.
+
+cloudb.dll          This is the core library of the system, that
+                    contains all the basic functionalities and
+					interfaces to build all other components.
+					
+mnode.exe           Exposes the machine where it's running as a 
+                    node within the network.
+					
+cadmin.exe          The command-line utility used to configure
+                    a CloudB network instance.
+					
+For modeling data stored in a 'path' (a distributed database
+within a CloudB network), the application will require additional
+libraries that implement the contracts defined by the core library.
+
+The data-modeling libraries (also called 'path libraries') are required 
+to be reachable by instances of 'mnode.exe': see the paragraph 'Installing
+and Running CloudB'.
 
 Requirements
 ============
@@ -29,53 +53,106 @@ to run and build. External libraries are requirements to the
 components of CloudB and are provided into this package.
 
 External libraries required by evenry component:
-- mnode: deveel-cli
-- cadmin: deveel-cli, deveelrl, shellapp
-- cloudb-log4net: log4net
-
-
-
-Included in this release
-========================
-
-Depending on the kind of package you have received, the contents
-may vary accordingly.
-
-If the package was suffixed by 'src':
-
-cadmin/           a command line tool used to administer the
-                  network instance
-cloudb/           the kernel library of the application (used
-                  by all components)
-cloudbase/      
-cloudb-log4net/   
-cloudb-nunit/
-COPYING
-COPYING.LESSER
-COPYING.HEADER
-default.build
-README
-
-
-If the package was suffixed by 'bin':
-
-
-
-If the package was suffixed by 'all':
-
-
-
-
-Installing and Using CloudB
-===========================
-
+  mnode
+    deveel-cli.dll
+  cadmin
+    deveel-cli.dll
+	deveelrl.dll
+	shellapp.dll
 
 
 Building CloudB
 ===============
 
-CloudB requires Nant build tool (http://nant.sourceforge.net/) 
-to compile the sources provided in this package: a version of 
-the tool is provided in the folder "libs/nant".
+Some distributions of CloudB also include the sources of the 
+application. The structure of these sources is the following.
 
-To build the entire set of components of the application
+  src/
+    cadmin/
+    cloudb/
+    cloudb-log4net/
+    cloudb-nunit/
+    mnode/
+  conf/
+  libs/
+  AUTHORS
+  build
+  build.bat
+  COPYING
+  COPYING.LESSER
+  COPYING.HEADER
+  README
+
+Nant build tool (http://nant.sourceforge.net/) is required to 
+compile the sources provided in this package: a version of the 
+tool is provided in the folder "libs/nant".
+
+Building with Script
+--------------------
+It is possible to compile the sources using the 'build' script 
+provided. In Windows systems, this accepts the optional argument
+'mono', that targets the compilation to the Mono framework.
+
+Building with NAnt
+------------------
+Alternatively to the use of the script provided, it is also possible
+to compile CloudB by invoking directly NAnt and passing the main
+script 'cloudb.build' as argument.
+
+Given '/home/deveel/cloudb' the base location where the package
+was extracted, invoke the following:
+
+Unix
+mono /home/deveel/cloudb/libs/nant/NAnt.exe -buildfile:../../src/cloudb.build
+
+Windows
+C:\deveel\cloudb\libs\nant\NAnt.exe -buildfile:..\..\src\cloudb.build
+
+
+The 'cloudb.build' file defines the following public targets that can
+refine the compilation results.
+
+'all'     - Builds all the components of CloudB (default)
+'kernel'  - Call this to compile only the core library (cloudb.dll)
+'cadmin'  - Compiles the Network Administration Tool
+              (invokes the 'kernel' target)
+'mnode'   - Builds the Machine Node service applicationn
+              (invokes the 'kernel' target)
+'clean'   - Cleans up all the outputs of the compilation by any of
+            the other targets
+
+It is also possible to customize the compilation by specifying one
+or more of the following variables.
+
+'platform'  - Defines the target machine architecture of the compiled
+              components ('anycpu', 'x86', 'x64')
+'output'    - The path where the compiled components will be placed
+'system'    - Indicates the operating system family targetted by the
+              compilation ('windows', 'unix')
+'libs'      - Points to the path where the external libraries required
+              by the compilation are located
+
+
+Installing and Using CloudB
+===========================
+
+If you received a copy of the sources of the application, please refer
+to the paraph 'Building CloudB' first.
+
+Machine Node
+------------
+A machine can be exposed within a CloudB network as a node using the
+executable 'mnode.exe': this can be invoked as a standalone application
+or as a service (currently, Windows only).
+
+Once mnode.exe is running in a machine, other machines within the network
+and administrators will be able to reach it and interact with it.
+A machine node can act as 'manager', 'root', 'block', even contemporarly:
+its role will be assigned by administrators.
+
+Administration Tool
+-------------------
+The administration of a network of machines (running mnode.exe) is delegated
+to the command-line application 'cadmin.exe'. This is an interactive shell
+that processes commands for administrating, controlling and monitoring
+networks.
