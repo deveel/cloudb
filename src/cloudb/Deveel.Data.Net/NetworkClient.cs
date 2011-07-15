@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-using Deveel.Data.Net.Client;
+using Deveel.Data.Net.Serialization;
 
 namespace Deveel.Data.Net {
 	public class NetworkClient : IDisposable {
@@ -10,7 +10,8 @@ namespace Deveel.Data.Net {
 		}
 
 		public NetworkClient(IServiceAddress managerAddress, IServiceConnector connector, INetworkCache cache) {
-			if (!(connector.MessageSerializer is IMessageStreamSupport))
+			if (!(connector.MessageSerializer is IRpcMessageSerializer) || 
+				!((IRpcMessageSerializer)connector.MessageSerializer).SupportsMessageStream)
 				throw new ArgumentException("The connector given has an invalid message serializer for this context (must be a IRPC serializer).");
 			
 			this.connector = connector;

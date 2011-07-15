@@ -116,7 +116,7 @@ namespace Deveel.Data.Net.Client {
 							sb.Append(reader.ReadChar());
 						}
 
-						Dictionary<string,object> args = new Dictionary<string, object>();
+						Dictionary<string,PathValue> args = new Dictionary<string, PathValue>();
 
 						string pathName = sb.ToString();
 
@@ -127,14 +127,14 @@ namespace Deveel.Data.Net.Client {
 								sb.Append(reader.ReadChar());
 							}
 
-							args[RequestMessage.ResourceIdName] = sb.ToString();
+							args[RequestMessage.ResourceIdName] = new PathValue(sb.ToString());
 						}
 
 						int tid = reader.ReadInt32();
 						if (!String.IsNullOrEmpty(service.TransactionIdKey))
-							args[service.TransactionIdKey] = tid;
+							args[service.TransactionIdKey] = new PathValue(tid);
 
-						ResponseMessage response = service.HandleRequest(null, type, pathName, args, socketStream);
+						ResponseMessage response = service.HandleRequest(socket, type, pathName, args, socketStream);
 
 						// Write and flush the output message,
 						service.MessageSerializer.Serialize(response, socketStream);

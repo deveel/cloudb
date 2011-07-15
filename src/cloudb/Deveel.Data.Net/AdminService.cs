@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using Deveel.Data.Diagnostics;
 using Deveel.Data.Net.Client;
@@ -17,6 +18,13 @@ namespace Deveel.Data.Net {
 		private RootService root;
 		private BlockService block;
 
+		private Dictionary<string, ClientConnection> connections;
+
+		public event ClientConnectionEventHandler ClientConnected;
+		public event ClientConnectionEventHandler ClientDisconnected;
+		public event ClientCommandEventHandler ClientRequest;
+		public event ClientCommandEventHandler ClientResponse;
+
 		public AdminService(IServiceAddress address, IServiceConnector connector, IServiceFactory serviceFactory) {
 			if (serviceFactory == null) 
 				throw new ArgumentNullException("serviceFactory");
@@ -25,6 +33,10 @@ namespace Deveel.Data.Net {
 			this.address = address;
 			this.connector = connector;
 			analytics = new Analytics();
+		}
+
+		protected virtual string Protocol {
+			get { return null; }
 		}
 		
 		public IServiceAddress Address {
@@ -72,6 +84,78 @@ namespace Deveel.Data.Net {
 		
 		protected bool IsAddressAllowed(string address) {
 			return config != null && config.IsIpAllowed(address);
+		}
+
+		internal void OnClientResponse(ClientCommandEventArgs args) {
+			if (ClientResponse != null)
+				ClientResponse(this, args);
+		}
+
+		internal void OnClientRequest(ClientCommandEventArgs args) {
+			if (ClientRequest != null)
+				ClientRequest(this, args);
+		}
+
+		internal bool OnClientConnect(ClientConnectionEventArgs args) {
+			if (ClientConnected != null)
+				ClientConnected(this, args);
+
+			return args.Authorized;
+		}
+
+		internal void OnClientDisconnect(ClientConnectionEventArgs args) {
+			try {
+				if (ClientDisconnected != null)
+					ClientDisconnected(this, args);
+			} finally {
+				if (connections != null && connections.ContainsKey(args.RemoteEndPoint)) {
+					connections.Remove(args.RemoteEndPoint);
+					if (connections.Count == 0)
+						connections = null;
+				}
+			}
+		}
+
+		protected bool OnClientConnect(string remoteEndPoint, bool authorized) {
+			if (connections == null)
+				connections = new Dictionary<string, ClientConnection>();
+
+			ClientConnection connection = new ClientConnection(this, Protocol, remoteEndPoint);
+			connections[remoteEndPoint] = connection;
+			return connection.Connect(authorized);
+		}
+
+		protected virtual void OnClientDisconnect(string remoteEndPoint) {
+			if (connections == null)
+				return;
+
+			ClientConnection connection;
+			if (!connections.TryGetValue(remoteEndPoint, out connection))
+				return;
+
+			connection.Disconnect();
+		}
+
+		protected virtual void OnClientRequest(ServiceType serviceType, string remoteEndPoint, Message requestMessage) {
+			if (connections == null)
+				return;
+
+			ClientConnection connection;
+			if (!connections.TryGetValue(remoteEndPoint, out connection))
+				return;
+
+			connection.Request(serviceType, requestMessage);
+		}
+
+		protected void OnClientResponse(string remoteEndPoint, Message responseMessage) {
+			if (connections == null)
+				return;
+
+			ClientConnection connection;
+			if (!connections.TryGetValue(remoteEndPoint, out connection))
+				return;
+
+			connection.Response(responseMessage);
 		}
 
 		public void StartService(ServiceType serviceType) {

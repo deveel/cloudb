@@ -82,6 +82,7 @@ namespace Deveel.Data.Net {
 				} catch(Exception e) {
 					Logger.Error(e);
 					SetErrorState(e);
+					throw;
 				}
 			}
 		}

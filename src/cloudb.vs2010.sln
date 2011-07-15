@@ -18,8 +18,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{A5992CB8-49E0-4A1E-A30D-DD024DEB6FBD}"
 	ProjectSection(SolutionItems) = preProject
 		common.build = common.build
-		default.build = default.build
-		libs\nant\nant.xsd = libs\nant\nant.xsd
 	EndProjectSection
 EndProject
 Global

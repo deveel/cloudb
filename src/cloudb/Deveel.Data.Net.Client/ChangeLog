@@ -1,0 +1,4 @@
+﻿2011-03-05  Antonello Provenzano  <antonello@deveel.com>
+	* IMessageSerializer.cs: moved to Deveel.Data.Net.Serializers namespace
+	* IMessageStreamSupport.cs: suppressed and replaced by
+	the property 'SupportsMessageStream' in IMessageSerializer
