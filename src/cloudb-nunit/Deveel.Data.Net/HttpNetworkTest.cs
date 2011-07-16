@@ -43,6 +43,7 @@ namespace Deveel.Data.Net {
 			NetworkConfigSource networkConfig = (NetworkConfigSource) config;
 			networkConfig.AddAllowedIp("localhost");
 			networkConfig.AddAllowedIp("127.0.0.1");
+			networkConfig.AddAllowedIp("::1");
 		}
 
 		protected override IServiceConnector CreateConnector() {

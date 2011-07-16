@@ -87,13 +87,12 @@ namespace Deveel.Data.Net {
 		}
 
 		private void ServiceStarted(object sender, EventArgs e) {
-			if (sender is ManagerService) {
-				using (File.Open(Path.Combine(basePath, ManagerRunFile), FileMode.OpenOrCreate)) ;
-			} else if (sender is RootService) {
-				using (File.Open(Path.Combine(basePath, RootRunFile), FileMode.OpenOrCreate)) ;
-			} else if (sender is BlockService) {
-				using (File.Open(Path.Combine(basePath, BlockRunFile), FileMode.OpenOrCreate)) ;
-			}
+			if (sender is ManagerService)
+				using (File.Open(Path.Combine(basePath, ManagerRunFile), FileMode.OpenOrCreate)) return;
+            if (sender is RootService)
+                using (File.Open(Path.Combine(basePath, RootRunFile), FileMode.OpenOrCreate)) return;
+			if (sender is BlockService)
+				using (File.Open(Path.Combine(basePath, BlockRunFile), FileMode.OpenOrCreate)) return;
 		}
 	}
 }

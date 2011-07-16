@@ -39,7 +39,7 @@ namespace Deveel.Data.Net {
 		}
 
 		public HttpServiceAddress(Uri uri)
-			: this(uri.Host, uri.Port, uri.LocalPath, uri.Query) {
+			: this(uri.Host, uri.Port, uri.LocalPath != "/" ? uri.LocalPath : null, uri.Query) {
 		}
 
 		public string Host {
@@ -63,6 +63,31 @@ namespace Deveel.Data.Net {
 				throw new ArgumentException();
 
 			return CompareTo((HttpServiceAddress) other);
+		}
+
+		public override bool Equals(object obj) {
+			HttpServiceAddress other = obj as HttpServiceAddress;
+			if (other == null)
+				return false;
+
+			if (!host.Equals(other.Host))
+				return false;
+			if (port >= 0 && port != other.Port)
+				return false;
+
+			if (!String.IsNullOrEmpty(path) &&
+				!path.Equals(other.Path))
+				return false;
+
+			if (!String.IsNullOrEmpty(query) &&
+				!query.Equals(other.Query))
+				return false;
+
+			return true;
+		}
+
+		public override int GetHashCode() {
+			return base.GetHashCode();
 		}
 
 		public int CompareTo(HttpServiceAddress address) {
@@ -105,9 +130,10 @@ namespace Deveel.Data.Net {
 			sb.Append(":");
 			sb.Append(port);
 			sb.Append("/");
-			if (!String.IsNullOrEmpty(path)) {
+			if (!String.IsNullOrEmpty(path) &&
+                !path.Equals("/")) {
 				sb.Append(path);
-				if (String.IsNullOrEmpty(query))
+				if (!String.IsNullOrEmpty(query))
 					sb.Append("/");
 			}
 			if (!String.IsNullOrEmpty(query)) {

@@ -146,6 +146,23 @@ namespace Deveel.Data.Net {
 
 						// Read the message stream object
 						IMessageSerializer serializer = service.Serializer;
+
+						MemoryStream deserStream = new MemoryStream(1024);
+						Stream input = context.Request.InputStream;
+
+						byte[] buffer = new byte[32768];
+						int read;
+						while ((read = input.Read(buffer, 0, buffer.Length)) > 0) {
+							deserStream.Write(buffer, 0, read);
+						}
+
+						try {
+							input.Close();
+						} catch (Exception e) {
+							service.Logger.Error("Error while closing the input stream of the connection.", e);
+						}
+
+						deserStream.Seek(0, SeekOrigin.Begin);
 						RequestMessage requestMessage = (RequestMessage) serializer.Deserialize(context.Request.InputStream, MessageType.Request);
 
 						Message responseMessage;
