@@ -175,29 +175,74 @@ namespace Deveel.Data.Net.Serialization {
 					break;
 				}
 			}
-
 		}
 
-		private object ReadValue(JsonReader reader) {
-			if (reader.Token == JsonToken.Boolean)
+		private Array ReadArray(JsonReader reader, out Type elementType) {
+			List<object> values = new List<object>();
+			elementType = null;
+			bool hasElementType = false;
+
+			while (reader.Read()) {
+				if (reader.Token == JsonToken.ArrayEnd)
+					break;
+
+				Type lastType;
+				values.Add(ReadValue(reader, out lastType));
+
+				if (elementType == null) {
+					elementType = lastType;
+					hasElementType = true;
+				} else if (elementType != lastType) {
+					hasElementType = false;
+				}
+			}
+
+			if (!hasElementType)
+				return values.ToArray();
+
+			int count = values.Count;
+			Array array = Array.CreateInstance(elementType, count);
+			for (int i = 0; i < count; i++) {
+				array.SetValue(values[i], i);
+			}
+			return array;
+		}
+
+		private object ReadValue(JsonReader reader, out Type type) {
+			if (reader.Token == JsonToken.Boolean) {
+				type = typeof (bool);
 				return (bool) reader.Value;
-			if (reader.Token == JsonToken.Int)
+			}
+			if (reader.Token == JsonToken.Int) {
+				type = typeof (int);
 				return (int) reader.Value;
-			if (reader.Token == JsonToken.Long)
+			}
+			if (reader.Token == JsonToken.Long) {
+				type = typeof (long);
 				return (long) reader.Value;
-			if (reader.Token == JsonToken.Double)
+			}
+			if (reader.Token == JsonToken.Double) {
+				type = typeof (double);
 				return (double) reader.Value;
-			if (reader.Token == JsonToken.String)
-				return (string) reader.Value;
-			if (reader.Token == JsonToken.Null)
+			}
+			if (reader.Token == JsonToken.String) {
+				type = typeof (string);
+				return reader.Value;
+			}
+			if (reader.Token == JsonToken.Null) {
+				//TODO: should we use a different type in this case? eg. DBNull
+				type = typeof (object);
 				return null;
+			}
+
+			if (reader.Token == JsonToken.ArrayStart)
+				return ReadArray(reader, out type);
 
 			if (reader.Token == JsonToken.ObjectStart) {
 				StringBuilder sb = new StringBuilder();
 				JsonWriter jsonWriter = new JsonWriter(sb);
 				jsonWriter.WriteObjectStart();
 
-				Type type;
 				IJsonRpcTypeResolver resolver;
 				ReadInto(reader, jsonWriter, true, out type, out resolver);
 
@@ -211,6 +256,11 @@ namespace Deveel.Data.Net.Serialization {
 			}
 
 			throw new FormatException();
+		}
+
+		private object ReadValue(JsonReader reader) {
+			Type dummy;
+			return ReadValue(reader, out dummy);
 		}
 
 		//TODO:
