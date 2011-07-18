@@ -9,7 +9,6 @@ using Deveel.Data.Net.Serialization;
 
 namespace Deveel.Data.Net {
 	public sealed class HttpAdminService : AdminService {
-		private IMessageSerializer serializer;
 		private bool polling;
 		private HttpListener listener;
 		private Thread pollingThread;
@@ -20,15 +19,6 @@ namespace Deveel.Data.Net {
 		
 		public HttpAdminService(IServiceFactory serviceFactory, HttpServiceAddress address)
 			: base(address, new HttpServiceConnector(), serviceFactory) {
-		}
-		
-		public IMessageSerializer Serializer {
-			get { 
-				if (serializer == null)
-					serializer = new XmlRpcMessageSerializer();
-				return serializer;
-			}
-			set { serializer = value; }
 		}
 		
 		private void Poll() {
@@ -145,7 +135,7 @@ namespace Deveel.Data.Net {
 						ServiceType serviceType = (ServiceType)Enum.Parse(typeof(ServiceType), serviceTypeString, true);
 
 						// Read the message stream object
-						IMessageSerializer serializer = service.Serializer;
+						IMessageSerializer serializer = service.Connector.MessageSerializer;
 
 						MemoryStream deserStream = new MemoryStream(1024);
 						Stream input = context.Request.InputStream;
@@ -163,7 +153,12 @@ namespace Deveel.Data.Net {
 						}
 
 						deserStream.Seek(0, SeekOrigin.Begin);
-						RequestMessage requestMessage = (RequestMessage) serializer.Deserialize(context.Request.InputStream, MessageType.Request);
+						if (deserStream.Length == 0) {
+							service.Logger.Warning("An empty request was received: ignoring");
+							return;
+						}
+
+						RequestMessage requestMessage = (RequestMessage) serializer.Deserialize(deserStream, MessageType.Request);
 
 						Message responseMessage;
 

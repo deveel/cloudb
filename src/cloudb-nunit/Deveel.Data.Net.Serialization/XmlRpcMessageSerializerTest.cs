@@ -271,8 +271,61 @@ namespace Deveel.Data.Net.Client {
 			Assert.AreEqual(4, mixedArray.Length);
 			Assert.AreEqual(22, mixedArray[0]);
 			Assert.AreEqual("test1", mixedArray[1]);
-			Assert.AreEqual(56l, mixedArray[2]);
+			Assert.AreEqual(56L, mixedArray[2]);
 			Assert.AreEqual(true, mixedArray[3]);
+		}
+
+		[Test]
+		public void EmptyArraySerialize() {
+			RequestMessage request = new RequestMessage("testArray");
+			request.Arguments.Add(new string[0]);
+
+			string s = Serialize(request);
+
+			StringBuilder sb = new StringBuilder();
+			sb.Append("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>");
+			sb.Append("<methodCall>");
+			sb.Append("<methodName>testArray</methodName>");
+			sb.Append("<params>");
+			sb.Append("<param><value>");
+			sb.Append("<array><data type=\"string\" />");
+			sb.Append(("</array>"));
+			sb.Append("</value></param>");
+			sb.Append("</params>");
+			sb.Append("</methodCall>");
+
+			Console.Out.WriteLine("Generated:");
+			Console.Out.WriteLine(s);
+
+			Assert.AreEqual(sb.ToString(), s);
+		}
+
+		[Test]
+		public void EmptyArrayDeserialize() {
+			StringBuilder sb = new StringBuilder();
+			sb.Append("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>");
+			sb.Append("<methodCall>");
+			sb.Append("<methodName>testArray</methodName>");
+			sb.Append("<params>");
+			sb.Append("<param><value>");
+			sb.Append("<array><data type=\"string\">");
+			sb.Append(("</data></array>"));
+			sb.Append("</value></param>");
+			sb.Append("</params>");
+			sb.Append("</methodCall>");
+
+			Message request = Deserialize(sb.ToString(), MessageType.Request);
+
+			Assert.AreEqual("testArray", request.Name);
+			Assert.AreEqual(MessageType.Request, request.MessageType);
+			Assert.AreEqual(1, request.Arguments.Count);
+
+			object value = request.Arguments[0].Value;
+			Assert.IsInstanceOf(typeof(Array), value);
+
+			Array array = (Array) value;
+			Assert.AreEqual(0, array.Length);
+			Assert.AreEqual(typeof(string), array.GetType().GetElementType());
 		}
 
 		[Test]

@@ -58,12 +58,15 @@ namespace Deveel.Data.Net {
 		public void SetUp() {
 			SetupEvent.WaitOne();
 
+			IServiceConnector connector = CreateConnector();
+
 			adminService = CreateAdminService(storeType);
 			NetworkConfigSource config = new NetworkConfigSource();
 			Config(config);
 			adminService.Config = config;
+			adminService.Connector = connector;
 			adminService.Start();
-			networkProfile = new NetworkProfile(CreateConnector());
+			networkProfile = new NetworkProfile(connector);
 
 			NetworkConfigSource netConfig = new NetworkConfigSource();
 			netConfig.AddNetworkNode(LocalAddress);
