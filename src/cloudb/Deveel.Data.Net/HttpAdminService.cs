@@ -9,7 +9,6 @@ using Deveel.Data.Net.Serialization;
 
 namespace Deveel.Data.Net {
 	public sealed class HttpAdminService : AdminService {
-		private IMessageSerializer serializer;
 		private bool polling;
 		private HttpListener listener;
 		private Thread pollingThread;
@@ -20,15 +19,6 @@ namespace Deveel.Data.Net {
 		
 		public HttpAdminService(IServiceFactory serviceFactory, HttpServiceAddress address)
 			: base(address, new HttpServiceConnector(), serviceFactory) {
-		}
-		
-		public IMessageSerializer Serializer {
-			get { 
-				if (serializer == null)
-					serializer = new XmlRpcMessageSerializer();
-				return serializer;
-			}
-			set { serializer = value; }
 		}
 		
 		private void Poll() {
@@ -145,8 +135,30 @@ namespace Deveel.Data.Net {
 						ServiceType serviceType = (ServiceType)Enum.Parse(typeof(ServiceType), serviceTypeString, true);
 
 						// Read the message stream object
-						IMessageSerializer serializer = service.Serializer;
-						RequestMessage requestMessage = (RequestMessage) serializer.Deserialize(context.Request.InputStream, MessageType.Request);
+						IMessageSerializer serializer = service.Connector.MessageSerializer;
+
+						MemoryStream deserStream = new MemoryStream(1024);
+						Stream input = context.Request.InputStream;
+
+						byte[] buffer = new byte[32768];
+						int read;
+						while ((read = input.Read(buffer, 0, buffer.Length)) > 0) {
+							deserStream.Write(buffer, 0, read);
+						}
+
+						try {
+							input.Close();
+						} catch (Exception e) {
+							service.Logger.Error("Error while closing the input stream of the connection.", e);
+						}
+
+						deserStream.Seek(0, SeekOrigin.Begin);
+						if (deserStream.Length == 0) {
+							service.Logger.Warning("An empty request was received: ignoring");
+							return;
+						}
+
+						RequestMessage requestMessage = (RequestMessage) serializer.Deserialize(deserStream, MessageType.Request);
 
 						Message responseMessage;
 

@@ -52,6 +52,69 @@ namespace Deveel.Data.Net.Serialization {
 			
 			resolvers.Add(resolver);
 		}
+
+		private Type GetTypeFromElementName(string code) {
+			if (code == "boolean")
+				return typeof (bool);
+			if (code == "i1")
+				return typeof (byte);
+			if (code == "i2")
+				return typeof (short);
+			if (code == "i4")
+				return typeof (int);
+			if (code == "i8")
+				return typeof (long);
+			if (code == "float")
+				return typeof (float);
+			if (code == "double")
+				return typeof (double);
+			if (code == "dateTime" ||
+				code == "dateTime.iso8601")
+				return typeof (DateTime);
+			if (code == "base64")
+				return typeof (byte[]);
+			if (code == "string")
+				return typeof (string);
+
+			IXmlRpcTypeResolver dummy;
+			Type type = ResolveType(code, out dummy);
+			if (type != null)
+				return type;
+
+			throw new NotSupportedException();
+		}
+
+		private string GetElementNameFromType(Type type) {
+			if (type == typeof(bool)) 
+				return "boolean";
+			if (type == typeof(byte))
+				return "i1";
+			if (type == typeof(short))
+				return "i2";
+			if (type == typeof(int))
+				return "i4";
+			if (type == typeof(long))
+				return "i8";
+			if (type == typeof(float))
+				return "float";
+			if (type == typeof(double))
+				return "double";
+			if (type == typeof(DateTime))
+				return "dateTime.iso8601";
+			if (type == typeof(string))
+				return "string";
+			if (type == typeof(byte[]) || 
+				typeof(Stream).IsAssignableFrom(type)) {
+				return "base64";
+			}
+
+			IXmlRpcTypeResolver dummy;
+			string elementName = ResolveElementName(type, out dummy);
+			if (!String.IsNullOrEmpty(elementName))
+				return elementName;
+
+			throw new NotSupportedException("Type '" + type + "' is not supported.");
+		}
 		
 		private Type ResolveType(string elementName, out IXmlRpcTypeResolver resolver) {
 			for(int i = 0; i < resolvers.Count; i++) {
@@ -67,10 +130,12 @@ namespace Deveel.Data.Net.Serialization {
 		}
 		
 		private string ResolveElementName(object value, out IXmlRpcTypeResolver resolver) {
+			Type valueType = value is Type ? (Type) value : value.GetType();
+
 			for(int i = 0; i < resolvers.Count; i++) {
 				string elementName;
 				resolver = resolvers[i];
-				if (!String.IsNullOrEmpty(elementName = resolver.ResolveElementName(value.GetType()))) {
+				if (!String.IsNullOrEmpty(elementName = resolver.ResolveElementName(valueType))) {
 					return elementName;
 				}
 			}
@@ -179,6 +244,13 @@ namespace Deveel.Data.Net.Serialization {
 			Array array = (Array)value;
 			writer.WriteStartElement("array");
 			writer.WriteStartElement("data");
+
+			Type elementType = array.GetType().GetElementType();
+			string typeCode = GetElementNameFromType(elementType);
+
+			writer.WriteStartAttribute("type");
+			writer.WriteString(typeCode);
+			writer.WriteEndAttribute();
 				
 			for(int i = 0; i < array.Length; i++) {
 				WriteValue(array.GetValue(i), format, writer);
@@ -509,15 +581,33 @@ namespace Deveel.Data.Net.Serialization {
 			return messageStruct;
 		}
 
-		private Array ReadArray(XmlReader xmlReader) {
-			if (!xmlReader.Read())
-				throw new FormatException();
-			if (xmlReader.LocalName != "data")
-				throw new FormatException();
-
+		private Array ReadArray(XmlReader xmlReader, ref bool checkLast) {
 			List<object> values = new List<object>();
 			Type elementType = null;
 			bool hasElementType = true;
+
+			if (!xmlReader.Read())
+				throw new FormatException();
+
+			if (xmlReader.LocalName == "array") {
+				checkLast = false;
+				return Array.CreateInstance(typeof(object), 0);
+			}
+
+			if (xmlReader.LocalName != "data")
+				throw new FormatException();
+
+			if (xmlReader.HasAttributes) {
+				int attrCount = xmlReader.AttributeCount;
+				for (int i = 0; i < attrCount; i++) {
+					xmlReader.MoveToAttribute(i);
+					if (xmlReader.LocalName != "type")
+						throw new FormatException();
+
+					elementType = GetTypeFromElementName(xmlReader.Value);
+					hasElementType = true;
+				}
+			}
 
 			while (xmlReader.Read()) {
 				if (xmlReader.NodeType == XmlNodeType.EndElement) {
@@ -525,9 +615,18 @@ namespace Deveel.Data.Net.Serialization {
 						break;
 					if (xmlReader.LocalName == "value")
 						continue;
+
+					if (xmlReader.LocalName == "array") {
+						checkLast = false;
+						return Array.CreateInstance(hasElementType ? elementType : typeof(object), 0);
+					}
 				}
+
 				if (xmlReader.NodeType != XmlNodeType.Element)
 					throw new FormatException();
+
+				if (xmlReader.LocalName == "data")
+					continue;
 				if (xmlReader.LocalName != "value")
 					throw new FormatException();
 
@@ -550,7 +649,7 @@ namespace Deveel.Data.Net.Serialization {
 				return values.ToArray();
 
 			if (elementType == null)
-				throw new FormatException();
+				elementType = typeof (object);
 
 			Array array = Array.CreateInstance(elementType, values.Count);
 			for (int i = 0; i < values.Count; i++) {
@@ -614,7 +713,7 @@ namespace Deveel.Data.Net.Serialization {
 				value = ReadStruct(xmlReader);
 				checkLast = false;
 			} else if (elementName == "array") {
-				value = ReadArray(xmlReader);
+				value = ReadArray(xmlReader, ref checkLast);
 			} else {
 				IXmlRpcTypeResolver resolver;
 				Type type;
@@ -624,6 +723,9 @@ namespace Deveel.Data.Net.Serialization {
 				} catch(Exception) {
 					throw new FormatException("Unable to resolve the element '" + elementName + "' within this context.");
 				}
+
+				if (resolver == null)
+					throw new FormatException("Unable to determine a valid resolver for '" + elementName + "'.");
 
 				try {
 					value = resolver.ReadValue(xmlReader, type);
@@ -827,7 +929,9 @@ namespace Deveel.Data.Net.Serialization {
 					writer.WriteEndElement();
 				} else if (elementName == "serviceAddress") {
 					IServiceAddress address = (IServiceAddress)value;
-					serializer.WriteValue(address.ToString(), null, writer);
+					writer.WriteStartElement(elementName);
+					serializer.WriteString(address.ToString(), writer);
+					writer.WriteEndElement();
 				} else if (elementName == "singleNodeSet" ||
 						   elementName == "compressedNodeSet") {
 					NodeSet nodeSet = (NodeSet)value;
@@ -856,6 +960,9 @@ namespace Deveel.Data.Net.Serialization {
 			}
 			
 			public object ReadValue(XmlReader reader, Type type) {
+				if (typeof(IServiceAddress).IsAssignableFrom(type))
+					return ServiceAddresses.ParseString((string)serializer.ReadConsumedValue(reader));
+
 				throw new NotImplementedException();
 			}
 		}

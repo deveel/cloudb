@@ -96,7 +96,7 @@ namespace Deveel.Data.Net {
 					}
 
 				}
-			} catch (ThreadInterruptedException e) {
+			} catch (ThreadInterruptedException) {
 				// Thread was killed,
 			}
 		}

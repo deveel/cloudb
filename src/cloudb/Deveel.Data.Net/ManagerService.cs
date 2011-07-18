@@ -384,7 +384,7 @@ namespace Deveel.Data.Net {
 				throw new ApplicationException(response.ErrorMessage);
 				
 
-			string[] pathsNames = (String[])response.Arguments[0].Value;
+			string[] pathsNames = (string[])response.Arguments[0].Value;
 
 			// Create a transaction
 			lock (blockDbWriteLock) {

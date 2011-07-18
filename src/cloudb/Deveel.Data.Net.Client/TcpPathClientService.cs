@@ -43,11 +43,11 @@ namespace Deveel.Data.Net.Client {
 
 						TcpConnection c = new TcpConnection(this);
 						ThreadPool.QueueUserWorkItem(c.Work, s);
-					} catch (IOException e) {
+					} catch (IOException) {
 						//TODO: WARN log ...
 					}
 				}
-			} catch(Exception e) {
+			} catch(Exception) {
 				//TODO: WARN log ...
 			}
 		}
@@ -63,7 +63,7 @@ namespace Deveel.Data.Net.Client {
 				if (curReceiveBufSize < 256 * 1024) {
 					listener.Server.ReceiveBufferSize = 256 * 1024;
 				}
-			} catch (IOException e) {
+			} catch (IOException) {
 				//TODO: ERROR log ...
 				return;
 			}

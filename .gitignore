@@ -63,3 +63,5 @@
 /src/cloudbase-nunit/obj
 /src/cloudbase-nunit/bin
 /src/mnode/obj
+/package.build
+/nunit

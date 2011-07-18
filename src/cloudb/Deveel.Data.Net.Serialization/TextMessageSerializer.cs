@@ -9,7 +9,7 @@ namespace Deveel.Data.Net.Serialization {
 		private Encoding encoding;
 		
 		protected TextMessageSerializer(string encoding)
-			: this(!String.IsNullOrEmpty(encoding) ? Encoding.GetEncoding(encoding) : Encoding.UTF8) {
+			: this(!String.IsNullOrEmpty(encoding) ? Encoding.GetEncoding(encoding) : Encoding.Unicode) {
 		}
 
 		protected TextMessageSerializer(Encoding encoding) {
@@ -17,7 +17,7 @@ namespace Deveel.Data.Net.Serialization {
 		}
 
 		protected TextMessageSerializer()
-			: this(Encoding.UTF8) {
+			: this(Encoding.Unicode) {
 		}
 
 
@@ -28,7 +28,7 @@ namespace Deveel.Data.Net.Serialization {
 		public Encoding ContentEncoding {
 			get {
 				if (encoding == null)
-					encoding = Encoding.UTF8;
+					encoding = Encoding.Unicode;
 				return encoding;
 			}
 			set {
