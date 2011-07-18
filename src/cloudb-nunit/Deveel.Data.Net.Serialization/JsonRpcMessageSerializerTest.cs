@@ -52,5 +52,23 @@ namespace Deveel.Data.Net.Serialization {
 
 			Assert.AreEqual(expected.ToString(), s);
 		}
+
+		[Test]
+		public void SimpleMethodCallDeserialize() {
+			StringBuilder sb = new StringBuilder();
+			sb.Append("{");
+			sb.Append("\"jsonrpc\":\"1.0\",");
+			sb.Append("\"method\":\"testMethod\",");
+			sb.Append("\"params\":[");
+			sb.Append("34,");
+			sb.Append("{\"$type\":\"dateTime\",\"format\":\"yyyyMMddTHH:mm:s\",\"value\":\"20090722T11:09:56\"}");
+			sb.Append("]");
+			sb.Append("}");
+
+			RequestMessage request = (RequestMessage)Deserialize(sb.ToString(), MessageType.Request);
+			Assert.AreEqual("testMethod", request.Name);
+			Assert.AreEqual(34, request.Arguments[0].Value);
+			Assert.AreEqual(new DateTime(2009, 07, 22, 11, 09, 56), request.Arguments[1].Value);
+		}
 	}
 }

@@ -279,10 +279,10 @@ namespace Deveel.Data.Net.Serialization {
 							throw new FormatException();
 
 						while (reader.Read()) {
-							message.Arguments.Add(ReadValue(reader));
-
 							if (reader.Token == JsonToken.ArrayEnd)
 								break;
+
+							message.Arguments.Add(ReadValue(reader));
 						}
 					}
 				}
