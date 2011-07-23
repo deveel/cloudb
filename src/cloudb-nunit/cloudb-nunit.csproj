@@ -2,41 +2,20 @@
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProductVersion>9.0.21022</ProductVersion>
-    <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{05D455D6-1EA4-4C27-A4F2-797A518FE00A}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Deveel.Data</RootNamespace>
-    <AssemblyName>cloudb-nunit</AssemblyName>
-    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
-    <FileUpgradeFlags>
-    </FileUpgradeFlags>
-    <OldToolsVersion>3.5</OldToolsVersion>
-    <UpgradeBackupLocation />
-    <IsWebBootstrapper>false</IsWebBootstrapper>
-    <SourceAnalysisOverrideSettingsFile>C:\Documents and Settings\aprovenzano\Application Data\ICSharpCode/SharpDevelop3.0\Settings.SourceAnalysis</SourceAnalysisOverrideSettingsFile>
-    <StartWorkingDirectory>bin\Debug\</StartWorkingDirectory>
-    <SignAssembly>true</SignAssembly>
-    <PublishUrl>publish\</PublishUrl>
-    <Install>true</Install>
-    <InstallFrom>Disk</InstallFrom>
-    <UpdateEnabled>false</UpdateEnabled>
-    <UpdateMode>Foreground</UpdateMode>
-    <UpdateInterval>7</UpdateInterval>
-    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
-    <UpdatePeriodically>false</UpdatePeriodically>
-    <UpdateRequired>false</UpdateRequired>
-    <MapFileExtensions>true</MapFileExtensions>
-    <ApplicationRevision>0</ApplicationRevision>
-    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
-    <UseApplicationTrust>false</UseApplicationTrust>
-    <BootstrapperEnabled>true</BootstrapperEnabled>
-    <AllowUnsafeBlocks>False</AllowUnsafeBlocks>
-    <NoStdLib>False</NoStdLib>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>Full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+    <ConsolePause>false</ConsolePause>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <AssemblyOriginatorKeyFile>cloudb-nunit.snk</AssemblyOriginatorKeyFile>
+    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <TargetFrameworkProfile />
+    <ProjectGuid>{05D455D6-1EA4-4C27-A4F2-797A518FE00A}</ProjectGuid>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -71,6 +50,12 @@
     <PlatformTarget>x86</PlatformTarget>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject />
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="nunit.framework, Version=2.5.9.10348, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -81,10 +66,20 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Deveel.Data.Configuration\PropertiesConfigSourceTest.cs" />
-    <Compile Include="Deveel.Data.Net.Client\BinaryRpcSerializerTest.cs" />
-    <Compile Include="Deveel.Data.Net.Client\XmlRpcMessageSerializerTest.cs" />
+    <Compile Include="Deveel.Data.Diagnostics\SimpleConsoleLogger.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\BinaryRpcSerializerTest.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\JsonRpcMessageSerializerTest.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\XmlRpcMessageSerializerTest.cs" />
+    <Compile Include="Deveel.Data.Net\FakeAdminService.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Deveel.Data.Net\FakeNetworkTest.cs" />
+    <Compile Include="Deveel.Data.Net\FakeServiceAddress.cs" />
+    <Compile Include="Deveel.Data.Net\FakeServiceAddressHandler.cs" />
+    <Compile Include="Deveel.Data.Net\FakeServiceConnector.cs" />
+    <Compile Include="Deveel.Data.Net\HttpMessageFormat.cs" />
     <Compile Include="Deveel.Data.Net\HttpNetworkTest.cs" />
+    <Compile Include="Deveel.Data.Net\NetworkStoreType.cs" />
     <Compile Include="Deveel.Data.Net\NetworkTestBase.cs" />
     <Compile Include="Deveel.Data.Net\TcpNetworkTest.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LoggerTest.cs" />

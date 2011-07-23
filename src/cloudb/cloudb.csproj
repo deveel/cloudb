@@ -66,8 +66,10 @@
     <Compile Include="Deveel.Data.Configuration\ConfigFormat.cs" />
     <Compile Include="Deveel.Data.Configuration\ConfigurationException.cs" />
     <Compile Include="Deveel.Data.Configuration\IConfigFormatter.cs" />
-    <Compile Include="Deveel.Data.Configuration\IConfigurable.cs" />
-    <Compile Include="Deveel.Data.Net.Security\AuthenticationException.cs" />
+    <Compile Include="Deveel.Data.Net.Client\PathStruct.cs" />
+    <Compile Include="Deveel.Data.Net.Client\PathValue.cs" />
+    <Compile Include="Deveel.Data.Net.Client\PathValueType.cs" />
+    <Compile Include="Deveel.Data.Net.Client\PathValue_Conversion.cs" />
     <Compile Include="Deveel.Data.Net.Security\InvalidUserPasswordException.cs" />
     <Compile Include="Deveel.Data.Net.Security\IUser.cs" />
     <Compile Include="Deveel.Data.Configuration\PropertiesConfigFormatter.cs" />
@@ -85,8 +87,6 @@
     <Compile Include="Deveel.Data.Diagnostics\LogWriter.cs" />
     <Compile Include="Deveel.Data.Net.Security\AuthRequest.cs" />
     <Compile Include="Deveel.Data.Net.Security\AuthResult.cs" />
-    <Compile Include="Deveel.Data.Net.Client\BinaryMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net.Client\BinaryRpcMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Client\ClientRequestMessage.cs" />
     <Compile Include="Deveel.Data.Net.Client\IAttributesHandler.cs" />
     <Compile Include="Deveel.Data.Net.Security\IAuthenticator.cs" />
@@ -95,12 +95,7 @@
     <Compile Include="Deveel.Data.Net.Client\UserAuthenticator.cs" />
     <Compile Include="Deveel.Data.Net.Security\IUserDataSource.cs" />
     <Compile Include="Deveel.Data.Net.Client\IMessageProcessor.cs" />
-    <Compile Include="Deveel.Data.Net.Client\IMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net.Client\IMessageStreamSupport.cs" />
     <Compile Include="Deveel.Data.Net.Client\IPathTransaction.cs" />
-    <Compile Include="Deveel.Data.Net.Client\IRestMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net.Client\ITextMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net.Client\IXmlRpcTypeResolver.cs" />
     <Compile Include="Deveel.Data.Net.Client\Message.cs" />
     <Compile Include="Deveel.Data.Net.Client\MessageArgument.cs" />
     <Compile Include="Deveel.Data.Net.Client\MessageArguments.cs" />
@@ -112,8 +107,21 @@
     <Compile Include="Deveel.Data.Net.Client\MessageResponseCode.cs" />
     <Compile Include="Deveel.Data.Net.Client\MessageType.cs" />
     <Compile Include="Deveel.Data.Net.Client\RestFormat.cs" />
-    <Compile Include="Deveel.Data.Net.Client\TextMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net.Client\XmlRpcMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\BinaryMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\BinaryRpcMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\IJsonRpcTypeResolver.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\IJsonSerializable.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\IMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\IRestMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\IRpcMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\ITextMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\IXmlRpcTypeResolver.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\IXmlSerializable.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\JsonRpcMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\TextMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\XmlMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\XmlRestMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\XmlRpcMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net\AdminService.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -123,6 +131,9 @@
     </Compile>
     <Compile Include="Deveel.Data.Net\BlockServerElement.cs" />
     <Compile Include="Deveel.Data.Net\BlockServerTable.cs" />
+    <Compile Include="Deveel.Data.Net\ClientCommandEventArgs.cs" />
+    <Compile Include="Deveel.Data.Net\ClientConnection.cs" />
+    <Compile Include="Deveel.Data.Net\ClientConnectionEventArgs.cs" />
     <Compile Include="Deveel.Data.Net\CommitFaultException.cs" />
     <Compile Include="Deveel.Data.Net\CompressedBlockStore.cs" />
     <Compile Include="Deveel.Data.Net\CompressedNodeSet.cs" />
@@ -132,12 +143,9 @@
     <Compile Include="Deveel.Data.Net.Client\RestPathClientService.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Deveel.Data.Net.Client\IXmlSerializable.cs" />
     <Compile Include="Deveel.Data.Net.Client\TcpPathClientService.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Deveel.Data.Net.Client\XmlRestMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net.Client\XmlMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Client\IPathContext.cs" />
     <Compile Include="Deveel.Data.Net.Client\PathClientService.cs">
       <SubType>Component</SubType>
@@ -163,6 +171,7 @@
     <Compile Include="Deveel.Data.Net\IServiceFactory.cs" />
     <Compile Include="Deveel.Data.Net.Client\RequestType.cs" />
     <Compile Include="Deveel.Data.Net\MemoryServiceFactory.cs" />
+    <Compile Include="Deveel.Data.Net\PathStats.cs" />
     <Compile Include="Deveel.Data.Net\ServiceState.cs" />
     <Compile Include="Deveel.Data.Net\ServiceStatus.cs" />
     <Compile Include="Deveel.Data.Net\TcpProxyAdminService.cs">
@@ -292,6 +301,14 @@
     <Compile Include="Deveel.Data\TreeSystemTransaction.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="LitJson\IJsonWrapper.cs" />
+    <Compile Include="LitJson\JsonData.cs" />
+    <Compile Include="LitJson\JsonException.cs" />
+    <Compile Include="LitJson\JsonMapper.cs" />
+    <Compile Include="LitJson\JsonReader.cs" />
+    <Compile Include="LitJson\JsonWriter.cs" />
+    <Compile Include="LitJson\Lexer.cs" />
+    <Compile Include="LitJson\ParserToken.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <None Include="cloudb.snk" />
     <None Include="Deveel.Data.Net\ChangeLog" />
@@ -315,9 +332,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Deveel.Data.Diagnostics\ChangeLog" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Deveel.Data.Net.Security\ChangeLog" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
