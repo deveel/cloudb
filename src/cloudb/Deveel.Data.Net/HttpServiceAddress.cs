@@ -136,17 +136,18 @@ namespace Deveel.Data.Net {
 				builder.Path = path;
 				builder.Query = query;
 				cachedString = builder.ToString();
-			StringBuilder sb = new StringBuilder();
-			sb.Append("http://");
-			sb.Append(host);
-			sb.Append(":");
-			sb.Append(port);
-			sb.Append("/");
-			if (!String.IsNullOrEmpty(path) &&
-                !path.Equals("/")) {
-				sb.Append(path);
-				if (!String.IsNullOrEmpty(query))
-					sb.Append("/");
+				StringBuilder sb = new StringBuilder();
+				sb.Append("http://");
+				sb.Append(host);
+				sb.Append(":");
+				sb.Append(port);
+				sb.Append("/");
+				if (!String.IsNullOrEmpty(path) &&
+				    !path.Equals("/")) {
+					sb.Append(path);
+					if (!String.IsNullOrEmpty(query))
+						sb.Append("/");
+				}
 			}
 
 			return cachedString;
