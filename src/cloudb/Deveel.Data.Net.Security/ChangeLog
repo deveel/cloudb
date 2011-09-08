@@ -1,0 +1,14 @@
+﻿2011-09-07  Antonello Provenzano  <antonello@deveel.com>
+	* IAuthenticator.cs: removed method IsProtocolSupported
+	* AuthRequest.cs: data dictionary modified to accept the
+	AuthObject value.
+
+2011-07-25  Antonello Provenzano  <antonello@deveel.com>
+	* IAuthenticator.cs: 
+		- introduced argument to method Authenticate for indicating 
+		the authentication end-point
+		- added property Mechanism to indicate esplicitely the
+		authentication mechanism used by the implementations of
+		the interface
+		- method IsProtocolSupported added to check if the protocol
+		is supported by the authentication mechanism

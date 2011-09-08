@@ -11,7 +11,7 @@ namespace Deveel.Data.Net {
 	[TestFixture(HttpMessageFormat.Json, NetworkStoreType.Memory)]
 	[TestFixture(HttpMessageFormat.Json, NetworkStoreType.FileSystem)]
     [Category("KnownUnstable")]
-	public sealed class HttpNetworkTest : NetworkTestBase {
+	public sealed class HttpNetworkTest : NetworkServiceTestBase {
 		private readonly HttpMessageFormat format;
 				
 		private static readonly HttpServiceAddress Local = new HttpServiceAddress("localhost", 1587);

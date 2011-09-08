@@ -1,4 +1,24 @@
-﻿2010-10-05  Antonello Provenzano  <antonello@deveel.com>
+﻿2011-09-07  Antonello Provenzano  <antonello@deveel.com>
+	* IServiceConnector.cs: redesigned and removed the
+	property Protocol
+
+2011-07-24  Antonello Provenzano  <antonello@deveel.com>
+	* IServiceConnector.cs: 
+		- added property Authenticator that accepts the
+		authentication mechanism for the connection
+		- property Protocol introduced to explicitly indicate
+		the connection protocol.
+	* ServiceConnector.cs: abstract implementation of 
+	IServiceConnector interface that provides common behaviors
+	* HttpServiceConnector.cs: inherits from abstract class
+	ServiceConnector
+	* TcpProxyServiceConnector.cs: 
+		- inherits from abstract class ServiceConnector
+		- constructor sign changed
+		- Connect method accepts arguments to reflect
+		IServiceConnector contract
+
+2010-10-05  Antonello Provenzano  <antonello@deveel.com>
 	* HttpPathService.cs: renamed to RestPathService to
 	better describe its mimics.
 	* TcpPathService.cs: renamed to BinaryPathService to

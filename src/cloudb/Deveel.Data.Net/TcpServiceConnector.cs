@@ -11,42 +11,33 @@ using Deveel.Data.Net.Client;
 using Deveel.Data.Net.Serialization;
 
 namespace Deveel.Data.Net {
-	public class TcpServiceConnector : IServiceConnector {
+	[MessageSerializer(typeof(BinaryRpcMessageSerializer))]
+	public class TcpServiceConnector : ServiceConnector {
 		public TcpServiceConnector(string password) {
+			this.password = password;			
+		}
+
+		private Dictionary<TcpServiceAddress, TcpConnection> connections;
+		private readonly string password;
+
+		private Thread backgroundThread;
+		private bool purgeThreadStopped;
+		
+		public string Password {
+			get { return password; }
+		}
+
+		protected override bool OnConnect(IServiceAddress address, ServiceType serviceType) {
 			connections = new Dictionary<TcpServiceAddress, TcpConnection>();
-			this.password = password;
-			
-			log = Logger.Network;
 
 			// This thread kills connections that have timed out.
 			backgroundThread = new Thread(PurgeConnections);
 			backgroundThread.Name = "TCP::PurgeConnections";
 			backgroundThread.IsBackground = true;
 			backgroundThread.Start();
+
+			return true;
 		}
-
-		private readonly Dictionary<TcpServiceAddress, TcpConnection> connections;
-		private readonly string password;
-		private IMessageSerializer serializer;
-
-		private readonly Thread backgroundThread;
-		private bool purgeThreadStopped;
-		
-		private readonly Logger log;
-
-		public string Password {
-			get { return password; }
-		}
-		
-		public IMessageSerializer MessageSerializer {
-			get {
-				if (serializer == null)
-					serializer = new BinaryRpcMessageSerializer();
-				return serializer;
-			}
-			set { serializer = value; }
-		}
-
 
 		private void PurgeConnections() {
 			try {
@@ -91,7 +82,7 @@ namespace Deveel.Data.Net {
 							dout.Flush();
 							c.s.Close();
 						} catch (IOException e) {
-							log.Error("Failed to dispose timed out connection", e);
+							Logger.Error("Failed to dispose timed out connection", e);
 						}
 					}
 
@@ -146,17 +137,9 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		#region Implementation of IDisposable
-
-		public void Dispose() {
-			Close();
-		}
-
-		#endregion
-
 		#region Implementation of IServiceConnector
 
-		public void Close() {
+		public override void Close() {
 			lock (connections) {
 				purgeThreadStopped = true;
 				Monitor.PulseAll(connections);
@@ -167,7 +150,7 @@ namespace Deveel.Data.Net {
 			return new TcpMessageProcessor(this, address, type);
 		}
 		
-		IMessageProcessor IServiceConnector.Connect(IServiceAddress address, ServiceType type) {
+		protected override IMessageProcessor Connect(IServiceAddress address, ServiceType type) {
 			return Connect((TcpServiceAddress)address, type);
 		}
 
