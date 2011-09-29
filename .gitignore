@@ -42,3 +42,7 @@
 /package.build
 /nunit
 /src/_ReSharper.cloudb
+/bin/cloudb-nunit.dll
+/bin/cloudb.dll
+/bin/nunit.framework.dll
+/src/cloudb/TestResult.xml

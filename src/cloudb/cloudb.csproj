@@ -70,8 +70,6 @@
     <Compile Include="Deveel.Data.Net.Client\PathValue.cs" />
     <Compile Include="Deveel.Data.Net.Client\PathValueType.cs" />
     <Compile Include="Deveel.Data.Net.Client\PathValue_Conversion.cs" />
-    <Compile Include="Deveel.Data.Net.Security\InvalidUserPasswordException.cs" />
-    <Compile Include="Deveel.Data.Net.Security\IUser.cs" />
     <Compile Include="Deveel.Data.Configuration\PropertiesConfigFormatter.cs" />
     <Compile Include="Deveel.Data.Configuration\XmlConfigFormatter.cs" />
     <Compile Include="Deveel.Data.Diagnostics\Analytics.cs" />
@@ -85,15 +83,8 @@
     <Compile Include="Deveel.Data.Diagnostics\ILogger.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LogEntry.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LogWriter.cs" />
-    <Compile Include="Deveel.Data.Net.Security\AuthRequest.cs" />
-    <Compile Include="Deveel.Data.Net.Security\AuthResult.cs" />
     <Compile Include="Deveel.Data.Net.Client\ClientRequestMessage.cs" />
     <Compile Include="Deveel.Data.Net.Client\IAttributesHandler.cs" />
-    <Compile Include="Deveel.Data.Net.Security\IAuthenticator.cs" />
-    <Compile Include="Deveel.Data.Net.Security\PublicKey.cs" />
-    <Compile Include="Deveel.Data.Net.Security\UserAuthenticationCode.cs" />
-    <Compile Include="Deveel.Data.Net.Client\UserAuthenticator.cs" />
-    <Compile Include="Deveel.Data.Net.Security\IUserDataSource.cs" />
     <Compile Include="Deveel.Data.Net.Client\IMessageProcessor.cs" />
     <Compile Include="Deveel.Data.Net.Client\IPathTransaction.cs" />
     <Compile Include="Deveel.Data.Net.Client\Message.cs" />

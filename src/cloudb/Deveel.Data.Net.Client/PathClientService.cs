@@ -5,7 +5,6 @@ using System.IO;
 using System.Reflection;
 
 using Deveel.Data.Diagnostics;
-using Deveel.Data.Net.Security;
 using Deveel.Data.Net.Serialization;
 
 namespace Deveel.Data.Net.Client {
@@ -33,8 +32,6 @@ namespace Deveel.Data.Net.Client {
 		private readonly IServiceConnector connector;
 		private IMessageSerializer messageSerializer;
 		private readonly Logger log;
-
-		private IAuthenticator authenticator;
 
 		private NetworkClient client;
 		private readonly NetworkProfile network;
@@ -72,11 +69,6 @@ namespace Deveel.Data.Net.Client {
 				return messageSerializer;
 			}
 			set { messageSerializer = value; }
-		}
-
-		public IAuthenticator Authenticator {
-			get { return authenticator; }
-			set { authenticator = value; }
 		}
 
 		public bool IsConnected {
@@ -185,28 +177,8 @@ namespace Deveel.Data.Net.Client {
 					request.Attributes.Add(pair.Key, pair.Value);
 				}
 			}
+
 			request.Seal();
-
-			if (authenticator != null) {
-				AuthRequest authRequest = new AuthRequest(context, pathName);
-				foreach (KeyValuePair<string, object> pair in request.Attributes)
-					authRequest.AuthData.Add(pair);
-
-				AuthResult authResult = authenticator.Authenticate(authRequest);
-				if (authResult != null) {
-					if (!authResult.Success) {
-						Logger.Info(authenticator, String.Format("Unauthorized: {0} ({1})", authResult.Message, authResult.Code));
-
-						ResponseMessage responseMessage = request.CreateResponse("error");
-						responseMessage.Code = MessageResponseCode.Unauthorized;
-						//TODO: Extend MessageError to include an error specific code ...
-						responseMessage.Arguments.Add(new MessageError(authResult.Message));
-						return responseMessage;
-					}
-						
-					Logger.Info(authenticator, String.Format("Authorized: {0}", authResult.Message));
-				}
-			}
 
 			return handler.Handler.HandleRequest(request);
 		}
