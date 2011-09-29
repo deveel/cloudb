@@ -67,8 +67,6 @@
   <ItemGroup>
     <Compile Include="Deveel.Data.Configuration\PropertiesConfigSourceTest.cs" />
     <Compile Include="Deveel.Data.Diagnostics\SimpleConsoleLogger.cs" />
-    <Compile Include="Deveel.Data.Net.Security\AuthenticatorTestBase.cs" />
-    <Compile Include="Deveel.Data.Net.Security\TcpPlainAuthenticatorTest.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\BinaryRpcSerializerTest.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\JsonRpcMessageSerializerTest.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\XmlRpcMessageSerializerTest.cs" />
@@ -91,20 +89,6 @@
     <None Include="cloudb-nunit.snk" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\cloudbase\cloudbase.csproj">
-      <Project>{A2099A92-DA13-4440-B2F9-7890750E0E70}</Project>
-      <Name>cloudbase</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\cloudb\cloudb.csproj">
-      <Project>{A18511ED-5BA6-4811-B44F-F730FAD84CE8}</Project>
-      <Name>cloudb</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\nunit-common\nunit-common.csproj">
-      <Project>{41B421D9-85B1-45DF-9F24-7D056A3CEF5A}</Project>
-      <Name>nunit-common</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
       <Visible>False</Visible>
       <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
@@ -123,6 +107,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Deveel.Data.Net\ChangeLog" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\cloudb\cloudb.csproj">
+      <Project>{A18511ED-5BA6-4811-B44F-F730FAD84CE8}</Project>
+      <Name>cloudb</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />

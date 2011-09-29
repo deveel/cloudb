@@ -4,13 +4,11 @@ using System.ComponentModel;
 
 using Deveel.Data.Diagnostics;
 using Deveel.Data.Net.Client;
-using Deveel.Data.Net.Security;
 using Deveel.Data.Net.Serialization;
 
 namespace Deveel.Data.Net {
 	public abstract class ServiceConnector : Component, IServiceConnector {
 		private IMessageSerializer serializer;
-		private IAuthenticator authenticator;
 
 		private bool connected;
 		private IMessageProcessor processor;
@@ -35,11 +33,6 @@ namespace Deveel.Data.Net {
 
 				serializer = value;
 			}
-		}
-
-		public IAuthenticator Authenticator {
-			get { return authenticator; }
-			set { authenticator = value; }
 		}
 
 		protected Logger Logger {

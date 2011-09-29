@@ -1,7 +1,6 @@
 ﻿using System;
 
 using Deveel.Data.Net.Client;
-using Deveel.Data.Net.Security;
 using Deveel.Data.Net.Serialization;
 
 namespace Deveel.Data.Net {
@@ -18,12 +17,6 @@ namespace Deveel.Data.Net {
 
 		private readonly ProcessCallback callback;
 		private IMessageSerializer serializer;
-		private IAuthenticator authenticator;
-
-		public IAuthenticator Authenticator {
-			get { return authenticator; }
-			set { authenticator = value; }
-		}
 
 		public void Dispose() {
 		}
