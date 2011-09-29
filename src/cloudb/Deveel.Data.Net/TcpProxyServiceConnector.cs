@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
@@ -9,45 +8,27 @@ using Deveel.Data.Net.Client;
 using Deveel.Data.Net.Serialization;
 
 namespace Deveel.Data.Net {
-	public class TcpProxyServiceConnector : IServiceConnector {
-		public TcpProxyServiceConnector(IPAddress proxyAddress, int proxyPort, string password) {
+	public class TcpProxyServiceConnector : ServiceConnector {
+		public TcpProxyServiceConnector(TcpServiceAddress proxyAddress, string password) {
 			this.proxyAddress = proxyAddress;
-			this.proxyPort = proxyPort;
 			this.password = password;
-
-			Connect();
 		}
 
-		private readonly IPAddress proxyAddress;
-		private readonly int proxyPort;
+		private readonly TcpServiceAddress proxyAddress;
 		private readonly string password;
 		private string initString;
 
 		private BinaryReader pin;
 		private BinaryWriter pout;
 		private readonly object proxy_lock = new object();
-		private IMessageSerializer serializer;
 
-		public int ProxyPort {
-			get { return proxyPort; }
-		}
-
-		public IPAddress ProxyAddress {
+		public TcpServiceAddress ProxyAddress {
 			get { return proxyAddress; }
 		}
-		
-		public IMessageSerializer MessageSerializer {
-			get {
-				if (serializer == null)
-					serializer = new BinaryRpcMessageSerializer();
-				return serializer;
-			}
-			set { serializer = value; }
-		}
 
-		private void Connect() {
-			Socket socket = new Socket(proxyAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-			socket.Connect(proxyAddress, proxyPort);
+		protected override bool OnConnect(IServiceAddress serviceAddress, ServiceType serviceType) {
+			Socket socket = new Socket(proxyAddress.ToIPAddress().AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+			socket.Connect(proxyAddress.ToIPAddress(), proxyAddress.Port);
 			NetworkStream stream = new NetworkStream(socket);
 
 			pin = new BinaryReader(new BufferedStream(stream), Encoding.Unicode);
@@ -61,22 +42,13 @@ namespace Deveel.Data.Net {
 				initString = pin.ReadString();
 				pout.Write(password);
 				pout.Flush();
+				return true;
 			} catch (IOException e) {
 				throw new Exception("IO Error", e);
 			}
 		}
 
-		#region Implementation of IDisposable
-
-		public void Dispose() {
-			Close();
-		}
-
-		#endregion
-
-		#region Implementation of IServiceConnector
-
-		public void Close() {
+		public override void Close() {
 			try {
 				lock (proxy_lock) {
 					pout.Write('0');
@@ -97,11 +69,9 @@ namespace Deveel.Data.Net {
 			return new MessageProcessor(this, address, type);
 		}
 		
-		IMessageProcessor IServiceConnector.Connect(IServiceAddress address, ServiceType type) {
+		protected override IMessageProcessor Connect(IServiceAddress address, ServiceType type) {
 			return Connect((TcpServiceAddress)address, type);
 		}
-
-		#endregion
 
 		#region MessageProcessor
 

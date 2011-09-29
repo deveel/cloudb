@@ -3,14 +3,14 @@ using System.Collections.Generic;
 
 namespace Deveel.Data.Net.Security {
 	public sealed class AuthResult {
-		private readonly bool success;
 		private readonly int code;
 		private readonly IDictionary<string, object> authData;
 		private readonly string message;
 		private readonly IDictionary<string, object> outputData;
 
-		public AuthResult(bool success, int code, string message, IDictionary<string, object> authData) {
-			this.success = success;
+		private const int SuccessCode = (int) AuthenticationCode.Success;
+
+		public AuthResult(int code, string message, IDictionary<string, object> authData) {
 			this.code = code;
 			this.message = message;
 			this.authData = authData;
@@ -18,16 +18,28 @@ namespace Deveel.Data.Net.Security {
 			outputData = new Dictionary<string, object>();
 		}
 
-		public AuthResult(bool success, int code, IDictionary<string, object> authData)
-			: this(success, code, null, authData) {
+		public AuthResult(AuthenticationCode code, string message, IDictionary<string, object> authData)
+			: this((int)code, message, authData) {
 		}
 
-		public AuthResult(bool success, int code, string message)
-			: this(success, code, message, null) {
+		public AuthResult(int code, IDictionary<string, object> authData)
+			: this(code, null, authData) {
 		}
 
-		public AuthResult(bool success, int code)
-			: this(success, code, (string)null) {
+		public AuthResult(AuthenticationCode code, string message)
+			: this((int)code, message) {
+		}
+
+		public AuthResult(int code, string message)
+			: this(code, message, null) {
+		}
+
+		public AuthResult(AuthenticationCode code)
+			: this((int)code) {
+		}
+
+		public AuthResult(int code)
+			: this(code, (string)null) {
 		}
 
 		public string Message {
@@ -43,7 +55,7 @@ namespace Deveel.Data.Net.Security {
 		}
 
 		public bool Success {
-			get { return success; }
+			get { return code == SuccessCode; }
 		}
 
 		public IDictionary<string, object> OutputData {

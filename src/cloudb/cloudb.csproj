@@ -70,6 +70,10 @@
     <Compile Include="Deveel.Data.Net.Client\PathValue.cs" />
     <Compile Include="Deveel.Data.Net.Client\PathValueType.cs" />
     <Compile Include="Deveel.Data.Net.Client\PathValue_Conversion.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthenticationCode.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthObject.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthDataType.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthenticationPoint.cs" />
     <Compile Include="Deveel.Data.Net.Security\InvalidUserPasswordException.cs" />
     <Compile Include="Deveel.Data.Net.Security\IUser.cs" />
     <Compile Include="Deveel.Data.Configuration\PropertiesConfigFormatter.cs" />
@@ -90,9 +94,9 @@
     <Compile Include="Deveel.Data.Net.Client\ClientRequestMessage.cs" />
     <Compile Include="Deveel.Data.Net.Client\IAttributesHandler.cs" />
     <Compile Include="Deveel.Data.Net.Security\IAuthenticator.cs" />
+    <Compile Include="Deveel.Data.Net.Security\NetworkPasswordAuthenticator.cs" />
     <Compile Include="Deveel.Data.Net.Security\PublicKey.cs" />
     <Compile Include="Deveel.Data.Net.Security\UserAuthenticationCode.cs" />
-    <Compile Include="Deveel.Data.Net.Client\UserAuthenticator.cs" />
     <Compile Include="Deveel.Data.Net.Security\IUserDataSource.cs" />
     <Compile Include="Deveel.Data.Net.Client\IMessageProcessor.cs" />
     <Compile Include="Deveel.Data.Net.Client\IPathTransaction.cs" />
@@ -118,6 +122,7 @@
     <Compile Include="Deveel.Data.Net.Serialization\IXmlRpcTypeResolver.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\IXmlSerializable.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\JsonRpcMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net\MessageSerializerAttribute.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\TextMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\XmlMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\XmlRestMessageSerializer.cs" />
@@ -164,7 +169,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Deveel.Data.Net\HttpServiceAddressHandler.cs" />
-    <Compile Include="Deveel.Data.Net\HttpServiceConnector.cs" />
+    <Compile Include="Deveel.Data.Net\HttpServiceConnector.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Deveel.Data.Net\IBlockStore.cs" />
     <Compile Include="Deveel.Data.Net\HttpServiceAddress.cs" />
     <Compile Include="Deveel.Data.Net.Client\IRequestHandler.cs" />
@@ -172,6 +179,10 @@
     <Compile Include="Deveel.Data.Net.Client\RequestType.cs" />
     <Compile Include="Deveel.Data.Net\MemoryServiceFactory.cs" />
     <Compile Include="Deveel.Data.Net\PathStats.cs" />
+    <Compile Include="Deveel.Data.Net\ServiceConnector.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Deveel.Data.Net\ServiceProtocols.cs" />
     <Compile Include="Deveel.Data.Net\ServiceState.cs" />
     <Compile Include="Deveel.Data.Net\ServiceStatus.cs" />
     <Compile Include="Deveel.Data.Net\TcpProxyAdminService.cs">
@@ -229,8 +240,12 @@
     </Compile>
     <Compile Include="Deveel.Data.Net\TcpNetworkClient.cs" />
     <Compile Include="Deveel.Data.Net\TcpProxyNetworkClient.cs" />
-    <Compile Include="Deveel.Data.Net\TcpProxyServiceConnector.cs" />
-    <Compile Include="Deveel.Data.Net\TcpServiceConnector.cs" />
+    <Compile Include="Deveel.Data.Net\TcpProxyServiceConnector.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Deveel.Data.Net\TcpServiceConnector.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="ComponentAce.Compression.Libs.zlib\Adler32.cs" />
     <Compile Include="Deveel.Data.Util\ProductInfo.cs" />
     <Compile Include="Deveel.Data.Util\StrongPagedAccess.cs" />
@@ -332,6 +347,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Deveel.Data.Diagnostics\ChangeLog" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Deveel.Data.Net.Security\ChangeLog" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />

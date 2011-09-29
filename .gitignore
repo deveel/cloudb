@@ -42,3 +42,6 @@
 /package.build
 /nunit
 /src/_ReSharper.cloudb
+/src/cloudb/TestResult.xml
+/bin
+/dist

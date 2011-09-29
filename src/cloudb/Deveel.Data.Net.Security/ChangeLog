@@ -1,4 +1,31 @@
+<<<<<<< HEAD
 ﻿2011-03-01  Antonello Provenzano  <antonello@deveel.com>
 	* AuthResult.cs: added property 'OutputData' to provide
 	authorization processors a patch to output data in the
 	stream.
+=======
+﻿2001-27-09  Antonello Provenzano  <antonello@deveel.com>
+	* AuthenticationCode.cs: enumeration added to expose well-
+	known and reserved authentication codes
+	* AuthResult.cs:
+		- introduced overloaded constructors for
+		accepting AuthenticationCode enumeration;
+		- removed boolean argument 'success'
+	* AuthRequest.cs: added overloaded constructor that allows
+	the specification of a dictionary of authenticatin metadata
+
+2011-09-07  Antonello Provenzano  <antonello@deveel.com>
+	* IAuthenticator.cs: removed method IsProtocolSupported
+	* AuthRequest.cs: data dictionary modified to accept the
+	AuthObject value.
+
+2011-07-25  Antonello Provenzano  <antonello@deveel.com>
+	* IAuthenticator.cs: 
+		- introduced argument to method Authenticate for indicating 
+		the authentication end-point
+		- added property Mechanism to indicate esplicitely the
+		authentication mechanism used by the implementations of
+		the interface
+		- method IsProtocolSupported added to check if the protocol
+		is supported by the authentication mechanism
+>>>>>>> master
