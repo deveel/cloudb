@@ -1,0 +1,3 @@
+﻿2011-07-24  Antonello Provenzano  <antonello@deveel.com>
+	* NetworkServiceTest.cs: created from NetworkTestBase to generalize
+	more the functions of the base class

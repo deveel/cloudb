@@ -16,8 +16,11 @@
 				<include name="Deveel.Data.Diagnostics/*.cs"/>
 				<include name="Deveel.Data.Net/*.cs"/>
 				<include name="Deveel.Data.Net.Client/*.cs"/>
+				<include name="Deveel.Data.Net.Security/*.cs"/>
+				<include name="Deveel.Data.Net.Serialization/*.cs"/>
 				<include name="Deveel.Data.Store/*.cs"/>
 				<include name="Deveel.Data.Util/*.cs"/>
+				<include name="LitJson/*.cs"/>
 			</sources>
 		</csc>
 		<if test="${not notest}">

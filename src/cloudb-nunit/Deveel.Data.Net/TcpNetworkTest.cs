@@ -6,7 +6,7 @@ using NUnit.Framework;
 namespace Deveel.Data.Net {
 	[TestFixture(NetworkStoreType.FileSystem)]
 	[TestFixture(NetworkStoreType.Memory)]
-	public sealed class TcpNetworkTest : NetworkTestBase {
+	public sealed class TcpNetworkTest : NetworkServiceTestBase {
 		private const string NetworkPassword = "123456";
 		
 		private static readonly TcpServiceAddress Local = new TcpServiceAddress(IPAddress.Loopback);

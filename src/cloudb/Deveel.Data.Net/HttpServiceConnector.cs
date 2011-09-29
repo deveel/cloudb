@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Net;
 
@@ -7,7 +6,8 @@ using Deveel.Data.Net.Client;
 using Deveel.Data.Net.Serialization;
 
 namespace Deveel.Data.Net {
-	public sealed class HttpServiceConnector : IServiceConnector {		
+	[MessageSerializer(typeof(XmlMessageSerializer))]
+	public sealed class HttpServiceConnector : ServiceConnector {		
 		public HttpServiceConnector(string userName, string password) {
 			this.userName = userName;
 			this.password = password;
@@ -19,28 +19,13 @@ namespace Deveel.Data.Net {
 		
 		private string userName;
 		private string password;
-		private IMessageSerializer serializer;
-		
-		public IMessageSerializer MessageSerializer {
-			get { 
-				if (serializer == null)
-					serializer = new XmlRpcMessageSerializer();
-				return serializer;
-			}
-			set { serializer = value; }
-		}
 	
-		void IDisposable.Dispose() {
-		}
-
-		void IServiceConnector.Close() {
-		}
 		
 		public IMessageProcessor Connect(HttpServiceAddress address, ServiceType serviceType) {
 			return new HttpMessageProcessor(this, address, serviceType);
 		}
 
-		IMessageProcessor IServiceConnector.Connect(IServiceAddress address, ServiceType type) {
+		protected override IMessageProcessor Connect(IServiceAddress address, ServiceType type) {
 			return Connect((HttpServiceAddress)address, type);
 		}
 		

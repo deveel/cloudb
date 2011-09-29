@@ -5,7 +5,7 @@ using NUnit.Framework;
 namespace Deveel.Data.Net {
 	[TestFixture(NetworkStoreType.Memory)]
 	[TestFixture(NetworkStoreType.FileSystem)]
-	public class FakeNetworkTest : NetworkTestBase {		
+	public class FakeNetworkTest : NetworkServiceTestBase {
 		public FakeNetworkTest(NetworkStoreType storeType)
 			: base(storeType) {
 		}

@@ -46,3 +46,6 @@
 /bin/cloudb.dll
 /bin/nunit.framework.dll
 /src/cloudb/TestResult.xml
+/src/_ReSharper.cloudb
+/src/cloudb/TestResult.xml
+/bin
