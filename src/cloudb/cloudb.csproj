@@ -73,7 +73,6 @@
     <Compile Include="Deveel.Data.Net.Security\AuthenticationCode.cs" />
     <Compile Include="Deveel.Data.Net.Security\AuthObject.cs" />
     <Compile Include="Deveel.Data.Net.Security\AuthDataType.cs" />
-    <Compile Include="Deveel.Data.Net.Security\AuthenticationPoint.cs" />
     <Compile Include="Deveel.Data.Net.Security\InvalidUserPasswordException.cs" />
     <Compile Include="Deveel.Data.Net.Security\IUser.cs" />
     <Compile Include="Deveel.Data.Configuration\PropertiesConfigFormatter.cs" />
