@@ -1,4 +1,14 @@
-﻿2011-09-07  Antonello Provenzano  <antonello@deveel.com>
+﻿2001-27-09  Antonello Provenzano  <antonello@deveel.com>
+	* AuthenticationCode.cs: enumeration added to expose well-
+	known and reserved authentication codes
+	* AuthResult.cs:
+		- introduced overloaded constructors for
+		accepting AuthenticationCode enumeration;
+		- removed boolean argument 'success'
+	* AuthRequest.cs: added overloaded constructor that allows
+	the specification of a dictionary of authenticatin metadata
+
+2011-09-07  Antonello Provenzano  <antonello@deveel.com>
 	* IAuthenticator.cs: removed method IsProtocolSupported
 	* AuthRequest.cs: data dictionary modified to accept the
 	AuthObject value.

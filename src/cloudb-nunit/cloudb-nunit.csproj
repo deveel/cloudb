@@ -68,7 +68,7 @@
     <Compile Include="Deveel.Data.Configuration\PropertiesConfigSourceTest.cs" />
     <Compile Include="Deveel.Data.Diagnostics\SimpleConsoleLogger.cs" />
     <Compile Include="Deveel.Data.Net.Security\AuthenticatorTestBase.cs" />
-    <Compile Include="Deveel.Data.Net.Security\TcpPlainAuthenticatorTest.cs" />
+    <Compile Include="Deveel.Data.Net.Security\NetworkAuthenticatorTest.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\BinaryRpcSerializerTest.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\JsonRpcMessageSerializerTest.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\XmlRpcMessageSerializerTest.cs" />

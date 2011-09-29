@@ -9,6 +9,6 @@ namespace Deveel.Data.Net.Security {
 
 		void Init(ConfigSource config);
 
-		AuthResult Authenticate(AuthenticationPoint authPoint, AuthRequest authRequest);
+		AuthResult Authenticate(AuthRequest authRequest);
 	}
 }

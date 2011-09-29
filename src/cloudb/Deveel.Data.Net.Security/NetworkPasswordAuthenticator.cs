@@ -28,7 +28,7 @@ namespace Deveel.Data.Net.Security {
 			password = config.GetString("password");
 		}
 
-		public AuthResult Authenticate(AuthenticationPoint authPoint, AuthRequest authRequest) {
+		public AuthResult Authenticate(AuthRequest authRequest) {
 			throw new NotImplementedException();
 		}
 	}

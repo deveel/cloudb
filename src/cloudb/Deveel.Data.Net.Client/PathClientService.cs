@@ -192,7 +192,7 @@ namespace Deveel.Data.Net.Client {
 				foreach (KeyValuePair<string, object> pair in request.Attributes)
 					authRequest.AuthData.Add(pair.Key, new AuthObject(pair.Value));
 
-				AuthResult authResult = authenticator.Authenticate(AuthenticationPoint.Client, authRequest);
+				AuthResult authResult = authenticator.Authenticate(authRequest);
 				if (authResult != null) {
 					if (!authResult.Success) {
 						Logger.Info(authenticator, String.Format("Unauthorized: {0} ({1})", authResult.Message, authResult.Code));
