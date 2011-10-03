@@ -91,17 +91,9 @@
     <None Include="cloudb-nunit.snk" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\cloudbase\cloudbase.csproj">
-      <Project>{A2099A92-DA13-4440-B2F9-7890750E0E70}</Project>
-      <Name>cloudbase</Name>
-    </ProjectReference>
     <ProjectReference Include="..\cloudb\cloudb.csproj">
       <Project>{A18511ED-5BA6-4811-B44F-F730FAD84CE8}</Project>
       <Name>cloudb</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\nunit-common\nunit-common.csproj">
-      <Project>{41B421D9-85B1-45DF-9F24-7D056A3CEF5A}</Project>
-      <Name>nunit-common</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
