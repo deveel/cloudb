@@ -51,3 +51,4 @@
 /bin
 /src/cloudb-nunit/test-results/cloudb-nunit.csproj-Debug-2011-10-03.xml
 /src/cloudb-nunit/test-results/cloudb-nunit.csproj.test-cache
+/dist

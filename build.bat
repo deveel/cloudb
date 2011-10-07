@@ -1,2 +1,2 @@
 @echo off
-"%~dp0\src\build.bat" %*
+"%~dp0src\build.bat" %* -D:libs="%~dp0libs" -D:conf="%~dp0conf"

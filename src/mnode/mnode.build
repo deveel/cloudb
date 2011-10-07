@@ -38,7 +38,8 @@
 			<fileset basedir="${sources}">
 				<include name="Properties/AssemblyInfo.cs"/>
 				<include name="Deveel.Data.Net/*.cs"/>
-				<include name="default.build"/>
+				<include name="mnode.build"/>
+				<include name="mnode.snk"/>
 			</fileset>
 		</tar>
 	</target>

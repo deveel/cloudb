@@ -5,9 +5,6 @@
 		<if test="${not kernel}">
 			<call target="-build-kernel"/>
 		</if>
-		<if test="${standalone}">
-			<property name="libs" value="../libs"/>
-		</if>
 		<echo message="building component log4net to ${path::get-full-path(output)}; libraries from ${path::get-full-path(libs)} ..."/>
 		<csc target="library" output="${output}/cloudb-log4net.dll" debug="${debug}" define="${define}" optimize="${not debug}" platform="${platform}" keyfile="cloudb-log4net.snk">
 			<sources>
@@ -27,7 +24,8 @@
 			<fileset basedir="${sources}">
 				<include name="Properties/AssemblyInfo.cs"/>
 				<include name="Deveel.Data.Diagnostics/*.cs"/>
-				<include name="default.build"/>
+				<include name="log4net.build"/>
+				<include name="cloudb-log4net.snk"/>
 			</fileset>
 		</tar>
 	</target>
