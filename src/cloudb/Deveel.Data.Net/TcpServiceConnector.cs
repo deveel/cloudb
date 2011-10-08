@@ -6,7 +6,6 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
-using Deveel.Data.Diagnostics;
 using Deveel.Data.Net.Client;
 using Deveel.Data.Net.Serialization;
 

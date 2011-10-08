@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 
 using Deveel.Data.Diagnostics;
@@ -15,18 +14,12 @@ namespace Deveel.Data.Net {
 
 		private Logger logger;
 
-		private static readonly Dictionary<Type, IMessageSerializer> DefaultSerializers;
-
 		protected ServiceConnector() {
 			logger = Logger.Network;
 		}
 
-		static ServiceConnector() {
-			DefaultSerializers = GetDefaultMessageSerializers();
-		}
-
 		public IMessageSerializer MessageSerializer {
-			get { return serializer ?? (serializer = GetDefaultMessageSerializer(GetType())); }
+			get { return serializer ?? (serializer = GetDefaultMessageSerializer()); }
 			set {
 				if (serializer == null)
 					throw new ArgumentNullException("value");
@@ -99,16 +92,15 @@ namespace Deveel.Data.Net {
 
 		protected abstract IMessageProcessor Connect(IServiceAddress address, ServiceType type);
 
-		private static Dictionary<Type, IMessageSerializer> GetDefaultMessageSerializers() {
-			throw new NotImplementedException();
-		}
+		protected virtual IMessageSerializer GetDefaultMessageSerializer() {
+			object[] attrs = GetType().GetCustomAttributes(typeof (MessageSerializerAttribute), true);
+			if (attrs.Length == 0)
+				return null;
 
-		private static IMessageSerializer GetDefaultMessageSerializer(Type connectorType) {
-			IMessageSerializer serializer;
-			if (DefaultSerializers.TryGetValue(connectorType, out serializer))
-				return serializer;
-
-			return null;
+			MessageSerializerAttribute attribute = (MessageSerializerAttribute) attrs[0];
+			return attribute.WithName
+			       	? MessageSerializers.GetSerializer(attribute.SerializerName)
+			       	: MessageSerializers.GetSerializer(attribute.SerializerType);
 		}
 	}
 }
