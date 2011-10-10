@@ -1,4 +1,4 @@
-<?xml version="1.0"?>
+<?xml version="1.0" encoding="utf-8"?>
 <project name="common">
 	<property name="version" value="1.0b" />
 	<property name="document" value="" />
@@ -7,29 +7,23 @@
 	<property name="kernel" value="false" />
 	<property name="debug" value="false" />
 	<property name="platform" value="anycpu" />
-	<property name="notest" value="false" />
-	<property name="package" value="all" />
-	<property name="package.name" value="" />
-	<property name="standalone" value="true" />
-	<property name="output" value="${path::combine(path::get-directory-name(project::get-buildfile-path()), '../bin')}" if="${standalone}" />
-	<property name="output" value="${path::combine(path::get-directory-name(project::get-buildfile-path()), 'bin')}" unless="${standalone}" />
-	<property name="libs" value="../libs" if="${not standalone}" />
-	<property name="libs" value="../../libs" if="${standalone}" />
+	<property name="notest" value="true" />
+	<property name="standalone" value="false" />
+	<property name="output" value="${path::combine(path::get-directory-name(project::get-buildfile-path()), 'bin')}" if="${standalone}" />
+	<property name="output" value="${path::combine(path::get-directory-name(project::get-buildfile-path()), '../bin')}" unless="${standalone}" />
+	<property name="dist-path" value="dist" if="${standalone}" />
 	<property name="dist-path" value="../dist" unless="${standalone}" />
-	<property name="dist-path" value="../../dist" if="${standalone}" />
+	<property name="libs" value="${path::combine(path::get-directory-name(project::get-buildfile-path()), 'libs')}" />
 	<property name="system" value="windows" />
 	<property name="doc.output" value="./output" />
 	<property name="doc" value="ndoc" />
-	<property name="conf" value="../conf" if="${not standalone}" />
-	<property name="conf" value="../../conf" if="${standalone}" />
+	<property name="conf" value="${path::combine(path::get-directory-name(project::get-buildfile-path()), 'conf')}" />
 	<target name="-build-kernel">
 		<if test="${not kernel}">
 			<echo message="the kernel library was not built or the assembly was not found: we will generate one" />
-			<nant buildfile="../cloudb/default.build" target="build" inheritall="false" verbose="false">
+			<nant buildfile="../cloudb/kernel.build" target="build" inheritall="false" verbose="false">
 				<properties>
 					<property name="output" value="${path::get-full-path(output)}" readonly="True" />
-					<!-- <property name="dist-path" value="${path::get-full-path(dist-path)}" readonly="True"/> -->
-					<!-- <property name="libs" value="${path::get-full-path(libs)}" readonly="True"/> -->
 					<property name="platform" value="${platform}" readonly="True" />
 					<property name="notest" value="${notest}" readonly="True" />
 					<property name="package" value="${package}" readonly="True" />
@@ -41,32 +35,6 @@
 				<echo message="standalone build: copying the kernel to the output path" />
 				<copy file="${output}/cloudb.dll" todir="${path::get-full-path(output)}" overwrite="true" />
 			</if>
-		</if>
-	</target>
-	<target name="package">
-		<if test="${package == 'src'}">
-			<if test="${package.name == ''}">
-				<property name="package.name" value="${project::get-name()}-${version}-${system}-${platform}-src" />
-			</if>
-			<call target="-package-src" />
-		</if>
-		<if test="${package == 'bin'}">
-			<if test="${package.name == ''}">
-				<property name="package.name" value="${project::get-name()}-${version}-${system}-${platform}-bin" />
-			</if>
-			<call target="-package-bin" />
-		</if>
-		<if test="${package == 'doc'}">
-			<if test="${package.name == ''}">
-				<property name="package.name" value="${project::get-name()}-${version}-doc" />
-			</if>
-			<call target="-package-doc" />
-		</if>
-		<if test="${package == 'all'}">
-			<if test="${package.name == ''}">
-				<property name="package.name" value="${project::get-name()}-${version}-${system}-${platform}" />
-			</if>
-			<call target="-package-all" />
 		</if>
 	</target>
 	<target name="windows">

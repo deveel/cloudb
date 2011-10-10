@@ -1,45 +1,28 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 
 using Deveel.Data.Diagnostics;
 using Deveel.Data.Net.Client;
-using Deveel.Data.Net.Security;
 using Deveel.Data.Net.Serialization;
 
 namespace Deveel.Data.Net {
 	public abstract class ServiceConnector : Component, IServiceConnector {
 		private IMessageSerializer serializer;
-		private IAuthenticator authenticator;
-
-		private bool connected;
-		private IMessageProcessor processor;
 
 		private Logger logger;
-
-		private static readonly Dictionary<Type, IMessageSerializer> DefaultSerializers;
 
 		protected ServiceConnector() {
 			logger = Logger.Network;
 		}
 
-		static ServiceConnector() {
-			DefaultSerializers = GetDefaultMessageSerializers();
-		}
-
 		public IMessageSerializer MessageSerializer {
-			get { return serializer ?? (serializer = GetDefaultMessageSerializer(GetType())); }
+			get { return serializer ?? (serializer = GetDefaultMessageSerializer()); }
 			set {
-				if (serializer == null)
+				if (value == null)
 					throw new ArgumentNullException("value");
 
 				serializer = value;
 			}
-		}
-
-		public IAuthenticator Authenticator {
-			get { return authenticator; }
-			set { authenticator = value; }
 		}
 
 		protected Logger Logger {
@@ -51,10 +34,10 @@ namespace Deveel.Data.Net {
 
 		void IServiceConnector.Close() {
 			try {
+				logger.Info(this, "Closing connector");
 				Close();
-			} finally {
-				connected = false;
-				processor = null;
+			} catch(Exception e) {
+				logger.Error(this, "An error occurred while closing the connector", e);
 			}
 		}
 
@@ -67,32 +50,28 @@ namespace Deveel.Data.Net {
 		}
 
 		IMessageProcessor IServiceConnector.Connect(IServiceAddress address, ServiceType type) {
-			if (!connected) {
-				if (!OnConnect(address, type)) {
-					logger.Warning(this, "Unable to connect to '" + address + "' after check.");
-					return null;
-				}
+			IMessageProcessor processor;
 
-				try {
-					processor = Connect(address, type);
-				} catch (Exception e) {
-					logger.Error(this, "Error while connecting.", e);
-					throw;
-				}
-
-				connected = true;
-
-				if (processor == null) {
-					logger.Error(this, "It was not possible to obtain a valid message processor for the connection.");
-
-					connected = false;
-					throw new InvalidOperationException("Was not able to connect.");
-				}
-
-				OnConnected(address, type);
-
-				logger.Info(this, "Connected to '" + address + "'.");
+			if (!OnConnect(address, type)) {
+				logger.Warning(this, "Unable to connect to '" + address + "' after check.");
+				return null;
 			}
+
+			try {
+				processor = Connect(address, type);
+			} catch (Exception e) {
+				logger.Error(this, "Error while connecting.", e);
+				throw;
+			}
+
+			if (processor == null) {
+				logger.Error(this, "It was not possible to obtain a valid message processor for the connection.");
+				throw new InvalidOperationException("Was not able to connect.");
+			}
+
+			OnConnected(address, type);
+
+			logger.Info(this, "Connected to '" + address + "'.");
 
 			return processor;
 		}
@@ -106,16 +85,15 @@ namespace Deveel.Data.Net {
 
 		protected abstract IMessageProcessor Connect(IServiceAddress address, ServiceType type);
 
-		private static Dictionary<Type, IMessageSerializer> GetDefaultMessageSerializers() {
-			throw new NotImplementedException();
-		}
+		protected virtual IMessageSerializer GetDefaultMessageSerializer() {
+			object[] attrs = GetType().GetCustomAttributes(typeof (MessageSerializerAttribute), true);
+			if (attrs.Length == 0)
+				return null;
 
-		private static IMessageSerializer GetDefaultMessageSerializer(Type connectorType) {
-			IMessageSerializer serializer;
-			if (DefaultSerializers.TryGetValue(connectorType, out serializer))
-				return serializer;
-
-			return null;
+			MessageSerializerAttribute attribute = (MessageSerializerAttribute) attrs[0];
+			return attribute.WithName
+			       	? MessageSerializers.GetSerializer(attribute.SerializerName)
+			       	: MessageSerializers.GetSerializer(attribute.SerializerType);
 		}
 	}
 }

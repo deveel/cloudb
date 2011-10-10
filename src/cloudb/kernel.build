@@ -23,9 +23,7 @@
 				<include name="LitJson/*.cs"/>
 			</sources>
 		</csc>
-		<if test="${not notest}">
-			<call target="-core-test"/>
-		</if>
+		<call target="-core-test" unless="${notest}"/>
 	</target>
 	<target name="test" unless="${notest}" depends="build">
 		<call target="-core-test"/>
@@ -89,11 +87,14 @@
 				<include name="Deveel.Data.Diagnostics/*.cs"/>
 				<include name="Deveel.Data.Net/*.cs"/>
 				<include name="Deveel.Data.Net.Client/*.cs"/>
+				<include name="Deveel.Data.Net.Serialization/*.cs"/>
 				<include name="Deveel.Data.Store/*.cs"/>
 				<include name="Deveel.Data.Util/*.cs"/>
+				<include name="LitJson/*.cs"/>
 				<include name="Properties/AssemblyInfo.cs"/>
 				<include name="cloudb.csproj"/>
-				<include name="default.build"/>
+				<include name="kernel.build"/>
+				<include name="cloudb.snk"/>
 			</fileset>
 		</tar>
 		<zip zipfile="${dist-path}/${package.name}.zip"/>

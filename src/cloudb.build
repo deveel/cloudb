@@ -15,7 +15,7 @@
 				<property name="notest" value="${notest}" readonly="true" />
 				<property name="output" value="${path::get-full-path(output)}" readonly="True" />
 				<property name="sources" value="${path::get-full-path('./cloudb')}" readonly="True" />
-				<property name="libs" value="${path::get-full-path('../libs')}" readonly="True" />
+				<property name="libs" value="${libs}" readonly="True" />
 				<property name="define" value="${define}" readonly="true" />
 				<property name="debug" value="${debug}" readonly="true" />
 				<property name="platform" value="${platform}" readonly="true" />
@@ -37,9 +37,9 @@
 				<property name="debug" value="${debug}" readonly="true" />
 				<property name="platform" value="${platform}" readonly="true" />
 				<property name="standalone" value="false" readonly="True" />
-				<property name="libs" value="${path::get-full-path('../libs')}" readonly="true" />
+				<property name="libs" value="${libs}" readonly="true" />
 				<property name="kernel" value="true" readonly="true" />
-				<property name="conf" value="${path::get-full-path('../conf')}" readonly="true" />
+				<property name="conf" value="${conf}" readonly="true" />
 			</properties>
 		</nant>
 	</target>
@@ -57,7 +57,7 @@
 				<property name="debug" value="${debug}" readonly="true" />
 				<property name="platform" value="${platform}" readonly="true" />
 				<property name="standalone" value="false" readonly="True" />
-				<property name="libs" value="${path::get-full-path('../libs')}" readonly="true" />
+				<property name="libs" value="${libs}" readonly="true" />
 				<property name="kernel" value="true" readonly="true" />
 			</properties>
 		</nant>
@@ -75,9 +75,9 @@
 				<property name="debug" value="${debug}" readonly="true" />
 				<property name="platform" value="${platform}" readonly="true" />
 				<property name="standalone" value="false" readonly="True" />
-				<property name="libs" value="${path::get-full-path('../libs')}" readonly="true" />
+				<property name="libs" value="${libs}" readonly="true" />
 				<property name="kernel" value="true" readonly="true" />
-				<property name="conf" value="${path::get-full-path('../conf')}" readonly="true" />
+				<property name="conf" value="${conf}" readonly="true" />
 			</properties>
 		</nant>
 	</target>
@@ -96,7 +96,7 @@
 				<property name="output" value="${path::get-full-path(output)}" readonly="True" />
 				<property name="platform" value="${platform}" readonly="true" />
 				<property name="standalone" value="false" readonly="True" />
-				<property name="libs" value="${path::get-full-path('./libs')}" readonly="true" />
+				<property name="libs" value="${libs}" readonly="true" />
 				<property name="kernel" value="true" readonly="true" />
 			</properties>
 		</nant>
@@ -107,7 +107,7 @@
 				<property name="output" value="${path::get-full-path(output)}" readonly="True" />
 				<property name="platform" value="${platform}" readonly="true" />
 				<property name="standalone" value="false" readonly="True" />
-				<property name="libs" value="${path::get-full-path('./libs')}" readonly="true" />
+				<property name="libs" value="${libs}" readonly="true" />
 				<property name="kernel" value="true" readonly="true" />
 			</properties>
 		</nant>
@@ -118,7 +118,7 @@
 				<property name="output" value="${path::get-full-path(output)}" readonly="True" />
 				<property name="platform" value="${platform}" readonly="true" />
 				<property name="standalone" value="false" readonly="True" />
-				<property name="libs" value="${path::get-full-path('./libs')}" readonly="true" />
+				<property name="libs" value="${libs}" readonly="true" />
 				<property name="kernel" value="true" readonly="true" />
 			</properties>
 		</nant>
@@ -129,7 +129,7 @@
 				<property name="output" value="${path::get-full-path(output)}" readonly="True" />
 				<property name="platform" value="${platform}" readonly="true" />
 				<property name="standalone" value="false" readonly="True" />
-				<property name="libs" value="${path::get-full-path('./libs')}" readonly="true" />
+				<property name="libs" value="${libs}" readonly="true" />
 				<property name="kernel" value="true" readonly="true" />
 			</properties>
 		</nant>
@@ -140,7 +140,7 @@
 				<property name="output" value="${path::get-full-path(output)}" readonly="True" />
 				<property name="platform" value="${platform}" readonly="true" />
 				<property name="standalone" value="false" readonly="True" />
-				<property name="libs" value="${path::get-full-path('./libs')}" readonly="true" />
+				<property name="libs" value="${libs}" readonly="true" />
 				<property name="kernel" value="true" readonly="true" />
 			</properties>
 		</nant>

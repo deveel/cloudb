@@ -88,15 +88,8 @@
     <Compile Include="Deveel.Data.Diagnostics\ILogger.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LogEntry.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LogWriter.cs" />
-    <Compile Include="Deveel.Data.Net.Security\AuthRequest.cs" />
-    <Compile Include="Deveel.Data.Net.Security\AuthResult.cs" />
     <Compile Include="Deveel.Data.Net.Client\ClientRequestMessage.cs" />
     <Compile Include="Deveel.Data.Net.Client\IAttributesHandler.cs" />
-    <Compile Include="Deveel.Data.Net.Security\IAuthenticator.cs" />
-    <Compile Include="Deveel.Data.Net.Security\NetworkPasswordAuthenticator.cs" />
-    <Compile Include="Deveel.Data.Net.Security\PublicKey.cs" />
-    <Compile Include="Deveel.Data.Net.Security\UserAuthenticationCode.cs" />
-    <Compile Include="Deveel.Data.Net.Security\IUserDataSource.cs" />
     <Compile Include="Deveel.Data.Net.Client\IMessageProcessor.cs" />
     <Compile Include="Deveel.Data.Net.Client\IPathTransaction.cs" />
     <Compile Include="Deveel.Data.Net.Client\Message.cs" />
@@ -121,7 +114,9 @@
     <Compile Include="Deveel.Data.Net.Serialization\IXmlRpcTypeResolver.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\IXmlSerializable.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\JsonRpcMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net\MessageSerializerAttribute.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\MessageSerializers.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\SerializerNameAttribute.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\MessageSerializerAttribute.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\TextMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\XmlMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\XmlRestMessageSerializer.cs" />

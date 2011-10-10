@@ -5,7 +5,6 @@ using System.IO;
 using System.Reflection;
 
 using Deveel.Data.Diagnostics;
-using Deveel.Data.Net.Security;
 using Deveel.Data.Net.Serialization;
 using Deveel.Data.Net.Security;
 
@@ -34,8 +33,6 @@ namespace Deveel.Data.Net.Client {
 		private readonly IServiceConnector connector;
 		private IMessageSerializer messageSerializer;
 		private readonly Logger log;
-
-		private IAuthenticator authenticator;
 
 		private NetworkClient client;
 		private readonly NetworkProfile network;
@@ -73,11 +70,6 @@ namespace Deveel.Data.Net.Client {
 				return messageSerializer;
 			}
 			set { messageSerializer = value; }
-		}
-
-		public IAuthenticator Authenticator {
-			get { return authenticator; }
-			set { authenticator = value; }
 		}
 
 		public bool IsConnected {
@@ -186,6 +178,7 @@ namespace Deveel.Data.Net.Client {
 					request.Attributes.Add(pair.Key, pair.Value);
 				}
 			}
+
 			request.Seal();
 
 			if (authenticator != null) {

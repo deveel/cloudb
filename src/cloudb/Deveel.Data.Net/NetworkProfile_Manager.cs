@@ -10,9 +10,9 @@ namespace Deveel.Data.Net {
 
 			// Check machine is in the schema,
 			MachineProfile machine_p = CheckMachineInNetwork(address);
-			MachineProfile current_manager = ManagerServer;
+			MachineProfile currentManager = ManagerServer;
 
-			if (current_manager == null)
+			if (currentManager == null)
 				throw new NetworkAdminException("No manager server found");
 
 			if ((machine_p.ServiceType & serviceType) == 0)
@@ -23,7 +23,7 @@ namespace Deveel.Data.Net {
 			RequestMessage request = new RequestMessage(messageName);
 			request.Arguments.Add(address);
 
-			Message m = Command(current_manager.Address, ServiceType.Manager, request);
+			Message m = Command(currentManager.Address, ServiceType.Manager, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage, m.ErrorStackTrace);
 		}
@@ -33,9 +33,9 @@ namespace Deveel.Data.Net {
 
 			// Check machine is in the schema,
 			MachineProfile machine_p = CheckMachineInNetwork(address);
-			MachineProfile current_manager = ManagerServer;
+			MachineProfile currentManager = ManagerServer;
 
-			if (current_manager == null)
+			if (currentManager == null)
 				throw new NetworkAdminException("No manager server found");
 
 			if ((machine_p.ServiceType & serviceType) == 0)
@@ -46,7 +46,7 @@ namespace Deveel.Data.Net {
 			RequestMessage request = new RequestMessage(messageName);
 			request.Arguments.Add(address);
 
-			Message m = Command(current_manager.Address, ServiceType.Manager, request);
+			Message m = Command(currentManager.Address, ServiceType.Manager, request);
 			if (m.HasError)
 				throw new NetworkAdminException(m.ErrorMessage);
 		}

@@ -31,6 +31,8 @@ namespace Deveel.Data.Net {
 #endif
 
 		private static AutoResetEvent waitHandle;
+
+		private const int DefaultPort = 9987;
 				
 		private static Options GetOptions() {
 			Options options = new Options();
@@ -183,10 +185,10 @@ namespace Deveel.Data.Net {
 				wout.WriteLine("Error, no node configuration file given.");
 				failed = true;
 			}
-			if (portArg == null) {
-				wout.WriteLine("Error, no port address given.");
-				failed = true;
-			}
+			//if (portArg == null) {
+			//    wout.WriteLine("Error, no port address given.");
+			//    failed = true;
+			//}
 
 			if (!failed) {
 				//TODO: support for remote (eg. HTTP, FTP, TCP/IP) configurations)
@@ -274,10 +276,12 @@ namespace Deveel.Data.Net {
 					return 1;
 				}
 
-				int port;
-				if (!Int32.TryParse(portArg, out port)) {
-					Console.Out.WriteLine("Error: couldn't parse port argument: " + portArg);
-					return 1;
+				int port = DefaultPort;
+				if (!String.IsNullOrEmpty(portArg)) {
+					if (!Int32.TryParse(portArg, out port)) {
+						Console.Out.WriteLine("Error: couldn't parse port argument: " + portArg);
+						return 1;
+					}
 				}
 
 				string storage = commandLine.GetOptionValue("storage", null);
@@ -287,6 +291,10 @@ namespace Deveel.Data.Net {
 				service = new TcpAdminService(serviceFactory, host, port, password);
 				service.Config = netConfigSource;
 				service.Start();
+
+				Console.Out.WriteLine();
+				Console.Out.WriteLine();
+				Console.Out.WriteLine("Press CTRL+C to quit...");
 
 				waitHandle = new AutoResetEvent(false);
 				waitHandle.WaitOne();

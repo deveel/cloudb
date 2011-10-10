@@ -116,6 +116,12 @@
   <ItemGroup>
     <None Include="Deveel.Data.Net\ChangeLog" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\cloudb\cloudb.csproj">
+      <Project>{A18511ED-5BA6-4811-B44F-F730FAD84CE8}</Project>
+      <Name>cloudb</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
