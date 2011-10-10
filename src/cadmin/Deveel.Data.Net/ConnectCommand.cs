@@ -13,6 +13,18 @@ namespace Deveel.Data.Net {
 
 		private static readonly IMessageSerializer JsonRpcMessageSerializer;
 
+		public override bool CommandCompletion {
+			get { return true; }
+		}
+
+		public override string[] Synopsis {
+			get { return new string[] {"connect to <service-address> [identified by <credentials>] [on <protocol>] [with <format>]"}; }
+		}
+
+		public override string ShortDescription {
+			get { return "connects the client to an admin service"; }
+		}
+
 		static ConnectCommand() {
 			Type jsonSerializerType = Type.GetType(JsonSerializerTypeName, false, true);
 			if (jsonSerializerType != null) {

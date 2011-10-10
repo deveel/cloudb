@@ -100,7 +100,6 @@
     <Compile Include="Deveel.Data.Net.Client\RestFormat.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\BinaryMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\BinaryRpcMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\DefaultSerializerAttribute.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\IJsonRpcTypeResolver.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\IJsonSerializable.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\IMessageSerializer.cs" />
@@ -112,7 +111,7 @@
     <Compile Include="Deveel.Data.Net.Serialization\JsonRpcMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\MessageSerializers.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\SerializerNameAttribute.cs" />
-    <Compile Include="Deveel.Data.Net\MessageSerializerAttribute.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\MessageSerializerAttribute.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\TextMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\XmlMessageSerializer.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\XmlRestMessageSerializer.cs" />

@@ -1,0 +1,2 @@
+﻿2011-10-09  Antonello Provenzano  <antonello@deveel.com>
+	* MachineNode.cs: added default '9987' port to init

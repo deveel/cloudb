@@ -9,9 +9,6 @@ namespace Deveel.Data.Net {
 	public abstract class ServiceConnector : Component, IServiceConnector {
 		private IMessageSerializer serializer;
 
-		private bool connected;
-		private IMessageProcessor processor;
-
 		private Logger logger;
 
 		protected ServiceConnector() {
@@ -21,7 +18,7 @@ namespace Deveel.Data.Net {
 		public IMessageSerializer MessageSerializer {
 			get { return serializer ?? (serializer = GetDefaultMessageSerializer()); }
 			set {
-				if (serializer == null)
+				if (value == null)
 					throw new ArgumentNullException("value");
 
 				serializer = value;
@@ -37,10 +34,10 @@ namespace Deveel.Data.Net {
 
 		void IServiceConnector.Close() {
 			try {
+				logger.Info(this, "Closing connector");
 				Close();
-			} finally {
-				connected = false;
-				processor = null;
+			} catch(Exception e) {
+				logger.Error(this, "An error occurred while closing the connector", e);
 			}
 		}
 
@@ -53,32 +50,28 @@ namespace Deveel.Data.Net {
 		}
 
 		IMessageProcessor IServiceConnector.Connect(IServiceAddress address, ServiceType type) {
-			if (!connected) {
-				if (!OnConnect(address, type)) {
-					logger.Warning(this, "Unable to connect to '" + address + "' after check.");
-					return null;
-				}
+			IMessageProcessor processor;
 
-				try {
-					processor = Connect(address, type);
-				} catch (Exception e) {
-					logger.Error(this, "Error while connecting.", e);
-					throw;
-				}
-
-				connected = true;
-
-				if (processor == null) {
-					logger.Error(this, "It was not possible to obtain a valid message processor for the connection.");
-
-					connected = false;
-					throw new InvalidOperationException("Was not able to connect.");
-				}
-
-				OnConnected(address, type);
-
-				logger.Info(this, "Connected to '" + address + "'.");
+			if (!OnConnect(address, type)) {
+				logger.Warning(this, "Unable to connect to '" + address + "' after check.");
+				return null;
 			}
+
+			try {
+				processor = Connect(address, type);
+			} catch (Exception e) {
+				logger.Error(this, "Error while connecting.", e);
+				throw;
+			}
+
+			if (processor == null) {
+				logger.Error(this, "It was not possible to obtain a valid message processor for the connection.");
+				throw new InvalidOperationException("Was not able to connect.");
+			}
+
+			OnConnected(address, type);
+
+			logger.Info(this, "Connected to '" + address + "'.");
 
 			return processor;
 		}
