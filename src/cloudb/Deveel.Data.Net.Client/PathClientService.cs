@@ -28,6 +28,8 @@ namespace Deveel.Data.Net.Client {
 			Dispose(false);
 		}
 
+		private IAuthenticator authenticator;
+
 		private readonly IServiceAddress address;
 		private readonly IServiceAddress managerAddress;
 		private readonly IServiceConnector connector;
