@@ -70,15 +70,13 @@
     <Compile Include="Deveel.Data.Net.Client\PathValue.cs" />
     <Compile Include="Deveel.Data.Net.Client\PathValueType.cs" />
     <Compile Include="Deveel.Data.Net.Client\PathValue_Conversion.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthDataType.cs" />
     <Compile Include="Deveel.Data.Net.Security\AuthenticationCode.cs" />
     <Compile Include="Deveel.Data.Net.Security\AuthenticationException.cs" />
     <Compile Include="Deveel.Data.Net.Security\AuthObject.cs" />
-    <Compile Include="Deveel.Data.Net.Security\AuthDataType.cs" />
     <Compile Include="Deveel.Data.Net.Security\AuthRequest.cs" />
     <Compile Include="Deveel.Data.Net.Security\AuthResult.cs" />
     <Compile Include="Deveel.Data.Net.Security\IAuthenticator.cs" />
-    <Compile Include="Deveel.Data.Net.Security\InvalidUserPasswordException.cs" />
-    <Compile Include="Deveel.Data.Net.Security\IUser.cs" />
     <Compile Include="Deveel.Data.Configuration\PropertiesConfigFormatter.cs" />
     <Compile Include="Deveel.Data.Configuration\XmlConfigFormatter.cs" />
     <Compile Include="Deveel.Data.Diagnostics\Analytics.cs" />
