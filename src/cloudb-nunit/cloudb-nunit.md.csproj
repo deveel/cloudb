@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="3.5" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <ProductVersion>9.0.21022</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{FF409965-40F3-492D-A488-FEF488DD510D}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>cloudbnunit.md</RootNamespace>
+    <AssemblyName>cloudb-nunit.md</AssemblyName>
+    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug</OutputPath>
+    <DefineConstants>DEBUG;</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x86</PlatformTarget>
+    <ConsolePause>false</ConsolePause>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <DebugType>none</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Release</OutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x86</PlatformTarget>
+    <ConsolePause>false</ConsolePause>
+  </PropertyGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <Folder Include="Deveel.Data\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Deveel.Data.Configuration\ConfigSourceTest.cs" />
+    <Compile Include="Deveel.Data.Configuration\PropertiesConfigSourceTest.cs" />
+    <Compile Include="Deveel.Data.Diagnostics\LoggerTest.cs" />
+    <Compile Include="Deveel.Data.Diagnostics\SimpleConsoleLogger.cs" />
+    <Compile Include="Deveel.Data.Net\FakeAdminService.cs" />
+    <Compile Include="Deveel.Data.Net\FakeNetworkTest.cs" />
+    <Compile Include="Deveel.Data.Net\FakeServiceAddress.cs" />
+    <Compile Include="Deveel.Data.Net\FakeServiceAddressHandler.cs" />
+    <Compile Include="Deveel.Data.Net\FakeServiceConnector.cs" />
+    <Compile Include="Deveel.Data.Net\HttpMessageFormat.cs" />
+    <Compile Include="Deveel.Data.Net\HttpNetworkTest.cs" />
+    <Compile Include="Deveel.Data.Net\NetworkServiceTestBase.cs" />
+    <Compile Include="Deveel.Data.Net\NetworkStoreType.cs" />
+    <Compile Include="Deveel.Data.Net\NetworkTestBase.cs" />
+    <Compile Include="Deveel.Data.Net\TcpNetworkTest.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\BinaryRpcSerializerTest.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\JsonRpcMessageSerializerTest.cs" />
+    <Compile Include="Deveel.Data.Net.Serialization\XmlRpcMessageSerializerTest.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Deveel.Data.Net\ChangeLog" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\cloudb\cloudb.md.csproj">
+      <Project>{FBBBAA7B-6BBD-4D82-98DA-27924D49CCEE}</Project>
+      <Name>cloudb.md</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="nunit.framework">
+      <HintPath>..\..\libs\nunit\nunit.framework.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+  </ItemGroup>
+</Project>
