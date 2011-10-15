@@ -328,7 +328,7 @@ namespace Deveel.Data.Net {
 					}
 
 				} catch (OutOfMemoryException e) {
-					service.Logger.Error(service, "Out Of Memory Error.");
+					service.Logger.Error(service, "Out Of Memory Error.", e);
 					// This will end the connection);
 					throw;
 				} catch (Exception e) {

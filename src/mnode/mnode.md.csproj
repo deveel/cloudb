@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="3.5" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <ProductVersion>9.0.21022</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{535F1F88-6804-4200-96C5-093DC4DBE0C7}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>mnode.md</RootNamespace>
+    <AssemblyName>mnode</AssemblyName>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>mnode.snk</AssemblyOriginatorKeyFile>
+    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug</OutputPath>
+    <DefineConstants>DEBUG;</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x86</PlatformTarget>
+    <ConsolePause>false</ConsolePause>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <DebugType>none</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Release</OutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x86</PlatformTarget>
+    <ConsolePause>false</ConsolePause>
+  </PropertyGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Configuration.Install" />
+    <Reference Include="System" />
+    <Reference Include="System.ServiceProcess" />
+    <Reference Include="deveel-cli">
+      <HintPath>..\..\libs\deveel-cli.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\cloudb\cloudb.md.csproj">
+      <Project>{FBBBAA7B-6BBD-4D82-98DA-27924D49CCEE}</Project>
+      <Name>cloudb.md</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Deveel.Data.Net\ChangeLog" />
+    <None Include="Deveel.Data.Net\MachineNodeService.resources" />
+    <None Include="Deveel.Data.Net\MachineNodeService.resx" />
+    <None Include="Deveel.Data.Net\ProjectInstaller.resources" />
+    <None Include="Deveel.Data.Net\ProjectInstaller.resx" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Deveel.Data.Net\MachineNode.cs" />
+    <Compile Include="Deveel.Data.Net\MachineNodeService.cs" />
+    <Compile Include="Deveel.Data.Net\MachineNodeService.Designer.cs" />
+    <Compile Include="Deveel.Data.Net\ProjectInstaller.cs" />
+    <Compile Include="Deveel.Data.Net\ProjectInstaller.Designer.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+</Project>
