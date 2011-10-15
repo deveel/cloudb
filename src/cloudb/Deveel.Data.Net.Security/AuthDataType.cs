@@ -11,6 +11,7 @@ namespace Deveel.Data.Net.Security {
 		Number,
 		String,
 		DateTime,
+		Binary,
 		List
 	}
 }

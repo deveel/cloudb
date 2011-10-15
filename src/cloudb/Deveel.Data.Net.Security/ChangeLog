@@ -1,10 +1,20 @@
-﻿<<<<<<< HEAD
-﻿2011-03-01  Antonello Provenzano  <antonello@deveel.com>
+﻿2011-15-10  Antonello Provenzano  <antonello@deveel.com>
+	* AuthResult.cs: Added property Context to keep a reference
+	on the authentication context
+	* IAuthenticator.cs: 
+		- added method CollectData to populate the authentication 
+		data dictionary with additional elements
+		- introduced method EndContext to dispose an eventually
+		created context at the moment of authentication
+	* ServiceConnector.cs: authentication logic added to the
+	explicit implementation of Connect
+
+2011-03-01  Antonello Provenzano  <antonello@deveel.com>
 	* AuthResult.cs: added property 'OutputData' to provide
 	authorization processors a patch to output data in the
 	stream.
-=======
-﻿2001-27-09  Antonello Provenzano  <antonello@deveel.com>
+
+﻿2011-27-09  Antonello Provenzano  <antonello@deveel.com>
 	* AuthenticationCode.cs: enumeration added to expose well-
 	known and reserved authentication codes
 	* AuthResult.cs:
@@ -28,4 +38,3 @@
 		the interface
 		- method IsProtocolSupported added to check if the protocol
 		is supported by the authentication mechanism
->>>>>>> master

@@ -72,6 +72,7 @@
     <Compile Include="Deveel.Data.Net.Client\PathValue_Conversion.cs" />
     <Compile Include="Deveel.Data.Net.Security\AuthDataType.cs" />
     <Compile Include="Deveel.Data.Net.Security\AuthenticationCode.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthenticationEventArgs.cs" />
     <Compile Include="Deveel.Data.Net.Security\AuthenticationException.cs" />
     <Compile Include="Deveel.Data.Net.Security\AuthObject.cs" />
     <Compile Include="Deveel.Data.Net.Security\AuthRequest.cs" />

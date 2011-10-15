@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 
 namespace Deveel.Data.Net.Security {
 	public sealed class AuthObject : ICloneable {
@@ -19,12 +20,30 @@ namespace Deveel.Data.Net.Security {
 		public AuthObject(object value) {
 			if (value == null) {
 				dataType = AuthDataType.Null;
+			} else if (value is byte[] ||
+				value is Stream) {
+				dataType = AuthDataType.Binary;
 			} else if (value is IList) {
 				isList = true;
-			} else if (typeof(IList<>).IsInstanceOfType(value)) {
+			} else if (typeof (IList<>).IsInstanceOfType(value)) {
 				isList = true;
 				isGenericList = true;
+			} else if (value is string) {
+				dataType = AuthDataType.String;
+			} else if (value is bool) {
+				dataType = AuthDataType.Boolean;
+			} else if (value is byte ||
+			           value is short ||
+			           value is int ||
+			           value is long ||
+			           value is float ||
+			           value is double) {
+				dataType = AuthDataType.Number;
+			} else if (value is DateTime) {
+				dataType = AuthDataType.DateTime;
 			}
+
+			this.value = value;
 		}
 
 		public AuthObject(AuthDataType dataType)
@@ -72,6 +91,22 @@ namespace Deveel.Data.Net.Security {
 			}
 
 			return obj;
+		}
+
+		public static implicit operator AuthObject(string value) {
+			return new AuthObject(value);
+		}
+
+		public static implicit operator AuthObject(bool value) {
+			return new AuthObject(value);
+		}
+
+		public static implicit operator AuthObject(int value) {
+			return new AuthObject(value);
+		}
+
+		public static implicit operator AuthObject(short value) {
+			return new AuthObject(value);
 		}
 	}
 }

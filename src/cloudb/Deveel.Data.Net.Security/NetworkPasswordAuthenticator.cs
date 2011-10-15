@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 using Deveel.Data.Configuration;
 
@@ -28,8 +29,18 @@ namespace Deveel.Data.Net.Security {
 			password = config.GetString("password");
 		}
 
+		public void CollectData(IDictionary<string, AuthObject> authData) {
+			authData["password"] = new AuthObject(AuthDataType.String, password);
+		}
+
 		public AuthResult Authenticate(AuthRequest authRequest) {
-			throw new NotImplementedException();
+			string pass;
+			if (!authRequest.AuthData.TryGetValue("password", out pass))
+				return new AuthResult(authRequest.Context, AuthenticationCode.MissingData);
+
+		}
+
+		void IAuthenticator.EndContext(object context) {
 		}
 	}
 }

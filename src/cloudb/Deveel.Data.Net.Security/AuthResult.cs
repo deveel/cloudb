@@ -7,10 +7,12 @@ namespace Deveel.Data.Net.Security {
 		private readonly IDictionary<string, object> authData;
 		private readonly string message;
 		private readonly IDictionary<string, object> outputData;
+		private readonly object context;
 
 		private const int SuccessCode = (int) AuthenticationCode.Success;
 
-		public AuthResult(int code, string message, IDictionary<string, object> authData) {
+		public AuthResult(object context, int code, string message, IDictionary<string, object> authData) {
+			this.context = context;
 			this.code = code;
 			this.message = message;
 			this.authData = authData;
@@ -18,28 +20,32 @@ namespace Deveel.Data.Net.Security {
 			outputData = new Dictionary<string, object>();
 		}
 
-		public AuthResult(AuthenticationCode code, string message, IDictionary<string, object> authData)
-			: this((int)code, message, authData) {
+		public AuthResult(object context, AuthenticationCode code, string message, IDictionary<string, object> authData)
+			: this(context, (int)code, message, authData) {
 		}
 
-		public AuthResult(int code, IDictionary<string, object> authData)
-			: this(code, null, authData) {
+		public AuthResult(object context, int code, IDictionary<string, object> authData)
+			: this(context, code, null, authData) {
 		}
 
-		public AuthResult(AuthenticationCode code, string message)
-			: this((int)code, message) {
+		public AuthResult(object context, AuthenticationCode code, string message)
+			: this(context, (int)code, message) {
 		}
 
-		public AuthResult(int code, string message)
-			: this(code, message, null) {
+		public AuthResult(object context, int code, string message)
+			: this(context, code, message, null) {
 		}
 
-		public AuthResult(AuthenticationCode code)
-			: this((int)code) {
+		public AuthResult(object context, AuthenticationCode code)
+			: this(context, (int)code) {
 		}
 
-		public AuthResult(int code)
-			: this(code, (string)null) {
+		public AuthResult(object context, int code)
+			: this(context, code, (string)null) {
+		}
+
+		public object Context {
+			get { return context; }
 		}
 
 		public string Message {
