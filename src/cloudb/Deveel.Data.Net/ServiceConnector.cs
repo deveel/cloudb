@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 
 using Deveel.Data.Diagnostics;
@@ -10,17 +9,14 @@ using Deveel.Data.Net.Serialization;
 namespace Deveel.Data.Net {
 	public abstract class ServiceConnector : Component, IServiceConnector {
 		private IMessageSerializer serializer;
-		private Logger logger;
+		private readonly Logger logger;
+		private readonly ConnectionCollection connections;
 
-		private IAuthenticator authenticator;
-		private readonly IDictionary<ServiceInfo, object> authenticatedSessions;
-
-		public event AuthenticationEventHandler AuthenticationFailed;
+		private IServiceAuthenticator authenticator;
 
 		protected ServiceConnector() {
 			logger = Logger.Network;
-
-			authenticatedSessions = new Dictionary<ServiceInfo, object>();
+			connections = new ConnectionCollection(this);
 		}
 
 		public IMessageSerializer MessageSerializer {
@@ -37,7 +33,11 @@ namespace Deveel.Data.Net {
 			get { return logger; }
 		}
 
-		public IAuthenticator Authenticator {
+		protected ConnectionCollection Connections {
+			get { return connections; }
+		}
+
+		public IServiceAuthenticator Authenticator {
 			get { return authenticator; }
 			set { authenticator = value; }
 		}
@@ -49,9 +49,7 @@ namespace Deveel.Data.Net {
 			try {
 				logger.Info(this, "Closing connector");
 
-				if (authenticator != null) {
-					
-				}
+				connections.Clear();
 
 				Close();
 			} catch(Exception e) {
@@ -87,48 +85,9 @@ namespace Deveel.Data.Net {
 				throw new InvalidOperationException("Was not able to connect.");
 			}
 
-			if (authenticator != null) {
-				logger.Info("Authenticating the connection.");
-
-				IDictionary<string, AuthObject> authData = new Dictionary<string, AuthObject>();
-				authenticator.CollectData(authData);
-				OnAuthenticate(authData);
-				AuthRequest request = new AuthRequest(this, authData);
-
-				try {
-					AuthResult result = authenticator.Authenticate(request);
-					while (result.Code == (int)AuthenticationCode.NeedMoreData) {
-						logger.Info("The authentication process needs more data.");
-
-						result = authenticator.Authenticate(request);
-					}
-
-					if (result.Code != (int)AuthenticationCode.Success)
-						throw new AuthenticationException(result.Message, result.Code);
-
-					logger.Info("Successfully authenticated.");
-
-					OnAuthenticated(result);
-				} catch (AuthenticationException e) {
-					logger.Warning("The authentication failed explicitely.");
-
-					OnAuthenticationFailed(e, authData);
-				} catch (Exception e) {
-					logger.Warning("The authentication failed because of an unknown error", e);
-
-					OnAuthenticationFailed(new AuthenticationException(e.Message, (int)AuthenticationCode.SystemError), authData);
-				}
-			}
-
-			OnConnected(address, type);
-
 			logger.Info(this, "Connected to '" + address + "'.");
 
 			return processor;
-		}
-
-		protected virtual void OnAuthenticated(AuthResult authResult) {
-			throw new NotImplementedException();
 		}
 
 		protected virtual bool OnConnect(IServiceAddress address, ServiceType serviceType) {
@@ -136,14 +95,6 @@ namespace Deveel.Data.Net {
 		}
 
 		protected virtual void OnConnected(IServiceAddress address, ServiceType serviceType) {
-		}
-
-		protected virtual void OnAuthenticate(IDictionary<string, AuthObject> authData) {
-		}
-
-		protected virtual void OnAuthenticationFailed(AuthenticationException e, IDictionary<string,AuthObject> authData) {
-			if (AuthenticationFailed != null)
-				AuthenticationFailed(this, new AuthenticationEventArgs(e, authData));
 		}
 
 		protected abstract IMessageProcessor Connect(IServiceAddress address, ServiceType type);
@@ -159,28 +110,41 @@ namespace Deveel.Data.Net {
 			       	: MessageSerializers.GetSerializer(attribute.SerializerType);
 		}
 
-		#region ServiceInfo
+		internal void OnConnectionAdded(IConnection connection) {
+			if (authenticator != null) {
+				logger.Info("Authenticating connection.");
 
-		private struct ServiceInfo {
-			private readonly IServiceAddress address;
-			private readonly ServiceType serviceType;
+				AuthResponse result = null;
 
-			public ServiceInfo(IServiceAddress address, ServiceType serviceType) 
-				: this() {
-				this.address = address;
-				this.serviceType = serviceType;
-			}
+				while (true) {
+					AuthRequest request;
 
-			public override int GetHashCode() {
-				return address.GetHashCode() ^ serviceType.GetHashCode();
-			}
+					try {
+						request = authenticator.CreateRequest(result);
+						request.Seal();
+					} catch (Exception e) {
+						logger.Error(this, "Unable to create an authentication request.", e);
+						throw;
+					}
 
-			public override bool Equals(object obj) {
-				ServiceInfo other = (ServiceInfo) obj;
-				return address.Equals(other.address) && serviceType.Equals(other.serviceType);
+					try {
+						result = connection.Authenticate(request);
+					} catch (Exception e) {
+						logger.Error(connection, "A problem occurred while authenticating connection.", e);
+						throw;
+					}
+
+					if (result.Code != (int)AuthenticationCode.NeedMoreData)
+						break;
+						
+					logger.Info(connection, "The authentication mechanism requested more data.");
+				}
 			}
 		}
 
-		#endregion
+		internal void OnConnectionRemoved(IConnection connection) {
+			if (connection.IsOpened)
+				connection.Close();
+		}
 	}
 }

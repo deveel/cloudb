@@ -7,11 +7,16 @@ using System.Text;
 using System.Threading;
 
 using Deveel.Data.Diagnostics;
+using Deveel.Data.Net.Security;
 
 namespace Deveel.Data.Net.Client {
 	public class TcpPathClientService : PathClientService {
-		public TcpPathClientService(IServiceAddress address, TcpServiceAddress managerAddress, string password) 
-			: base(address, managerAddress, new TcpServiceConnector(password)) {
+		public TcpPathClientService(IServiceAddress address, TcpServiceAddress managerAddress, IServiceAuthenticator authenticator) 
+			: base(address, managerAddress, new TcpServiceConnector(authenticator)) {
+		}
+
+		public TcpPathClientService(IServiceAddress address, TcpServiceAddress managerAddress, string password)
+			: this(address, managerAddress, new NetworkPasswordAuthenticator(password)) {
 		}
 
 		private Thread pollingThread;
@@ -34,8 +39,8 @@ namespace Deveel.Data.Net.Client {
 						// The socket to run the service,
 						s = listener.AcceptSocket();
 						s.NoDelay = true;
-						int cur_send_buf_size = s.SendBufferSize;
-						if (cur_send_buf_size < 256 * 1024) {
+						int curSendBufSize = s.SendBufferSize;
+						if (curSendBufSize < 256 * 1024) {
 							s.SendBufferSize = 256 * 1024;
 						}
 

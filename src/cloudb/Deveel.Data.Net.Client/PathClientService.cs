@@ -28,7 +28,9 @@ namespace Deveel.Data.Net.Client {
 			Dispose(false);
 		}
 
-		private IAuthenticator authenticator;
+		private IPathAuthenticators pathAuthenticators;
+		private IAuthenticator defaultAuthenticator;
+		private bool authSupported;
 
 		private readonly IServiceAddress address;
 		private readonly IServiceAddress managerAddress;
@@ -65,6 +67,28 @@ namespace Deveel.Data.Net.Client {
 			get { return log; }
 		}
 
+		public IPathAuthenticators Authenticators {
+			get { return pathAuthenticators; }
+			set {
+				pathAuthenticators = value;
+				if (!authSupported)
+					authSupported = pathAuthenticators != null;
+			}
+		}
+
+		public IAuthenticator DefaultAuthenticator {
+			get { return defaultAuthenticator; }
+			set {
+				defaultAuthenticator = value;
+				if (!authSupported)
+					authSupported = defaultAuthenticator != null;
+			}
+		}
+
+		public virtual bool IsAuthenticating {
+			get { return authSupported; }
+		}
+
 		public virtual IMessageSerializer MessageSerializer {
 			get {
 				if (messageSerializer == null)
@@ -81,6 +105,46 @@ namespace Deveel.Data.Net.Client {
 		public string TransactionIdKey {
 			get { return transactionIdKey; }
 			set { transactionIdKey = value; }
+		}
+
+		private IAuthenticator GetAuthenticator(string pathName, string mechanism, out bool found) {
+			IAuthenticator authenticator = null;
+
+			if (pathAuthenticators != null) {
+				IAuthenticator[] authenticators = pathAuthenticators.GetAuthenticators(pathName);
+				if (authenticators != null) {
+					if (authenticators.Length == 1) {
+						authenticator = authenticators[0];
+					} else {
+						for (int i = 0; i < authenticators.Length; i++) {
+							authenticator = authenticators[i];
+
+							if (String.Equals(authenticators[i].Mechanism, mechanism, StringComparison.InvariantCultureIgnoreCase) ||
+								String.IsNullOrEmpty(mechanism))
+								break;
+						}
+					}
+				}
+			} else {
+				authenticator = defaultAuthenticator;
+			}
+
+			if (authenticator == null)
+				authenticator = defaultAuthenticator;
+
+			if (authenticator == null) {
+				found = false;
+				return null;
+			}
+
+			if (!String.IsNullOrEmpty(mechanism) && 
+				!String.Equals(mechanism, authenticator.Mechanism, StringComparison.InvariantCultureIgnoreCase)) {
+				found = false;
+				return null;
+			}
+
+			found = true;
+			return authenticator;
 		}
 
 		private void ScanForHandlers() {
@@ -183,54 +247,42 @@ namespace Deveel.Data.Net.Client {
 
 			request.Seal();
 
-			if (authenticator != null) {
-				AuthRequest authRequest = new AuthRequest(context, pathName);
-				foreach (KeyValuePair<string, object> pair in request.Attributes)
-					authRequest.AuthData.Add(pair.Key, new AuthObject(pair.Value));
+			if (IsAuthenticating) {
+				string authMechanism = request.Attributes["mechanism"] as string;
 
-				AuthResult authResult = authenticator.Authenticate(authRequest);
+				AuthRequest authRequest = new AuthRequest(context, null);
+				foreach (KeyValuePair<string, object> pair in request.Attributes)
+					authRequest.Arguments.Add(pair.Key, new AuthObject(pair.Value));
+
+				bool authdFound;
+				IAuthenticator authenticator = GetAuthenticator(pathName, authMechanism, out authdFound);
+				if (!authdFound) {
+					Logger.Error(String.Format("The authentication mechanism for the path '{0}' was not found.", pathName));
+
+					ResponseMessage responseMessage = request.CreateResponse("error");
+					responseMessage.Code = MessageResponseCode.Unauthorized;
+					responseMessage.Arguments.Add(new MessageError("Unable to find authenticator for '" + pathName + "'"));
+					return responseMessage;
+				}
+
+				AuthResponse authResult = authenticator.Authenticate(authRequest);
 				if (authResult != null) {
 					if (!authResult.Success) {
-						Logger.Info(authenticator, String.Format("Unauthorized: {0} ({1})", authResult.Message, authResult.Code));
+						Logger.Info(authenticator, String.Format("Authentication failed: {0}", authResult.Code));
 
 						ResponseMessage responseMessage = request.CreateResponse("error");
 						responseMessage.Code = MessageResponseCode.Unauthorized;
 						//TODO: Extend MessageError to include an error specific code ...
-						responseMessage.Arguments.Add(new MessageError(authResult.Message));
+						AuthMessageArgument messageArg = authResult.Arguments["message"];
+						if (messageArg != null)
+							responseMessage.Arguments.Add(new MessageError((string)messageArg.Value.Value));
 						return responseMessage;
 					}
 						
-					Logger.Info(authenticator, String.Format("Authorized: {0}", authResult.Message));
+					Logger.Info(authenticator, "Authorized: {0}");
 				}
 			}
 
-
-			if (authenticator != null) {
-				AuthRequest authRequest = new AuthRequest(context, pathName);
-				foreach (KeyValuePair<string, object> pair in request.Attributes)
-					authRequest.AuthData.Add(pair.Key, new AuthObject(pair.Value));
-
-				AuthResult authResult = authenticator.Authenticate(authRequest);
-				if (authResult != null) {
-					if (!authResult.Success) {
-						Logger.Info(authenticator, String.Format("Unauthorized: {0} ({1})", authResult.Message, authResult.Code));
-
-						ResponseMessage responseMessage = request.CreateResponse("error");
-						responseMessage.Code = MessageResponseCode.Unauthorized;
-						//TODO: Extend MessageError to include an error specific code ...
-						responseMessage.Arguments.Add(new MessageError(authResult.Message));
-						if (authResult.OutputData.Count > 0) {
-							foreach (KeyValuePair<string, object> pair in authResult.OutputData) {
-								responseMessage.Attributes.Add(pair.Key, pair.Value);
-							}
-						}
-
-						return responseMessage;
-					}
-						
-					Logger.Info(authenticator, String.Format("Authorized: {0}", authResult.Message));
-				}
-			}
 
 			return handler.Handler.HandleRequest(request);
 		}

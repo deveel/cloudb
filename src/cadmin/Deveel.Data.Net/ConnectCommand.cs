@@ -5,6 +5,7 @@ using Deveel.Configuration;
 using Deveel.Console;
 using Deveel.Console.Commands;
 using Deveel.Data.Net.Client;
+using Deveel.Data.Net.Security;
 using Deveel.Data.Net.Serialization;
 
 namespace Deveel.Data.Net {
@@ -128,7 +129,7 @@ namespace Deveel.Data.Net {
 					}
 					Out.WriteLine();
 				}
-				connector = new TcpServiceConnector(credentials);
+				connector = new TcpServiceConnector(new NetworkPasswordAuthenticator(credentials));
 			} else if (protocol == "http") {
 				string userName = credentials;
 				string password = null;
@@ -246,7 +247,7 @@ namespace Deveel.Data.Net {
 				if (String.IsNullOrEmpty(netPassword))
 					throw new ArgumentException("Netwrok password required for TCP/IP protocol.");
 
-				connector = new TcpServiceConnector(netPassword);
+				connector = new TcpServiceConnector(new NetworkPasswordAuthenticator(netPassword));
 			} else if (protocol.Equals("http", StringComparison.InvariantCultureIgnoreCase)) {
 				string user = commandLine.GetOptionValue("user");
 				string password = commandLine.GetOptionValue("password");

@@ -1,12 +1,10 @@
-<<<<<<< HEAD
-﻿2011-02-04  Antonello Provenzano  <antonello@deveel.com>
-	* HttpServiceAddress.cs: 
-	- method ToString now uses UriBuilder to build the 
-	final string
-	- the .ctor(Uri) takes the AbsolutePath property
-	
-=======
-﻿2011-09-07  Antonello Provenzano  <antonello@deveel.com>
+2011-10-17  Antonello Provenzano  <antonello@deveel.com>
+	* AdminService.cs: introduced authorization mechanism
+
+2011-10-16  Antonello Provenzano  <antonello@deveel.com>
+	* ServiceConnector.cs: explicitly handles connections
+
+2011-09-07  Antonello Provenzano  <antonello@deveel.com>
 	* IServiceConnector.cs: redesigned and removed the
 	property Protocol
 
@@ -26,7 +24,6 @@
 		- Connect method accepts arguments to reflect
 		IServiceConnector contract
 
->>>>>>> master
 2010-10-05  Antonello Provenzano  <antonello@deveel.com>
 	* HttpPathService.cs: renamed to RestPathService to
 	better describe its mimics.
@@ -40,3 +37,9 @@
 	* HttpAdminService.cs: verifies user/pass credentials 
 	(currently just a hook for a latter feature)
 	* HttpServiceConnector.cs: accepts user/pass credentials
+
+2011-02-04  Antonello Provenzano  <antonello@deveel.com>
+	* HttpServiceAddress.cs: 
+	- method ToString now uses UriBuilder to build the 
+	final string
+	- the .ctor(Uri) takes the AbsolutePath property

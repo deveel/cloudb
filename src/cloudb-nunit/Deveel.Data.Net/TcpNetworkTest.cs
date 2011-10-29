@@ -1,6 +1,8 @@
 using System;
 using System.Net;
 
+using Deveel.Data.Net.Security;
+
 using NUnit.Framework;
 
 namespace Deveel.Data.Net {
@@ -28,11 +30,11 @@ namespace Deveel.Data.Net {
 				serviceFactory = new FileSystemServiceFactory(TestPath);
 			}
 
-			return new TcpAdminService(serviceFactory, Local, NetworkPassword);
+			return new TcpAdminService(serviceFactory, Local, new NetworkPasswordAuthenticator(NetworkPassword));
 		}
 
 		protected override IServiceConnector CreateConnector() {
-			return new TcpServiceConnector(NetworkPassword);
+			return new TcpServiceConnector(new NetworkPasswordAuthenticator(NetworkPassword));
 		}
 	}
 }

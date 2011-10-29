@@ -8,6 +8,7 @@ using System.ServiceProcess;
 using Deveel.Configuration;
 using Deveel.Data.Configuration;
 using Deveel.Data.Diagnostics;
+using Deveel.Data.Net.Security;
 
 namespace Deveel.Data.Net {
 	partial class MachineNodeService : ServiceBase {
@@ -110,7 +111,7 @@ namespace Deveel.Data.Net {
 				string storage = commandLine.GetOptionValue("storage", null);
 				IServiceFactory serviceFactory = GetServiceFactory(storage, nodeConfigSource);
 
-				service = new TcpAdminService(serviceFactory, host, port, password);
+				service = new TcpAdminService(serviceFactory, host, port, new NetworkPasswordAuthenticator(password));
 				service.Config = netConfigSource;
 				service.Start();
 

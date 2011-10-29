@@ -18,6 +18,7 @@ using System.Threading;
 using Deveel.Configuration;
 using Deveel.Data.Configuration;
 using Deveel.Data.Diagnostics;
+using Deveel.Data.Net.Security;
 using Deveel.Data.Util;
 
 using Microsoft.Win32;
@@ -288,7 +289,7 @@ namespace Deveel.Data.Net {
 				IServiceFactory serviceFactory = GetServiceFactory(storage, nodeConfigSource);
 
 				Console.Out.WriteLine("Machine Node, " + host + " : " + port);
-				service = new TcpAdminService(serviceFactory, host, port, password);
+				service = new TcpAdminService(serviceFactory, host, port, new NetworkPasswordAuthenticator(password));
 				service.Config = netConfigSource;
 				service.Start();
 

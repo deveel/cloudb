@@ -4,6 +4,7 @@ using System.Threading;
 
 using Deveel.Data.Diagnostics;
 using Deveel.Data.Net.Client;
+using Deveel.Data.Net.Security;
 
 namespace Deveel.Data.Net {
 	public class AdminService : Service {
@@ -15,11 +16,17 @@ namespace Deveel.Data.Net {
 		private IServiceConnector connector;
 		private readonly object serverManagerLock = new object();
 
+		private readonly AuthenticatorCollection authenticators;
+
 		private ManagerService manager;
 		private RootService root;
 		private BlockService block;
 
 		private Dictionary<string, ClientConnection> connections;
+
+		public AuthenticatorCollection Authenticators {
+			get { return authenticators; }
+		}
 
 		public event ClientConnectionEventHandler ClientConnected;
 		public event ClientConnectionEventHandler ClientDisconnected;
@@ -34,6 +41,8 @@ namespace Deveel.Data.Net {
 			this.address = address;
 			this.connector = connector;
 			analytics = new Analytics();
+
+			authenticators = new AuthenticatorCollection();
 		}
 
 		protected virtual string Protocol {
@@ -83,8 +92,16 @@ namespace Deveel.Data.Net {
 			StopService((ServiceType)Enum.Parse(typeof(ServiceType), serviceTypeName, true));
 		}
 		
-		protected bool IsAddressAllowed(string address) {
-			return config != null && config.IsIpAllowed(address);
+		protected bool IsAddressAllowed(string ipAddress) {
+			return config != null && config.IsIpAllowed(ipAddress);
+		}
+
+		protected AuthResponse Authenticate(string mechanism, AuthRequest request) {
+			IServiceAuthenticator authenticator;
+			if (!Authenticators.TryGetAuthenticator(mechanism, out authenticator))
+				return request.Respond(AuthenticationCode.UnknownMechanism);
+
+			return authenticator.Authenticate(request);
 		}
 
 		internal void OnClientResponse(ClientCommandEventArgs args) {
@@ -228,8 +245,8 @@ namespace Deveel.Data.Net {
 				// (We add a little entropy to ensure the network doesn't get hit by
 				//  synchronized requests).
 				Random r = new Random();
-				long second_mix = r.Next(1000);
-				configTimer.Change(50 * 1000, ((2 * 59) * 1000) + second_mix);
+				long secondMix = r.Next(1000);
+				configTimer.Change(50 * 1000, ((2 * 59) * 1000) + secondMix);
 				
 				serviceFactory.Init(this);
 			}

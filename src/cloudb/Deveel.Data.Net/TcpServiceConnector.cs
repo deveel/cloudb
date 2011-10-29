@@ -7,27 +7,30 @@ using System.Text;
 using System.Threading;
 
 using Deveel.Data.Net.Client;
+using Deveel.Data.Net.Security;
 using Deveel.Data.Net.Serialization;
 
 namespace Deveel.Data.Net {
 	[MessageSerializer(typeof(BinaryRpcMessageSerializer))]
 	public class TcpServiceConnector : ServiceConnector {
-		public TcpServiceConnector(string password) {
-			this.password = password;			
+		public TcpServiceConnector(IServiceAuthenticator authenticator) {
+			Authenticator = authenticator;
 		}
 
-		private Dictionary<TcpServiceAddress, TcpConnection> connections;
-		private readonly string password;
+		// private Dictionary<TcpServiceAddress, TcpConnection> connections;
+		// private readonly string password;
 
 		private Thread backgroundThread;
 		private bool purgeThreadStopped;
 		
+		/*
 		public string Password {
 			get { return password; }
 		}
+		*/
 
 		protected override bool OnConnect(IServiceAddress address, ServiceType serviceType) {
-			connections = new Dictionary<TcpServiceAddress, TcpConnection>();
+			// connections = new Dictionary<TcpServiceAddress, TcpConnection>();
 
 			// This thread kills connections that have timed out.
 			backgroundThread = new Thread(PurgeConnections);
@@ -44,26 +47,26 @@ namespace Deveel.Data.Net {
 
 				while (true) {
 					timeoutList.Clear();
-					lock (connections) {
+					lock (Connections) {
 						// We check the connections every 2 minutes,
-						Monitor.Wait(connections, 2 * 60 * 1000);
+						Monitor.Wait(Connections, 2 * 60 * 1000);
 						DateTime now = DateTime.Now;
 						List<TcpServiceAddress> toRemove = new List<TcpServiceAddress>();
 						// For each key entry,
-						foreach (KeyValuePair<TcpServiceAddress, TcpConnection> connection in connections) {
+						foreach (TcpConnection connection in Connections) {
 							// If lock is 0, and past timeout, we can safely remove it.
 							// The timeout on a connection is 5 minutes plus the poll artifact
-							if (connection.Value.lock_count == 0 &&
-								connection.Value.last_lock_timestamp.AddMilliseconds(5 * 60 * 1000) < now) {
-								toRemove.Add(connection.Key);
-								timeoutList.Add(connection.Value);
+							if (connection.lockCount == 0 &&
+								connection.lastLockTimestamp.AddMilliseconds(5 * 60 * 1000) < now) {
+								toRemove.Add((TcpServiceAddress) connection.Address);
+								timeoutList.Add(connection);
 
 							}
 						}
 
 						if (toRemove.Count > 0) {
 							foreach (TcpServiceAddress address in toRemove)
-								connections.Remove(address);
+								Connections.Remove(address);
 						}
 
 						// If the thread was stopped, we finish the run method which stops
@@ -92,10 +95,10 @@ namespace Deveel.Data.Net {
 		}
 
 		private TcpConnection GetConnection(TcpServiceAddress address) {
-			TcpConnection c;
-			lock (connections) {
+			IConnection c;
+			lock (Connections) {
 				// If there isn't, establish a connection,
-				if (!connections.TryGetValue(address, out c)) {
+				if (!Connections.TryGetConnection(address, out c)) {
 					IPEndPoint endPoint = address.ToEndPoint();
 					Socket socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 #if DEBUG
@@ -114,24 +117,24 @@ namespace Deveel.Data.Net {
 						socket.ReceiveBufferSize = 256 * 1024;
 
 					socket.Connect(endPoint);
-					c = new TcpConnection(socket);
-					c.Connect(password);
-					connections.Add(address, c);
+					c = new TcpConnection(address, socket, Authenticator != null);
+					c.Open();
+					Connections.Add(c);
 				} else {
-					c.AddLock();
+					((TcpConnection) c).AddLock();
 				}
 			}
-			return c;
+			return c as TcpConnection;
 		}
 
 		private void InvalidateConnection(TcpServiceAddress address) {
-			lock (connections) {
-				connections.Remove(address);
+			lock (Connections) {
+				Connections.Remove(address);
 			}
 		}
 
 		private void ReleaseConnection(TcpConnection c) {
-			lock (connections) {
+			lock (Connections) {
 				c.RemoveLock();
 			}
 		}
@@ -139,9 +142,9 @@ namespace Deveel.Data.Net {
 		#region Implementation of IServiceConnector
 
 		public override void Close() {
-			lock (connections) {
+			lock (Connections) {
 				purgeThreadStopped = true;
-				Monitor.PulseAll(connections);
+				Monitor.PulseAll(Connections);
 			}
 		}
 
@@ -252,24 +255,31 @@ namespace Deveel.Data.Net {
 
 		#region TcpConnection
 
-		private sealed class TcpConnection {
+		private sealed class TcpConnection : IConnection {
 			internal readonly Socket s;
 
+			private readonly IServiceAddress address;
+			private bool opened;
+			private bool authenticated;
+			private readonly bool authEnabled;
 			private Stream stream;
-			internal long lock_count;
 
-			internal DateTime last_lock_timestamp;
+			internal long lockCount;
+			internal DateTime lastLockTimestamp;
 
-			public TcpConnection(Socket s) {
+			public TcpConnection(IServiceAddress address, Socket s, bool authEnabled) {
+				this.address = address;
 				this.s = s;
-				lock_count = 1;
-				last_lock_timestamp = DateTime.Now;
+				this.authEnabled = authEnabled;
+				lockCount = 1;
+				lastLockTimestamp = DateTime.Now;
 			}
 
 			public Stream Stream {
 				get { return stream; }
 			}
 
+			/*
 			public void Connect(String password) {
 				stream = new BufferedStream(new NetworkStream(s, FileAccess.ReadWrite), 4000);
 
@@ -286,20 +296,221 @@ namespace Deveel.Data.Net {
 				}
 				dout.Flush();
 			}
+			*/
+
+			public IServiceAddress Address {
+				get { return address; }
+			}
+
+			public bool IsOpened {
+				get { return opened; }
+			}
+
+			public bool IsAuthenticated {
+				get { return authenticated; }
+			}
+
+			public void Open() {
+				stream = new BufferedStream(new NetworkStream(s, FileAccess.ReadWrite), 4000);
+
+				BinaryReader reader = new BinaryReader(stream, Encoding.Unicode);
+				BinaryWriter writer = new BinaryWriter(stream, Encoding.Unicode);
+
+				// read the random ID number sent from the service...
+				long rv = reader.ReadInt64();
+
+				// ... and resend it to handshake
+				writer.Write(rv);
+
+				if (authEnabled) {
+					writer.Write((byte)1);
+				} else {
+					writer.Write((byte)0);
+				}
+
+				opened = true;
+			}
+
+			public bool EndAuthenticatedSession(object context) {
+				return true;
+			}
 
 			public void Close() {
-				s.Close();
+				try {
+					s.Close();
+				} finally {
+					opened = false;
+				}
+			}
+
+			public AuthResponse Authenticate(AuthRequest request) {
+				BinaryReader reader = new BinaryReader(stream, Encoding.Unicode);
+				BinaryWriter writer = new BinaryWriter(stream, Encoding.Unicode);
+
+				if (authenticated)
+					return request.Respond(AuthenticationCode.AlreadyAuthenticated);
+
+				// Send the auth mechanism name
+				int mchsz = request.Mechanism.Length;
+				writer.Write(mchsz);
+				for (int i = 0; i < mchsz; i++) {
+					writer.Write(request.Mechanism[i]);
+				}
+
+				byte supported = reader.ReadByte();
+
+				if (supported == 0) {
+					authenticated = false;
+					return request.Respond(AuthenticationCode.UnknownMechanism);
+				}
+
+				int c = request.Arguments.Count;
+				writer.Write(c);
+
+				foreach (AuthMessageArgument argument in request.Arguments) {
+					SendAuthPair(writer, argument.Name, argument.Value);
+				}
+
+				// all data sent
+				writer.Write(8);
+
+				// read the response
+				int code = reader.ReadInt32();
+
+				AuthResponse result = request.Respond(code);
+
+				int outsz = reader.ReadInt32();
+				for (int i = 0; i < outsz; i++) {
+					GetAuthPair(reader, result);
+				}
+
+				return result;
+			}
+
+			private static AuthObject GetAuthValue(BinaryReader reader, AuthDataType dataType) {
+				if (dataType == AuthDataType.Null)
+					return new AuthObject(AuthDataType.Null, null);
+
+				if (dataType == AuthDataType.Binary) {
+					int sz = reader.ReadInt32();
+					byte[] buffer = new byte[sz];
+					reader.Read(buffer, 0, sz);
+					return new AuthObject(AuthDataType.Binary, buffer);
+				}
+
+				if (dataType == AuthDataType.Boolean) {
+					byte b = reader.ReadByte();
+					return new AuthObject(AuthDataType.Boolean, b != 0);
+				}
+
+				if (dataType == AuthDataType.DateTime) {
+					long value = reader.ReadInt64();
+					return new AuthObject(AuthDataType.DateTime, DateTime.FromBinary(value));
+				}
+
+				if (dataType == AuthDataType.Number) {
+					int sz = reader.ReadInt32();
+					byte[] data = new byte[sz];
+					reader.Read(data, 0, sz);
+					double number = BitConverter.ToDouble(data, 0);
+					return new AuthObject(AuthDataType.Number, number);
+				}
+
+				if (dataType == AuthDataType.String) {
+					int sz = reader.ReadInt32();
+					StringBuilder sb = new StringBuilder(sz);
+					for (int i = 0; i < sz; i++) {
+						sb.Append(reader.ReadChar());
+					}
+
+					return new AuthObject(AuthDataType.String, sb.ToString());
+				}
+
+				if (dataType == AuthDataType.List) {
+					AuthDataType listType = (AuthDataType) reader.ReadByte();
+					int sz = reader.ReadInt32();
+					AuthObject list = new AuthObject(AuthDataType.List);
+					for (int i = 0; i < sz; i++) {
+						list.Add(GetAuthValue(reader, listType));
+					}
+					return list;
+				}
+
+				throw new InvalidOperationException();
+			}
+
+			private static AuthObject GetAuthValue(BinaryReader reader) {
+				AuthDataType dataType = (AuthDataType) reader.ReadByte();
+				return GetAuthValue(reader, dataType);
+			}
+
+			private static void GetAuthPair(BinaryReader reader, AuthResponse result) {
+				int keysz = reader.ReadInt32();
+				StringBuilder keysb = new StringBuilder(keysz);
+				for (int i = 0; i < keysz; i++) {
+					keysb.Append(reader.ReadChar());
+				}
+
+				string key = keysb.ToString();
+				AuthObject value = GetAuthValue(reader);
+
+				result.Arguments.Add(key, value);
+			}
+
+			private static void SendAuthValue(BinaryWriter writer, AuthObject value) {
+				if (value.IsList) {
+					writer.Write((byte) value.ElementType);
+					int sz = value.Count;
+
+					writer.Write(sz);
+					for (int i = 0; i < sz; i++) {
+						SendAuthValue(writer, value[i]);
+					}
+				} else if (value.DataType == AuthDataType.Binary) {
+					byte[] binary = (byte[])value.Value;
+					writer.Write(binary.Length);
+					writer.Write(binary);
+				} else if (value.DataType == AuthDataType.Boolean) {
+					bool b = (bool)value.Value;
+					writer.Write(b ? 1 : 0);
+				} else if (value.DataType == AuthDataType.Null) {
+					// null is empty
+				} else if (value.DataType == AuthDataType.String) {
+					string s = (string)value.Value;
+					int sz = s.Length;
+					for (int i = 0; i < sz; i++) {
+						writer.Write(s[i]);
+					}
+				} else if (value.DataType == AuthDataType.Number) {
+					double number = (double)value.Value;
+					byte[] data = BitConverter.GetBytes(number);
+					writer.Write(data.Length);
+					writer.Write(data);
+				}
+			}
+
+			private static void SendAuthPair(BinaryWriter writer, string key, AuthObject value) {
+				int keysz = key.Length;
+				for (int i = 0; i < keysz; i++) {
+					writer.Write(key[i]);
+				}
+
+				writer.Write((byte)value.DataType);
+
+				SendAuthValue(writer, value);
 			}
 
 			public void AddLock() {
-				++lock_count;
-				last_lock_timestamp = DateTime.Now;
+				++lockCount;
+				lastLockTimestamp = DateTime.Now;
 			}
 
 			public void RemoveLock() {
-				--lock_count;
+				--lockCount;
 			}
 
+			public void Dispose() {
+			}
 		}
 
 		#endregion

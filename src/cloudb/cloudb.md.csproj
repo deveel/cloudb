@@ -236,11 +236,23 @@
     <Compile Include="LitJson\Lexer.cs" />
     <Compile Include="LitJson\ParserToken.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Deveel.Data.Net\IConnection.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthDataType.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthenticationCode.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthenticationEventArgs.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthenticationException.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthObject.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthRequest.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthResult.cs" />
+    <Compile Include="Deveel.Data.Net.Security\IAuthenticator.cs" />
+    <Compile Include="Deveel.Data.Net.Security\NetworkPasswordAuthenticator.cs" />
+    <Compile Include="Deveel.Data.Net\ConnectionCollection.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Deveel.Data.Diagnostics\ChangeLog" />
     <None Include="Deveel.Data.Net\ChangeLog" />
     <None Include="Deveel.Data.Net.Client\ChangeLog" />
+    <None Include="Deveel.Data.Net.Security\ChangeLog" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />

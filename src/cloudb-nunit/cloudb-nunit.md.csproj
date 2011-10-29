@@ -55,6 +55,8 @@
     <Compile Include="Deveel.Data.Net.Serialization\JsonRpcMessageSerializerTest.cs" />
     <Compile Include="Deveel.Data.Net.Serialization\XmlRpcMessageSerializerTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthenticatorTestBase.cs" />
+    <Compile Include="Deveel.Data.Net.Security\NetworkAuthenticatorTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Deveel.Data.Net\ChangeLog" />

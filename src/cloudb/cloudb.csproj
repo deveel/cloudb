@@ -74,10 +74,19 @@
     <Compile Include="Deveel.Data.Net.Security\AuthenticationCode.cs" />
     <Compile Include="Deveel.Data.Net.Security\AuthenticationEventArgs.cs" />
     <Compile Include="Deveel.Data.Net.Security\AuthenticationException.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthenticatorCollection.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Deveel.Data.Net.Security\AuthMessage.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthMessageArgument.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthMessageArguments.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthMessageType.cs" />
     <Compile Include="Deveel.Data.Net.Security\AuthObject.cs" />
     <Compile Include="Deveel.Data.Net.Security\AuthRequest.cs" />
-    <Compile Include="Deveel.Data.Net.Security\AuthResult.cs" />
+    <Compile Include="Deveel.Data.Net.Security\AuthResponse.cs" />
     <Compile Include="Deveel.Data.Net.Security\IAuthenticator.cs" />
+    <Compile Include="Deveel.Data.Net.Security\IPathAuthenticators.cs" />
+    <Compile Include="Deveel.Data.Net.Security\IServiceAuthenticator.cs" />
     <Compile Include="Deveel.Data.Configuration\PropertiesConfigFormatter.cs" />
     <Compile Include="Deveel.Data.Configuration\XmlConfigFormatter.cs" />
     <Compile Include="Deveel.Data.Diagnostics\Analytics.cs" />
@@ -140,6 +149,7 @@
     <Compile Include="Deveel.Data.Net\CommitFaultException.cs" />
     <Compile Include="Deveel.Data.Net\CompressedBlockStore.cs" />
     <Compile Include="Deveel.Data.Net\CompressedNodeSet.cs" />
+    <Compile Include="Deveel.Data.Net\ConnectionCollection.cs" />
     <Compile Include="Deveel.Data.Net\DataAddress.cs" />
     <Compile Include="Deveel.Data.Net\FileSystemServiceFactory.cs" />
     <Compile Include="Deveel.Data.Net\HandleAttribute.cs" />
@@ -173,6 +183,7 @@
     <Compile Include="Deveel.Data.Net\IBlockStore.cs" />
     <Compile Include="Deveel.Data.Net\HttpServiceAddress.cs" />
     <Compile Include="Deveel.Data.Net.Client\IRequestHandler.cs" />
+    <Compile Include="Deveel.Data.Net\IConnection.cs" />
     <Compile Include="Deveel.Data.Net\IServiceFactory.cs" />
     <Compile Include="Deveel.Data.Net.Client\RequestType.cs" />
     <Compile Include="Deveel.Data.Net\MemoryServiceFactory.cs" />

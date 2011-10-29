@@ -2,9 +2,12 @@
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 
+using Deveel.Data.Configuration;
 using Deveel.Data.Net.Client;
+using Deveel.Data.Net.Security;
 using Deveel.Data.Net.Serialization;
 
 namespace Deveel.Data.Net {
@@ -91,59 +94,65 @@ namespace Deveel.Data.Net {
 			public void Process(object state) {
 				Socket socket = (Socket)state;
 
-				Stream socket_in = new NetworkStream(socket, FileAccess.Read);
-				Stream socket_out = new NetworkStream(socket, FileAccess.Write);
+				Stream input = new NetworkStream(socket, FileAccess.Read);
+				Stream output = new NetworkStream(socket, FileAccess.Write);
+
 				try {
 					// 30 minute timeout on proxy connections,
 					socket.SendTimeout = 30*60*1000;
 
 					// Wrap the input stream in a data and buffered input stream,
-					BufferedStream bin = new BufferedStream(socket_in, 1024);
-					BinaryReader din = new BinaryReader(bin);
+					BinaryReader reader = new BinaryReader(new BufferedStream(input, 1024));
 
 					// Wrap the output stream in a data and buffered output stream,
-					BufferedStream bout = new BufferedStream(socket_out, 1024);
-					BinaryWriter dout = new BinaryWriter(bout);
+					BinaryWriter writer = new BinaryWriter(new BufferedStream(output, 1024));
 
 					// Perform the handshake,
 					DateTime systemtime = DateTime.Now;
-					dout.Write(systemtime.ToUniversalTime().ToBinary());
-					dout.Flush();
-					long back = din.ReadInt64();
+					writer.Write(systemtime.ToUniversalTime().ToBinary());
+					writer.Flush();
+					long back = reader.ReadInt64();
 					if (systemtime.ToUniversalTime().ToBinary() != back) {
 						throw new IOException("Bad protocol request");
 					}
-					dout.Write("CloudB Proxy Service");
-					dout.Flush();
-					string net_password = din.ReadString();
+					writer.Write("CloudB Proxy Service");
+					writer.Flush();
 
+					int mchsz = reader.ReadInt32();
+					StringBuilder mchsb = new StringBuilder(mchsz);
+					for (int i = 0; i < mchsz; i++) {
+						mchsb.Append(reader.ReadChar());
+					}
+
+					string mechanism = mchsb.ToString();
+					
 					// The connector to proxy commands via,
-					TcpServiceConnector connector = new TcpServiceConnector(net_password);
+					TcpServiceConnector connector = new TcpServiceConnector(new ProxyServiceAuthenticator(mechanism, reader, writer));
 
 					// The rest of the communication will be command requests;
 					while (true) {
 
 						// Read the command,
-						char command = din.ReadChar();
+						char command = reader.ReadChar();
 						if (command == '0') {
 							// Close connection if we receive a '0' command char
-							dout.Close();
-							din.Close();
+							writer.Close();
+							reader.Close();
 							return;
 						}
 
-						int addressCode = din.ReadInt32();
+						int addressCode = reader.ReadInt32();
 						Type addressType = ServiceAddresses.GetAddressType(addressCode);
 						if (addressType == null || addressType != typeof(TcpServiceAddress))
 							throw new ApplicationException("Invalid address type.");
 
-						int addressLength = din.ReadInt32();
+						int addressLength = reader.ReadInt32();
 						byte[] addressBytes = new byte[addressLength];
-						din.Read(addressBytes, 0, addressLength);
+						reader.Read(addressBytes, 0, addressLength);
 
 						IServiceAddressHandler handler = ServiceAddresses.GetHandler(addressType);
 						TcpServiceAddress address = (TcpServiceAddress) handler.FromBytes(addressBytes);
-						RequestMessage request = (RequestMessage) service.MessageSerializer.Deserialize(din.BaseStream, MessageType.Request);
+						RequestMessage request = (RequestMessage) service.MessageSerializer.Deserialize(reader.BaseStream, MessageType.Request);
 
 						Message response;
 
@@ -161,8 +170,8 @@ namespace Deveel.Data.Net {
 						}
 
 						// Return the result,
-						service.MessageSerializer.Serialize(response, dout.BaseStream);
-						dout.Flush();
+						service.MessageSerializer.Serialize(response, writer.BaseStream);
+						writer.Flush();
 
 					}
 				} catch(SocketException e) {
@@ -183,6 +192,41 @@ namespace Deveel.Data.Net {
 						service.Logger.Error("IO Error on connection close", e);
 					}
 				}
+			}
+		}
+
+		#endregion
+
+		#region ProxyServiceAuthenticator
+
+		class ProxyServiceAuthenticator : IServiceAuthenticator {
+			private readonly string mechanism;
+			private readonly BinaryReader input;
+			private readonly BinaryWriter output;
+
+			public ProxyServiceAuthenticator(string mechanism, BinaryReader input, BinaryWriter output) {
+				this.mechanism = mechanism;
+				this.input = input;
+				this.output = output;
+			}
+
+			public string Mechanism {
+				get { return mechanism; }
+			}
+
+			public void Init(ConfigSource config) {
+			}
+
+			public AuthResponse Authenticate(AuthRequest authRequest) {
+				throw new NotImplementedException();
+			}
+
+			public void EndContext(object context) {
+				throw new NotImplementedException();
+			}
+
+			public AuthRequest CreateRequest(AuthResponse authResponse) {
+				throw new NotImplementedException();
 			}
 		}
 

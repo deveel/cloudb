@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 
 using Deveel.Data.Net.Client;
+using Deveel.Data.Net.Security;
 using Deveel.Data.Net.Serialization;
 
 namespace Deveel.Data.Net {
@@ -16,16 +17,16 @@ namespace Deveel.Data.Net {
 		private List<TcpConnection> connections;
 		private IMessageSerializer serializer;
 
-		public TcpAdminService(IServiceFactory serviceFactory, IPAddress address, int port, string password)
-			: this(serviceFactory, new TcpServiceAddress(address, port),  password) {
+		public TcpAdminService(IServiceFactory serviceFactory, IPAddress address, int port, IServiceAuthenticator authenticator)
+			: this(serviceFactory, new TcpServiceAddress(address, port),  authenticator) {
 		}
 		
-		public TcpAdminService(IServiceFactory serviceFactory, IPAddress address, string password)
-			: this(serviceFactory, address, TcpServiceAddress.DefaultPort, password) {
+		public TcpAdminService(IServiceFactory serviceFactory, IPAddress address, IServiceAuthenticator authenticator)
+			: this(serviceFactory, address, TcpServiceAddress.DefaultPort, authenticator) {
 		}
 		
-		public TcpAdminService(IServiceFactory serviceFactory, TcpServiceAddress address, string password)
-			: base(address, new TcpServiceConnector(password), serviceFactory) {
+		public TcpAdminService(IServiceFactory serviceFactory, TcpServiceAddress address, IServiceAuthenticator authenticator)
+			: base(address, new TcpServiceConnector(authenticator), serviceFactory) {
 		}
 
 		public IMessageSerializer MessageSerializer {
@@ -170,6 +171,26 @@ namespace Deveel.Data.Net {
 				}
 			}
 
+			private AuthRequest ReceiveAuthRequest(BinaryReader reader) {
+				int mchsz = reader.ReadInt32();
+				StringBuilder mchsb = new StringBuilder(mchsz);
+				for (int i = 0; i < mchsz; i++) {
+					mchsb.Append(reader.ReadChar());
+				}
+
+				string mechanism = mchsb.ToString();
+
+				AuthRequest request = new AuthRequest(this, mechanism);
+
+				//TODO: read request args ...
+
+				return request;
+			}
+
+			private void SendAuthResponse(BinaryWriter writer, AuthResponse response) {
+				//TODO:
+			}
+
 			public void Work(object state) {
 				try {
 					// Get as input and output stream on the sockets,
@@ -187,21 +208,24 @@ namespace Deveel.Data.Net {
 						// Silently close if the value not returned,
 						writer.Close();
 						reader.Close();
+						service.Logger.Warning("The feddback from the connection was invalid: closing");
 						return;
 					}
 
-					// Read the password string from the stream,
-					short sz = reader.ReadInt16();
-					StringBuilder sb = new StringBuilder(sz);
-					for (int i = 0; i < sz; ++i)
-						sb.Append(reader.ReadChar());
+					byte authEnabled = reader.ReadByte();
+					if (authEnabled == 1) {
+						AuthRequest request = ReceiveAuthRequest(reader);
+						AuthResponse response;
 
-					string passwordCode = sb.ToString();
+						IServiceAuthenticator authenticator;
+						if (!service.Authenticators.TryGetAuthenticator(request.Mechanism, out authenticator)) {
+							response = request.Respond(AuthenticationCode.UnknownMechanism);
+						} else {
+							response = authenticator.Authenticate(request);
+						}
 
-					// If it doesn't match, terminate the thread immediately,
-					string password = ((TcpServiceConnector) service.Connector).Password;
-					if (!passwordCode.Equals(password))
-						return;
+						SendAuthResponse(writer, response);
+					}
 
 					// The main command dispatch loop for this connection,
 					while (open) {

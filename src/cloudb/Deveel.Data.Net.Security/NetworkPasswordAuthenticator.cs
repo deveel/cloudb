@@ -1,10 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 
 using Deveel.Data.Configuration;
 
 namespace Deveel.Data.Net.Security {
-	public sealed class NetworkPasswordAuthenticator : IAuthenticator {
+	public sealed class NetworkPasswordAuthenticator : IServiceAuthenticator {
 		private string password;
 
 		public NetworkPasswordAuthenticator(string password) {
@@ -14,33 +13,48 @@ namespace Deveel.Data.Net.Security {
 			this.password = password;
 		}
 
-		private NetworkPasswordAuthenticator() {
+		public NetworkPasswordAuthenticator() {
 		}
 
 		public string Password {
 			get { return password; }
+			set { password = value; }
 		}
 
 		public string Mechanism {
 			get { return "netpass"; }
 		}
 
-		void IAuthenticator.Init(ConfigSource config) {
-			password = config.GetString("password");
-		}
+		AuthResponse IAuthenticator.Authenticate(AuthRequest authRequest) {
+			AuthMessageArgument pass = authRequest.Arguments["password"];
+			if (pass == null)
+				return authRequest.Respond(AuthenticationCode.MissingData);
 
-		public void CollectData(IDictionary<string, AuthObject> authData) {
-			authData["password"] = new AuthObject(AuthDataType.String, password);
-		}
+			AuthObject passValue = pass.Value;
+			if (passValue == null)
+				return authRequest.Respond(AuthenticationCode.MissingData);
 
-		public AuthResult Authenticate(AuthRequest authRequest) {
-			string pass;
-			if (!authRequest.AuthData.TryGetValue("password", out pass))
-				return new AuthResult(authRequest.Context, AuthenticationCode.MissingData);
+			string s = passValue.Value as string;
+			if (String.IsNullOrEmpty(s))
+				return authRequest.Respond(AuthenticationCode.MissingData);
 
+			if (!String.Equals(s, password, StringComparison.InvariantCulture))
+				return authRequest.Respond(AuthenticationCode.InvalidAuthentication);
+
+			return authRequest.Respond(AuthenticationCode.Success);
 		}
 
 		void IAuthenticator.EndContext(object context) {
+		}
+
+		public AuthRequest CreateRequest(AuthResponse authResponse) {
+			AuthRequest request = new AuthRequest(null, Mechanism);
+			request.Arguments.Add("password", password);
+			return request;
+		}
+
+		void IAuthenticator.Init(ConfigSource config) {
+			password = config.GetString("password");
 		}
 	}
 }
