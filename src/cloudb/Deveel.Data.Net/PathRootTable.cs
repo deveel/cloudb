@@ -1,10 +1,8 @@
 ﻿using System;
 
-using Deveel.Data.Store;
-
 namespace Deveel.Data.Net {
 	class PathRootTable {
-		public PathRootTable(DataFile data) {
+		public PathRootTable(IDataFile data) {
 			dictionary = new StringDictionary(data);
 		}
 

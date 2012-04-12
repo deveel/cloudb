@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 
-using Deveel.Data.Store;
-
 namespace Deveel.Data.Net {
 	public sealed class BlockServerTable : FixedSizeCollection {
-		public BlockServerTable(DataFile data) 
+		public BlockServerTable(IDataFile data) 
 			: base(data, 16) {
 		}
 
@@ -26,8 +24,8 @@ namespace Deveel.Data.Net {
 		protected override object GetRecordKey(long recordIndex) {
 			SetPosition(recordIndex);
 
-			long blockId = DataFile.ReadInt64();
-			long serverId = DataFile.ReadInt64();
+			long blockId = Input.ReadInt64();
+			long serverId = Input.ReadInt64();
 
 			return new Record(blockId, serverId);
 		}
@@ -35,8 +33,8 @@ namespace Deveel.Data.Net {
 		protected override int CompareRecordTo(long recordIndex, object recordKey) {
 			SetPosition(recordIndex);
 
-			long srcBlockId = DataFile.ReadInt64();
-			long srcServerId = DataFile.ReadInt64();
+			long srcBlockId = Input.ReadInt64();
+			long srcServerId = Input.ReadInt64();
 
 			Record dstRecord = (Record) recordKey;
 
@@ -71,8 +69,8 @@ namespace Deveel.Data.Net {
 
 			SetPosition(p);
 
-			DataFile.Write(blockId);
-			DataFile.Write(serverId);
+			Output.Write(blockId);
+			Output.Write(serverId);
 
 			return true;
 		}
@@ -84,20 +82,20 @@ namespace Deveel.Data.Net {
 
 			List<long> serverIdList = new List<long>();
 
-			DataFile dfile = DataFile;
+			IDataFile dfile = DataFile;
 			long size = dfile.Length;
 			long pos = p * RecordSize;
 
 			dfile.Position = pos;
 
 			while (pos < size) {
-				long read_block_id = dfile.ReadInt64();
-				long read_server_id = dfile.ReadInt64();
+				long readBlockId = Input.ReadInt64();
+				long readServerId = Input.ReadInt64();
 
-				if (read_block_id != blockId)
+				if (readBlockId != blockId)
 					break;
 
-				serverIdList.Add(read_server_id);
+				serverIdList.Add(readServerId);
 				pos += RecordSize;
 			}
 
@@ -123,7 +121,7 @@ namespace Deveel.Data.Net {
 			if (p < 0)
 				p = -(p + 1);
 
-			DataFile dfile = DataFile;
+			IDataFile dfile = DataFile;
 			long size = dfile.Length;
 			long startPos = p * RecordSize;
 			long pos = startPos;
@@ -132,8 +130,8 @@ namespace Deveel.Data.Net {
 
 			int count = 0;
 			while (pos < size) {
-				long readBlockId = dfile.ReadInt64();
-				long readServerId = dfile.ReadInt64();
+				long readBlockId = Input.ReadInt64();
+				long readServerId = Input.ReadInt64();
 
 				if (readBlockId != blockId)
 					break;

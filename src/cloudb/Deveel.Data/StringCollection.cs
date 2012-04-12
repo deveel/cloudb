@@ -1,25 +1,27 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
-
-using Deveel.Data.Store;
 
 namespace Deveel.Data {
 	public sealed class StringCollection : ISortedCollection<string> {
-		public StringCollection(DataFile file, IComparer<string> comparer)
+		public StringCollection(IDataFile file, IComparer<string> comparer)
 			: this(file, comparer, null, null) {
 			version = 0;
 			root = this;
 			rootStateDirty = true;
 		}
 
-		public StringCollection(DataFile file)
+		public StringCollection(IDataFile file)
 			: this(file, null) {
 		}
 
-		private StringCollection(DataFile file, IComparer<string> comparer, string lowerBound, string upperBound) {
+		private StringCollection(IDataFile file, IComparer<string> comparer, string lowerBound, string upperBound) {
 			this.file = file;
+
+			fileReader = new BinaryReader(new DataFileStream(file), Encoding.Unicode);
+			fileWriter = new BinaryWriter(new DataFileStream(file), Encoding.Unicode);
 
 			if (comparer == null)
 				comparer = DefaultComparer;
@@ -36,8 +38,11 @@ namespace Deveel.Data {
 			version = -1;
 		}
 
-		private readonly DataFile file;
+		private readonly IDataFile file;
 		private readonly IComparer<string> comparer;
+
+		private readonly BinaryReader fileReader;
+		private readonly BinaryWriter fileWriter;
 
 		private readonly StringCollection root;
 		private bool rootStateDirty;
@@ -69,7 +74,7 @@ namespace Deveel.Data {
 				file.Position = startPos;
 				StringBuilder str_buf = new StringBuilder();
 				while (true) {
-					char c = file.ReadChar();
+					char c = fileReader.ReadChar();
 					if (c == StringDeliminator)
 						break;
 
@@ -90,7 +95,7 @@ namespace Deveel.Data {
 				long p = endPos - 2;
 				while (p > startPos) {
 					file.Position = p;
-					char c = file.ReadChar();
+					char c = fileReader.ReadChar();
 					if (c == StringDeliminator) {
 						p = p + 2;
 						break;
@@ -209,7 +214,7 @@ namespace Deveel.Data {
 			int sz = (int)to_read;
 			StringBuilder buf = new StringBuilder(sz);
 			for (int i = 0; i < sz; ++i)
-				buf.Append(file.ReadChar());
+				buf.Append(fileReader.ReadChar());
 
 			// Returns the string
 			return buf.ToString();
@@ -234,7 +239,7 @@ namespace Deveel.Data {
 			if (file.Length < 8) {
 				file.SetLength(8);
 				file.Position = 0;
-				file.Write(Magic);
+				fileWriter.Write(Magic);
 				startPos = 8;
 				endPos = 8;
 			}
@@ -260,11 +265,11 @@ namespace Deveel.Data {
 					// this will cause a critical stop condition).
 					throw new ApplicationException("Can not encode invalid UTF-16 character 0x0FFFF");
 				}
-				file.Write(c);
+				fileWriter.Write(c);
 			}
 
 			// Write the string deliminator
-			file.Write(StringDeliminator);
+			fileWriter.Write(StringDeliminator);
 		}
 
 		private bool SearchFor(string value, long start, long end) {
@@ -283,7 +288,7 @@ namespace Deveel.Data {
 			long pos = mid_pos;
 			file.Position = pos;
 			while (pos < end) {
-				char c = file.ReadChar();
+				char c = fileReader.ReadChar();
 				pos = pos + 2;
 				if (c == StringDeliminator) {
 					// This is the end of the string, break the while loop
@@ -300,7 +305,7 @@ namespace Deveel.Data {
 			long str_start = mid_pos - 2;
 			while (str_start >= start) {
 				file.Position = str_start;
-				char c = file.ReadChar();
+				char c = fileReader.ReadChar();
 				if (c == StringDeliminator) {
 					// This means we found the end of the previous string
 					// so the start is the next char.
@@ -313,17 +318,17 @@ namespace Deveel.Data {
 			// Now str_start will point to the start of the string and str_end to the
 			// end (the char immediately after 0x0FFFF).
 			// Read the midpoint string,
-			String mid_value = ReadString(str_start, str_end);
+			string midValue = ReadString(str_start, str_end);
 
 			// Compare the values
-			int v = comparer.Compare(value, mid_value);
+			int v = comparer.Compare(value, midValue);
 			// If str_start and str_end are the same as start and end, then the area
 			// we are searching represents only 1 string, which is a return state
-			bool last_str = (str_start == start && str_end == end);
+			bool lastStr = (str_start == start && str_end == end);
 
 			if (v < 0) {
 				// if value < mid_value
-				if (last_str) {
+				if (lastStr) {
 					// Position at the start if last str and value < this value
 					file.Position = str_start;
 					return false;
@@ -333,7 +338,7 @@ namespace Deveel.Data {
 			}
 			if (v > 0) {
 				// if value > mid_value
-				if (last_str) {
+				if (lastStr) {
 					// Position at the end if last str and value > this value
 					file.Position = str_end;
 					return false;
@@ -399,7 +404,7 @@ namespace Deveel.Data {
 					collection.file.Position = p;
 					StringBuilder buf = new StringBuilder();
 					while (true) {
-						char c = collection.file.ReadChar();
+						char c = collection.fileReader.ReadChar();
 						offset += 2;
 						if (c == StringDeliminator)
 							break;
@@ -532,7 +537,7 @@ namespace Deveel.Data {
 				long size = endPos;
 				file.Position = p;
 				while (list_size < Int32.MaxValue && p < size) {
-					char c = file.ReadChar();
+					char c = fileReader.ReadChar();
 					if (c == StringDeliminator)
 						++list_size;
 

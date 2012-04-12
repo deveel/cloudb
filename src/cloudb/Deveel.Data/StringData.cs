@@ -2,14 +2,13 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Text;
-
-using Deveel.Data.Store;
 
 namespace Deveel.Data {
 	/// <summary>
 	/// Represents container of characters, to provide mutable string data,
-	/// wrapped on a given <see cref="DataFile"/>.
+	/// wrapped on a given <see cref="IDataFile"/>.
 	/// </summary>
 	/// <remarks>
 	/// This class provides efficient methods for retrieving and modifying
@@ -20,14 +19,19 @@ namespace Deveel.Data {
 	/// </remarks>
 	public sealed class StringData : IEnumerable<char> {
 		/// <summary>
-		/// Constructs the string, wrapped around the given <see cref="DataFile"/>.
+		/// Constructs the string, wrapped around the given <see cref="IDataFile"/>.
 		/// </summary>
 		/// <param name="file">The data file that wraps this string data container.</param>
-		public StringData(DataFile file) {
+		public StringData(IDataFile file) {
 			this.file = file;
+
+			fileReader = new BinaryReader(new DataFileStream(file), Encoding.Unicode);
+			fileWriter = new BinaryWriter(new DataFileStream(file), Encoding.Unicode);
 		}
 
-		private readonly DataFile file;
+		private readonly IDataFile file;
+		private readonly BinaryReader fileReader;
+		private readonly BinaryWriter fileWriter;
 
 		/// <summary>
 		/// Gets the number of characters stored in this string.
@@ -44,11 +48,11 @@ namespace Deveel.Data {
 		}
 
 		internal char ReadChar() {
-			return file.ReadChar();
+			return fileReader.ReadChar();
 		}
 
 		internal void Write(char value) {
-			file.Write(value);
+			fileWriter.Write(value);
 		}
 
 		internal void SetPosition(long pos) {
@@ -74,7 +78,7 @@ namespace Deveel.Data {
 			// Position and write the characters
 			SetPosition(pos);
 			for (int i = 0; i < len; ++i)
-				file.Write(str[i]);
+				fileWriter.Write(str[i]);
 		}
 
 		/// <summary>
@@ -92,7 +96,7 @@ namespace Deveel.Data {
 			StringBuilder buf = new StringBuilder();
 			SetPosition(pos);
 			for (int i = 0; i < sz; ++i)
-				buf.Append(file.ReadChar());
+				buf.Append(fileReader.ReadChar());
 			return buf.ToString();
 		}
 
@@ -102,7 +106,7 @@ namespace Deveel.Data {
 		/// <param name="str">The string to apopend</param>
 		/// <remarks>
 		/// This method expands, where necessary, the size of the
-		/// wrapped <see cref="DataFile"/> to accomodate the given
+		/// wrapped <see cref="IDataFile"/> to accomodate the given
 		/// string appended.
 		/// </remarks>
 		public void Append(string str) {
@@ -225,7 +229,7 @@ namespace Deveel.Data {
 						throw new InvalidOperationException();
 
 					data.SetPosition(pos);
-					return data.file.ReadChar();
+					return data.fileReader.ReadChar();
 				}
 			}
 

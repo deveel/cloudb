@@ -1,8 +1,6 @@
 ﻿using System;
 using System.IO;
 
-using Deveel.Data.Store;
-
 namespace Deveel.Data {
 	/// <summary>
 	/// A transaction is an isolated snapshot view of the database that
@@ -15,7 +13,7 @@ namespace Deveel.Data {
 	/// method.
 	/// <para>
 	/// <b>Note</b>: Implementations of this interface will not be thread-safe,
-	/// nor the <see cref="DataFile"/> created by this object.
+	/// nor the <see cref="IDataFile"/> created by this object.
 	/// </para>
 	/// </remarks>
 	public interface ITransaction : IDisposable {
@@ -36,11 +34,11 @@ namespace Deveel.Data {
 		/// </para>
 		/// </remarks>
 		/// <returns>
-		/// Returns an instance of <see cref="DataFile"/> that allows external systems
+		/// Returns an instance of <see cref="IDataFile"/> that allows external systems
 		/// to access or modify the underlying data within the context of the
 		/// current transaction.
 		/// </returns>
-		DataFile GetFile(Key key, FileAccess access);
+		IDataFile GetFile(Key key, FileAccess access);
 		
 		/// <summary>
 		/// This method is a convenience that indicates the transaction object the

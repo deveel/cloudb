@@ -177,6 +177,7 @@
     <Compile Include="Deveel.Data.Net\TcpProxyAdminService.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Deveel.Data\IDataFile.cs" />
     <Compile Include="Deveel.Data\IIndexCursor.cs" />
     <Compile Include="Deveel.Data\IIndex.cs" />
     <Compile Include="Deveel.Data\IInteractiveEnumerator.cs">
@@ -264,8 +265,7 @@
     <Compile Include="Deveel.Data.Net\ServiceException.cs" />
     <Compile Include="Deveel.Data.Net\ServiceType.cs" />
     <Compile Include="Deveel.Data.Net\SingleNodeSet.cs" />
-    <Compile Include="Deveel.Data.Store\DataFile.cs" />
-    <Compile Include="Deveel.Data.Store\DataFileStream.cs" />
+    <Compile Include="Deveel.Data\DataFileStream.cs" />
     <Compile Include="Deveel.Data.Store\JournalledFileStore.cs" />
     <Compile Include="Deveel.Data.Store\JournalledSystem.cs" />
     <Compile Include="Deveel.Data.Store\LoggingBufferManager.cs" />
@@ -339,6 +339,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Deveel.Data.Net.Security\ChangeLog" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Deveel.Data\ChangeLog" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Deveel.Data.Store\ChangeLog" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />

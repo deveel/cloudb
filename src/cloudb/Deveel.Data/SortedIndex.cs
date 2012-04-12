@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-
-using Deveel.Data.Store;
+using System.IO;
 
 namespace Deveel.Data {
 	/// <summary>
 	/// An implementation of  <see cref="IIndex"/> that is backed 
-	/// by a <see cref="DataFile" /> and which values are ordered.
+	/// by a <see cref="IDataFile" /> and which values are ordered.
 	/// </summary>
 	/// <remarks>
 	/// When modifications happen, the change is immediately mapped 
@@ -17,7 +16,7 @@ namespace Deveel.Data {
 	/// <para>
 	/// This implementation offers a practical way of representing a 
 	/// sorted index of objects within a database. The collation of the 
-	/// list items can be defined via an instance of the <see cref="IIndexedObjectComparer"/>
+	/// list items can be defined via an instance of the <see cref="IIndexedObjectComparer{T}"/>
 	/// interface, or the order may be defined as a function of the index 
 	/// value itself, as per the <see cref="IIndex"/>.
 	/// </para>
@@ -26,34 +25,40 @@ namespace Deveel.Data {
 	/// </para>
 	/// </remarks>
 	public class SortedIndex : IIndex {
-		private readonly DataFile file;
+		private readonly IDataFile file;
 		private readonly bool readOnly;
+
+		private readonly BinaryReader fileReader;
+		private readonly BinaryWriter fileWriter;
 
 		/// <summary>
 		/// Constructs an instance of the index, wrapped around the given
-		/// <see cref="DataFile"/>.
+		/// <see cref="IDataFile"/>.
 		/// </summary>
-		/// <param name="file">The underlying <see cref="DataFile"/> where the
+		/// <param name="file">The underlying <see cref="IDataFile"/> where the
 		/// data of the index will be reflected.</param>
 		/// <param name="readOnly">Indicates whether any change to the index
 		/// is it possible (if <b>false</b>) or if is it a read-only instance
 		/// (if <b>true</b>).</param>
-		public SortedIndex(DataFile file, bool readOnly) {
+		public SortedIndex(IDataFile file, bool readOnly) {
 			this.file = file;
 			this.readOnly = readOnly;
+
+			fileReader = new BinaryReader(new DataFileStream(file));
+			fileWriter = new BinaryWriter(new DataFileStream(file));
 		}
 
 		/// <summary>
 		/// Constructs an instance of the index, wrapped around the given
-		/// <see cref="DataFile"/>.
+		/// <see cref="IDataFile"/>.
 		/// </summary>
-		/// <param name="file">The underlying <see cref="DataFile"/> where the
+		/// <param name="file">The underlying <see cref="IDataFile"/> where the
 		/// data of the index will be reflected.</param>
 		/// <remarks>
 		/// Instances of <see cref="SortedIndex"/> constructed with this
 		/// constructor are always mutable.
 		/// </remarks>
-		public SortedIndex(DataFile file)
+		public SortedIndex(IDataFile file)
 			: this(file, false) {
 		}
 
@@ -85,7 +90,7 @@ namespace Deveel.Data {
 				if ((high - low) <= 4) {
 					for (long i = low; i <= high; ++i) {
 						file.Position = (i * 8);
-						long val = file.ReadInt64();
+						long val = fileReader.ReadInt64();
 						int res = c.Compare(val, value);
 
 						if (res == 0)
@@ -100,7 +105,7 @@ namespace Deveel.Data {
 				long mid = (low + high) >> 1;
 				// Reaf the middle value from the data file,
 				file.Position =(mid * 8);
-				long mid_val = file.ReadInt64();
+				long mid_val = fileReader.ReadInt64();
 
 				// Compare it with the value
 				int res1 = c.Compare(mid_val, value);
@@ -124,7 +129,7 @@ namespace Deveel.Data {
 				if ((high - low) <= 4) {
 					for (long i = high; i >= low; --i) {
 						file.Position =(i * 8);
-						long val = file.ReadInt64();
+						long val = fileReader.ReadInt64();
 						int res = c.Compare(val, value);
 						if (res == 0)
 							return i;
@@ -138,7 +143,7 @@ namespace Deveel.Data {
 				long mid = (low + high) >> 1;
 				// Reaf the middle value from the data file,
 				file.Position =(mid * 8);
-				long mid_val = file.ReadInt64();
+				long mid_val = fileReader.ReadInt64();
 
 				// Compare it with the value
 				int res1 = c.Compare(mid_val, value);
@@ -176,7 +181,7 @@ namespace Deveel.Data {
 				long mid = (low + high) >> 1;
 				// Reaf the middle value from the data file,
 				file.Position = (mid * 8);
-				long mid_val = file.ReadInt64();
+				long mid_val = fileReader.ReadInt64();
 
 				// Compare it with the value
 				int res = c.Compare(mid_val, value);
@@ -229,7 +234,7 @@ namespace Deveel.Data {
 		public long this[long offset] {
 			get {
 				file.Position = (offset * 8);
-				return file.ReadInt64();
+				return fileReader.ReadInt64();
 			}
 		}
 
@@ -263,7 +268,7 @@ namespace Deveel.Data {
 			// and writing the long value.
 			file.Position = (pos * 8);
 			file.Shift(8);
-			file.Write(index);
+			fileWriter.Write(index);
 		}
 
 		public bool InsertUnique<T>(T value, long index, IIndexedObjectComparer<T> c) {
@@ -285,7 +290,7 @@ namespace Deveel.Data {
 			// and writing the long value.
 			file.Position = (pos * 8);
 			file.Shift(8);
-			file.Write(index);
+			fileWriter.Write(index);
 			// Return true because we changed the list,
 			return true;
 		}
@@ -315,7 +320,7 @@ namespace Deveel.Data {
 			CheckReadOnly();
 
 			file.Position = file.Length;
-			file.Write(index);
+			fileWriter.Write(index);
 		}
 
 		public void Insert(long index, long offset) {
@@ -329,12 +334,12 @@ namespace Deveel.Data {
 			if (offset < sz) {
 				file.Position = (offset*8);
 				file.Shift(8);
-				file.Write(index);
+				fileWriter.Write(index);
 			}
 				// Insert at end
 			else if (offset == sz) {
 				file.Position = (sz*8);
-				file.Write(index);
+				fileWriter.Write(index);
 			}
 		}
 
@@ -346,7 +351,7 @@ namespace Deveel.Data {
 
 			file.Position = (offset*8);
 			// Read the value then remove it
-			long val = file.ReadInt64();
+			long val = fileReader.ReadInt64();
 			file.Shift(-8);
 			// Return the value
 			return val;
@@ -419,7 +424,7 @@ namespace Deveel.Data {
 
 					// Change the position and fetch the data,
 					index.file.Position = ((start + p) * 8);
-					return index.file.ReadInt64();
+					return index.fileReader.ReadInt64();
 				}
 			}
 
@@ -454,7 +459,7 @@ namespace Deveel.Data {
 
 			public long Remove() {
 				index.file.Position = ((start + p) * 8);
-				long v = index.file.ReadInt64();
+				long v = index.fileReader.ReadInt64();
 				index.file.Shift(-8);
 
 				if (lastDir == 1)

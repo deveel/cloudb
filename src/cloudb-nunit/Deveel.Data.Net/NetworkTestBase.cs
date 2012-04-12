@@ -62,9 +62,10 @@ namespace Deveel.Data.Net {
 		public void SetUp() {
 			SetupEvent.WaitOne();
 
+			adminService = CreateAdminService(storeType);
+
 			IServiceConnector connector = CreateConnector();
 
-			adminService = CreateAdminService(storeType);
 			NetworkConfigSource config = new NetworkConfigSource();
 			Config(config);
 			adminService.Config = config;

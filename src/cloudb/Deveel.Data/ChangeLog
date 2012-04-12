@@ -1,0 +1,9 @@
+﻿2012-04-12  Antonello Provenzano  <antonello@deveel.com>
+	* KeyBase.cs: 
+		- key comparison adjusted
+		- implements IComparable<T>
+	* IDataFile.cs: created to define the base contract
+	of sparse streams
+	* DataFileStream.cs: 
+		- moved to namespace Deveel.Data
+		- now backs a generic IDataFile contract

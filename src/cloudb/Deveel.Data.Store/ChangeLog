@@ -1,0 +1,3 @@
+﻿2012-04-12  Antonello Provenzano  <antonello@deveel.com>
+	* DataFile.cs: file suppressed in favor of IDataFile
+	* DataFileStream.cs: moved to namespace Deveel.Data

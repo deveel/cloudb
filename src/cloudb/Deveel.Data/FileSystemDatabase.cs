@@ -265,8 +265,8 @@ namespace Deveel.Data {
 			TreeSystemTransaction sourcet = (TreeSystemTransaction)source;
 			foreach(Key key in sourcet.Keys) {
 				// Get the source and destination files
-				DataFile sourceFile = sourcet.GetFile(key, FileAccess.ReadWrite);
-				DataFile destFile = destination.GetFile(key, FileAccess.Write);
+				IDataFile sourceFile = sourcet.GetFile(key, FileAccess.ReadWrite);
+				IDataFile destFile = destination.GetFile(key, FileAccess.Write);
 				// Copy the data
 				sourceFile.CopyTo(destFile, sourceFile.Length);
 			}

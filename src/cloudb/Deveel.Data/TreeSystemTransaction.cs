@@ -277,7 +277,7 @@ namespace Deveel.Data.Store {
 			return nodeId < 0;
 		}
 
-		private static void ByteBufferCopyTo(DataFile source, DataFile target, long size) {
+		private static void ByteBufferCopyTo(IDataFile source, IDataFile target, long size) {
 			long pos = target.Position;
 			// Make room to insert the data
 			target.Shift(size);
@@ -583,7 +583,7 @@ namespace Deveel.Data.Store {
 			end = end_pos;
 		}
 
-		private DataFile UnsafeGetDataFile(Key key, FileAccess access) {
+		private IDataFile UnsafeGetDataFile(Key key, FileAccess access) {
 			if (disposed)
 				throw new ApplicationException("Transaction is disposed");
 
@@ -913,7 +913,7 @@ namespace Deveel.Data.Store {
 		}
 		#region Implementation of ITransaction
 
-		public DataFile GetFile(Key key, FileAccess access) {
+		public IDataFile GetFile(Key key, FileAccess access) {
 			CheckErrorState();
 			try {
 				if (key.Type >= Key.SpecialKeyType)
@@ -1872,17 +1872,17 @@ namespace Deveel.Data.Store {
 
 		#region TransactionDataFile
 
-		private class TransactionDataFile : DataFile {
+		private class TransactionDataFile : IDataFile {
 			private readonly TreeSystemTransaction tnx;
-			private FileAccess access;
-			private Key key;
+			private readonly FileAccess access;
+			private readonly Key key;
 			private long pos;
 
 			private long version;
 			private long start;
 			private long end;
 
-			private TreeStack stack;
+			private readonly TreeStack stack;
 
 			internal TransactionDataFile(TreeSystemTransaction tnx, Key key, FileAccess access) {
 				this.tnx = tnx;
@@ -2157,9 +2157,10 @@ namespace Deveel.Data.Store {
 					}
 				}
 			}
+
 			#region Implementation of IDataFile
 
-			public override long Length {
+			public long Length {
 				get {
 					tnx.CheckErrorState();
 					try {
@@ -2171,12 +2172,12 @@ namespace Deveel.Data.Store {
 				}
 			}
 
-			public override long Position {
+			public long Position {
 				get { return pos; }
 				set { pos = value; }
 			}
 
-			public override int Read(byte[] buffer, int offset, int count) {
+			public int Read(byte[] buffer, int offset, int count) {
 				tnx.CheckErrorState();
 				try {
 					EnsureCorrectBounds();
@@ -2189,7 +2190,7 @@ namespace Deveel.Data.Store {
 				}
 			}
 
-			public override void Write(byte[] buffer, int offset, int count) {
+			public void Write(byte[] buffer, int offset, int count) {
 				tnx.CheckErrorState();
 				try {
 					InitWrite();
@@ -2207,7 +2208,19 @@ namespace Deveel.Data.Store {
 				}
 			}
 
-			public override void SetLength(long value) {
+			public void CopyFrom(IDataFile sourceFile, long size) {
+				throw new NotImplementedException();
+			}
+
+			public void ReplicateTo(IDataFile destFile) {
+				throw new NotImplementedException();
+			}
+
+			public void ReplicateFrom(IDataFile sourceFile) {
+				throw new NotImplementedException();
+			}
+
+			public void SetLength(long value) {
 				tnx.CheckErrorState();
 
 				try {
@@ -2225,7 +2238,7 @@ namespace Deveel.Data.Store {
 				}
 			}
 
-			public override void Shift(long offset) {
+			public void Shift(long offset) {
 				tnx.CheckErrorState();
 
 				try {
@@ -2243,7 +2256,7 @@ namespace Deveel.Data.Store {
 				}
 			}
 
-			public override void Delete() {
+			public void Delete() {
 				tnx.CheckErrorState();
 
 				try {
@@ -2260,7 +2273,7 @@ namespace Deveel.Data.Store {
 				}
 			}
 
-			public override void CopyTo(DataFile destFile, long size) {
+			public void CopyTo(IDataFile destFile, long size) {
 				tnx.CheckErrorState();
 
 				try {
