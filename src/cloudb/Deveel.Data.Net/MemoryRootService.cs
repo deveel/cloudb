@@ -4,52 +4,49 @@ using System.IO;
 
 namespace Deveel.Data.Net {
 	public sealed class MemoryRootService : RootService {
-		private readonly Dictionary<string, string> pathTypes = new Dictionary<string, string>(128);
-		private readonly Dictionary<string, PathAccess> pathAccessMap = new Dictionary<string, PathAccess>(128);
-		private readonly List<string> deletedPaths = new List<string>(128);
-
-		public MemoryRootService(IServiceConnector connector) 
-			: base(connector) {
+		private readonly Dictionary<string, Stream> pathStreams;
+ 
+		public MemoryRootService(IServiceConnector connector, IServiceAddress address) 
+			: base(connector, address) {
+			pathStreams = new Dictionary<string, Stream>();
 		}
 
-		protected override PathAccess FetchPathAccess(string pathName) {
-			PathAccess access;
-			if (!pathAccessMap.TryGetValue(pathName, out access)) {
-				string pathTypeName;
-				if (!pathTypes.TryGetValue(pathName, out pathTypeName))
-					throw new ApplicationException("Path '" + pathName + "' not found input this root service.");
+		protected override PathAccess CreatePathAccesss(string pathName) {
+			return new MemoryPathAccess(this, pathName);
+		}
 
-				if (deletedPaths.Contains(pathName))
-					throw new ApplicationException("Path '" + pathName + "' did exist but was deleted.");
-
-				access = new PathAccess(new MemoryStream(), pathName, pathTypeName);
-				pathAccessMap[pathName] = access;
+		protected override void Dispose(bool disposing) {
+			if (disposing) {
+				foreach (KeyValuePair<string, Stream> pair in pathStreams) {
+					pair.Value.Dispose();
+				}
 			}
 
-			return access;
+			base.Dispose(disposing);
 		}
 
-		protected override void CreatePath(string pathName, string pathTypeName) {
-			if (pathTypes.ContainsKey(pathName))
-				throw new ApplicationException("Path '" + pathName + "' exists on this root service.");
+		#region MemoryPathAccess
 
-			pathTypes[pathName] = pathTypeName;
-		}
-
-		protected override void DeletePath(string pathName) {
-			if (!pathTypes.ContainsKey(pathName))
-				throw new ApplicationException("Path '" + pathName + "' doesn't exist on this root service.");
-
-			deletedPaths.Add(pathName);
-		}
-
-		protected override IList<PathStatus> ListPaths() {
-			List<PathStatus> list = new List<PathStatus>();
-			foreach(KeyValuePair<string, string> pair in pathTypes) {
-				bool deleted = deletedPaths.Contains(pair.Key);
-				list.Add(new PathStatus(pair.Key, deleted));
+		class MemoryPathAccess : PathAccess {
+			public MemoryPathAccess(RootService service, string pathName) 
+				: base(service, pathName) {
 			}
-			return list;
+
+			protected override Stream CreatePathStream() {
+				MemoryRootService rootService = (MemoryRootService) RootService;
+				Stream stream;
+
+				lock (rootService.pathStreams) {
+					if (!rootService.pathStreams.TryGetValue(PathName, out stream)) {
+						stream = new MemoryStream(1024);
+						rootService.pathStreams[PathName] = stream;
+					}
+				}
+
+				return stream;
+			}
 		}
+
+		#endregion
 	}
 }

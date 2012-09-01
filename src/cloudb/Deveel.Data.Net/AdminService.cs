@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 
 using Deveel.Data.Diagnostics;
-using Deveel.Data.Net.Client;
+using Deveel.Data.Net.Messaging;
 
 namespace Deveel.Data.Net {
 	public class AdminService : Service {
@@ -18,6 +18,8 @@ namespace Deveel.Data.Net {
 		private ManagerService manager;
 		private RootService root;
 		private BlockService block;
+
+		private IMessageSerializer serializer;
 
 		private Dictionary<string, ClientConnection> connections;
 
@@ -68,6 +70,11 @@ namespace Deveel.Data.Net {
 		public NetworkConfigSource Config {
 			get { return config; }
 			set { config = value; }
+		}
+
+		public IMessageSerializer MessageSerializer {
+			get { return serializer ?? (serializer = new BinaryRpcMessageSerializer()); }
+			set { serializer = value; }
 		}
 
 		private void ConfigUpdate(object state) {
@@ -137,7 +144,7 @@ namespace Deveel.Data.Net {
 			connection.Disconnect();
 		}
 
-		protected virtual void OnClientRequest(ServiceType serviceType, string remoteEndPoint, Message requestMessage) {
+		protected virtual void OnClientRequest(ServiceType serviceType, string remoteEndPoint, IEnumerable<Message> requestMessage) {
 			if (connections == null)
 				return;
 
@@ -148,7 +155,7 @@ namespace Deveel.Data.Net {
 			connection.Request(serviceType, requestMessage);
 		}
 
-		protected void OnClientResponse(string remoteEndPoint, Message responseMessage) {
+		protected void OnClientResponse(string remoteEndPoint, IEnumerable<Message> responseMessage) {
 			if (connections == null)
 				return;
 
@@ -228,8 +235,8 @@ namespace Deveel.Data.Net {
 				// (We add a little entropy to ensure the network doesn't get hit by
 				//  synchronized requests).
 				Random r = new Random();
-				long second_mix = r.Next(1000);
-				configTimer.Change(50 * 1000, ((2 * 59) * 1000) + second_mix);
+				long secondMix = r.Next(1000);
+				configTimer.Change(50 * 1000, ((2 * 59) * 1000) + secondMix);
 				
 				serviceFactory.Init(this);
 			}
@@ -265,7 +272,7 @@ namespace Deveel.Data.Net {
 
 			private long[] GetStats() {
 				AnalyticsRecord[] records = service.analytics.GetStats();
-				long[] stats = new long[records.Length * 4];
+				long[] stats = new long[records.Length*4];
 				for (int i = 0; i < records.Length; i++) {
 					AnalyticsRecord record = records[i];
 					Array.Copy(record.ToArray(), 0, stats, i + 4, 4);
@@ -274,69 +281,70 @@ namespace Deveel.Data.Net {
 				return stats;
 			}
 
-			public Message Process(Message request) {
-				Message response;
-				if (MessageStream.TryProcess(this, request, out response))
-					return response;
-
-				response = ((RequestMessage)request).CreateResponse();
+			public IEnumerable<Message> Process(IEnumerable<Message> request) {
+				// The message output,
+				MessageStream response = new MessageStream();
 
 				// For each message in the message input,
-				try {
-					string command = request.Name;
-					// Report on the services running,
-					if (command.Equals("report")) {
-						lock (service.serverManagerLock) {
-							// TODO:
-							long tm = 0;		// Total Memory
-							long fm = 0;		// Free Memory
-							long td = 0;		// Total Space
-							long fd = 0;		// Free Space
-							if (service.Block == null) {
-								response.Arguments.Add("block=no");
-							} else {
-								response.Arguments.Add(service.Block.BlockCount.ToString());
+				foreach (Message m in request) {
+					try {
+						string command = m.Name;
+						// Report on the services running,
+						if (command.Equals("report")) {
+							lock (service.serverManagerLock) {
+								long tm = System.Diagnostics.Process.GetCurrentProcess().PrivateMemorySize64;
+								long fm = 0 /* TODO: GetFreeMemory()*/;
+								long td = 0 /* TODO: GetTotalSpace(service.basePath) */;
+								long fd = 0 /* TODO: GetUsableSpace(service.basePath)*/;
+
+								Message message = new Message();
+								if (service.block == null) {
+									message.Arguments.Add("block_server=no");
+								} else {
+									message.Arguments.Add(service.block.BlockCount.ToString());
+								}
+								message.Arguments.Add("manager_server=" + (service.manager == null ? "no" : "yes"));
+								message.Arguments.Add("root_server=" + (service.root == null ? "no" : "yes"));
+								message.Arguments.Add(tm - fm);
+								message.Arguments.Add(tm);
+								message.Arguments.Add(td - fd);
+								message.Arguments.Add(td);
+								response.AddMessage(message);
 							}
-							response.Arguments.Add("manager=" + (service.Manager == null ? "no" : "yes"));
-							response.Arguments.Add("root=" + (service.Root == null ? "no" : "yes"));
-							response.Arguments.Add(tm - fm);
-							response.Arguments.Add(tm);
-							response.Arguments.Add(td - fd);
-							response.Arguments.Add(td);
-						}
-					} else if (command.Equals("reportStats")) {
-						// Analytics stats; we convert the stats to a long[] array and
-						// send it as a reply.
-						long[] stats = GetStats();
-						response.Arguments.Add(stats);
-					} else {
-						// Starts a service,
-						if (command.Equals("init")) {
-							string service_type = request.Arguments[0].ToString();
-							service.StartService(service_type);
-						}
-							// Stops a service,
-						else if (command.Equals("dispose")) {
-							string service_type = request.Arguments[0].ToString();
-							service.StopService(service_type);
+						} else if (command.Equals("reportStats")) {
+							// Analytics stats; we convert the stats to a long[] array and
+							// send it as a reply.
+							long[] stats = GetStats();
+							response.AddMessage(new Message(new object[] {stats}));
 						} else {
-							throw new Exception("Unknown command: " + command);
+							// Starts a service,
+							if (command.Equals("start")) {
+								ServiceType serviceType = (ServiceType)(byte) m.Arguments[0].Value;
+								service.StartService(serviceType);
+							}
+								// Stops a service,
+							else if (command.Equals("stop")) {
+								ServiceType serviceType = (ServiceType)(byte) m.Arguments[0].Value;
+								service.StopService(serviceType);
+							} else {
+								throw new ApplicationException("Unknown command: " + command);
+							}
+
+							// Add reply message,
+							response.AddMessage(new Message(1L));
 						}
 
-						// Add reply message,
-						response.Arguments.Add(1L);
+					} catch (OutOfMemoryException e) {
+						service.Logger.Error("Out-Of-Memory", e);
+						// This will end the connection
+						throw;
+					} catch (Exception e) {
+						service.Logger.Error("Exception during process", e);
+						response.AddMessage(new Message(new MessageError(e)));
 					}
-
-				} catch (OutOfMemoryException e) {
-					service.Logger.Error(service, "Out Of Memory Error.", e);
-					// This will end the connection);
-					throw;
-				} catch (Exception e) {
-					service.Logger.Error("Error while processing.");
-					response.Arguments.Add(new MessageError(e));
 				}
-
 				return response;
+
 			}
 		}
 

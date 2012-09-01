@@ -14,7 +14,7 @@ namespace Deveel.Data {
 		/// contents (mutable). Otherwise, if this value is greater or 
 		/// equalthan 0 this means it is in the store and immutable.
 		/// </remarks>
-		long Id { get; }
+		NodeId Id { get; }
 
 		/// <summary>
 		/// Gets an estimation of the amount of memory needed by this 

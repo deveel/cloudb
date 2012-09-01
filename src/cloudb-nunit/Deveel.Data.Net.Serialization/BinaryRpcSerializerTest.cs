@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 
+using Deveel.Data.Net.Messaging;
 using Deveel.Data.Net.Serialization;
 
 using NUnit.Framework;

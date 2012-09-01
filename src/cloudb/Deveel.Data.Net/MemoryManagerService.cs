@@ -23,10 +23,16 @@ namespace Deveel.Data.Net {
 			database = null;
 		}
 
-		protected override void PersistBlockServers(IList<BlockServerInfo> servers_list) {
+		protected override void PersistBlockServers(IList<BlockServiceInfo> serviceList) {
 		}
 
-		protected override void PersistRootServers(IList<RootServerInfo> servers_list) {
+		protected override void PersistRootServers(IList<RootServiceInfo> serviceList) {
+		}
+
+		protected override void PersistManagerServers(IList<ManagerServiceInfo> serversList) {
+		}
+
+		protected override void PersistManagerUniqueId(int uniqueId) {
 		}
 	}
 }

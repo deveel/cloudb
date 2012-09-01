@@ -1,11 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 
-using Deveel.Data.Net.Client;
-using Deveel.Data.Net.Serialization;
+using Deveel.Data.Net.Messaging;
 
 namespace Deveel.Data.Net {
 	public sealed class TcpProxyAdminService : Service {
@@ -143,7 +143,7 @@ namespace Deveel.Data.Net {
 
 						IServiceAddressHandler handler = ServiceAddresses.GetHandler(addressType);
 						TcpServiceAddress address = (TcpServiceAddress) handler.FromBytes(addressBytes);
-						RequestMessage request = (RequestMessage) service.MessageSerializer.Deserialize(din.BaseStream, MessageType.Request);
+						IEnumerable<Message> request = service.MessageSerializer.Deserialize(din.BaseStream);
 
 						Message response;
 

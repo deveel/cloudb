@@ -1,7 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 
 using Deveel.Data.Configuration;
-using Deveel.Data.Net.Client;
+using Deveel.Data.Net.Messaging;
 
 namespace Deveel.Data.Net {
 	public sealed class FakeAdminService : AdminService {		
@@ -22,7 +23,7 @@ namespace Deveel.Data.Net {
 			: this(NetworkStoreType.Memory) {
 		}
 		
-		internal Message ProcessCallback(ServiceType serviceType, Message inputStream) {
+		internal IEnumerable<Message> ProcessCallback(ServiceType serviceType, IEnumerable<Message> inputStream) {
 			if (serviceType == ServiceType.Admin)
 				return Processor.Process(inputStream);
 			if (serviceType == ServiceType.Manager)

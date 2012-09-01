@@ -3,301 +3,724 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.NetworkInformation;
-using System.Text;
+using System.Net.Sockets;
 
 using Deveel.Data.Diagnostics;
-using Deveel.Data.Net.Client;
-using Deveel.Data.Net.Serialization;
+using Deveel.Data.Net.Messaging;
 using Deveel.Data.Store;
 using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
 	internal class NetworkTreeSystem : ITreeSystem {
-		internal NetworkTreeSystem(IServiceConnector connector, IServiceAddress managerAddress, INetworkCache networkCache) {
-			if (!(connector.MessageSerializer is IRpcMessageSerializer) || 
-				!((IRpcMessageSerializer)connector.MessageSerializer).SupportsMessageStream)
-				throw new ArgumentException("The message serializer specified by the connector is not valid (must be IRPC).");
-			
-			this.connector = connector;
-			this.managerAddress = managerAddress;
-			this.networkCache = networkCache;
-			failures = new Dictionary<IServiceAddress, DateTime>();
-			pathToRoot = new Dictionary<string, IServiceAddress>();
-			
-			logger = Logger.Network;
-		}
+		private const short StoreLeafType = 0x019e0;
+		private const short StoreBranchType = 0x022e0;
 
 		private readonly IServiceConnector connector;
-		private readonly IServiceAddress managerAddress;
+		private readonly IServiceAddress[] managerAddresses;
+
 		private readonly INetworkCache networkCache;
 
-		private readonly Dictionary<IServiceAddress, DateTime> failures;
-		private readonly Dictionary<string, IServiceAddress> pathToRoot;
-		private readonly Dictionary<IServiceAddress, int> proximityMap = new Dictionary<IServiceAddress, int>();
+		private readonly ServiceStatusTracker serviceTracker;
 
-		private readonly Object reachability_lock = new Object();
-		private int reachability_tree_depth;
+		private readonly Dictionary<IServiceAddress, DateTime> failureFloodControl;
+		private readonly Dictionary<IServiceAddress, DateTime> failureFloodControlBidc;
 
-		private long max_transaction_node_heap_size;
+		private long maxTransactionNodeHeapSize = 32*1024*1024;
+
+		public volatile int NetworkCommCount = 0;
+		public volatile int NetworkFetchCommCount = 0;
+
+		private readonly Logger log = Logger.Network;
 
 		private ErrorStateException errorState;
-		private readonly Logger logger;
 
-		private const short LeafType = 0x019EC;
-		private const short BranchType = 0x022EB;
+		private readonly Dictionary<IServiceAddress, int> closenessMap = new Dictionary<IServiceAddress, int>();
 
-		private void ReportBlockServerFailure(IServiceAddress address) {
-			logger.Warning("Reporting failure for " + address + " to manager service.");
+		private readonly object reachabilityLock = new object();
+		private int reachabilityTreeDepth;
 
-			// Failure throttling,
-			lock (failures) {
-				DateTime current_time = DateTime.Now;
-				DateTime last_address_fail_time;
-				if (failures.TryGetValue(address, out last_address_fail_time) &&
-					last_address_fail_time.AddMilliseconds(30 * 1000) > current_time) {
-					// We don't respond to failure notifications on the same address if a
-					// failure notice arrived within a minute of the last one accepted.
-					return;
-				}
-				failures.Add(address, current_time);
-			}
+		public NetworkTreeSystem(IServiceConnector connector, IServiceAddress[] managerAddresses,
+		                         INetworkCache networkCache, ServiceStatusTracker serviceTracker) {
+			this.connector = connector;
+			this.managerAddresses = managerAddresses;
+			this.networkCache = networkCache;
+			this.serviceTracker = serviceTracker;
 
-			IMessageProcessor manager = connector.Connect(managerAddress, ServiceType.Manager);
-			RequestMessage requestMessage = new RequestMessage("notifyBlockServerFailure");
-			requestMessage.Arguments.Add(address);
-			// Process the failure report message on the manager server,
-			Message responseMessage = manager.Process(requestMessage);
-			if (responseMessage.HasError)
-				logger.Error("Error found while processing 'notifyBlockServerFailure': " + responseMessage.ErrorMessage);
+			failureFloodControl = new Dictionary<IServiceAddress, DateTime>();
+			failureFloodControlBidc = new Dictionary<IServiceAddress, DateTime>();
 		}
 
-		//TODO: should this work also for other kind of addresses?
-		private int GetProximity(IServiceAddress node) {			
-			lock (proximityMap) {
-				int closeness;
-				if (!proximityMap.TryGetValue(node, out closeness)) {
-					try {
-						if (!(node is TcpServiceAddress))
-							throw new NotSupportedException("This algorithm is not supported for this kind of service.");
+		public int MaxBranchSize {
+			get {
+				// TODO: Make this user-definable.
+				// Remember though - you can't change this value on the fly so we'll need
+				//   some central management on the network for configuration values.
 
-						IPAddress machine_address = ((TcpServiceAddress) node).ToIPAddress();
+				//    // Note: 25 results in a branch size of around 1024 in size when full so
+				//    //   limits the maximum size of a branch to this size.
+				return 14;
+			}
+		}
 
-						NetworkInterface[] local_interfaces = NetworkInterface.GetAllNetworkInterfaces();
-						bool is_local = false;
-						foreach (NetworkInterface netint in local_interfaces) {
-							if (netint.GetIPProperties().DnsAddresses.Contains(machine_address)) {
-								is_local = true;
-								break;
-							}
+		public int MaxLeafByteSize {
+			get {
+				// TODO: Make this user-definable.
+				// Remember though - you can't change this value on the fly so we'll need
+				//   some central management on the network for configuration values.
+				return 6134;
+			}
+		}
+
+		public long NodeHeapMaxSize {
+			get { return maxTransactionNodeHeapSize; }
+			internal set { maxTransactionNodeHeapSize = value; }
+		}
+
+		public bool NotifyNodeChanged {
+			get { return false; }
+		}
+
+		private static bool IsConnectionFailMessage(Message m) {
+			// TODO: This should detect comm failure rather than catch-all.
+			if (m.HasError) {
+				MessageError error = m.Error;
+				string source = error.Source;
+				// If it's a connect exception,
+				if (source.Equals("System.Net.Sockets.SocketException"))
+					return true;
+				if (source.Equals("Deveel.Data.Net.ServiceNotConnectedException"))
+					return true;
+			}
+
+			return false;
+		}
+
+		private void NotifyAllManagers(MessageStream outputStream) {
+			IEnumerable<Message>[] inputStreams = new IEnumerable<Message>[managerAddresses.Length];
+			for (int i = 0; i < managerAddresses.Length; ++i) {
+				IServiceAddress manager = managerAddresses[i];
+				if (serviceTracker.IsServiceUp(manager, ServiceType.Manager)) {
+					IMessageProcessor processor = connector.Connect(manager, ServiceType.Manager);
+					inputStreams[i] = processor.Process(outputStream);
+				}
+			}
+
+			for (int i = 0; i < managerAddresses.Length; ++i) {
+				IEnumerable<Message> inputStream = inputStreams[i];
+				if (inputStream != null) {
+					IServiceAddress manager = managerAddresses[i];
+					// If any errors happened,
+					foreach (Message m in inputStream) {
+						// If it's a connection fail message, we try connecting to another
+						// manager.
+						if (IsConnectionFailMessage(m)) {
+							// Tell the tracker it's down,
+							serviceTracker.ReportServiceDownClientReport(manager, ServiceType.Manager);
+							break;
 						}
-						// If the interface is local,
-						if (is_local) {
-							closeness = 0;
+					}
+				}
+			}
+		}
+
+		public IEnumerable<Message> ProcessManager(IEnumerable<Message> outputStream) {
+			// We go through all the manager addresses from first to last until we
+			// find one that is currently up,
+
+			// This uses a service status tracker object maintained by the network
+			// cache to keep track of manager servers that aren't operational.
+
+			IEnumerable<Message> inputStream = null;
+			for (int i = 0; i < managerAddresses.Length; ++i) {
+				IServiceAddress manager = managerAddresses[i];
+				if (serviceTracker.IsServiceUp(manager, ServiceType.Manager)) {
+					IMessageProcessor processor = connector.Connect(manager, ServiceType.Manager);
+					inputStream = processor.Process(outputStream);
+
+					bool failed = false;
+					// If any errors happened,
+					foreach (Message m in inputStream) {
+						// If it's a connection fail message, we try connecting to another
+						// manager.
+						if (IsConnectionFailMessage(m)) {
+							// Tell the tracker it's down,
+							serviceTracker.ReportServiceDownClientReport(manager, ServiceType.Manager);
+							failed = true;
+							break;
+						}
+					}
+
+					if (!failed) {
+						return inputStream;
+					}
+				}
+			}
+
+			// If we didn't even try one, we test the first manager.
+			if (inputStream == null) {
+				IMessageProcessor processor = connector.Connect(managerAddresses[0], ServiceType.Manager);
+				inputStream = processor.Process(outputStream);
+			}
+
+			// All managers are currently down, so return the last input stream,
+			return inputStream;
+		}
+
+		private Message ProcessSingleRoot(IEnumerable<Message> outputStream, IServiceAddress rootServer) {
+			IMessageProcessor processor = connector.Connect(rootServer, ServiceType.Root);
+			IEnumerable<Message> inputStream = processor.Process(outputStream);
+			Message lastM = null;
+			foreach (Message m in inputStream) {
+				lastM = m;
+				if (m.HasError) {
+					// If it's a connection failure, inform the service tracker and throw
+					// service not available exception.
+					if (IsConnectionFailMessage(m)) {
+						serviceTracker.ReportServiceDownClientReport(rootServer, ServiceType.Root);
+						throw new ServiceNotConnectedException(rootServer.ToString());
+					}
+
+					string errorSource = m.Error.Source;
+					// Rethrow InvalidPathInfoException locally,
+					if (errorSource.Equals("Deveel.Data.Net.InvalidPathInfoException")) {
+						throw new InvalidPathInfoException(m.ErrorMessage);
+					}
+				}
+			}
+			return lastM;
+		}
+
+		private PathInfo GetPathInfoFor(string pathName) {
+			PathInfo pathInfo = networkCache.GetPathInfo(pathName);
+			if (pathInfo == null) {
+				// Path info not found in the cache, so query the manager cluster for the
+				// info.
+
+				MessageStream outputStream = new MessageStream();
+				outputStream.AddMessage(new Message("getPathInfoForPath", pathName));
+
+				IEnumerable<Message> inputStream = ProcessManager(outputStream);
+
+				foreach (Message m in inputStream) {
+					if (m.HasError) {
+						log.Error(String.Format("'getPathInfoFor' command failed: {0}", m.ErrorMessage));
+						log.Error(m.ErrorStackTrace);
+						throw new ApplicationException(m.ErrorMessage);
+					}
+
+					pathInfo = (PathInfo) m.Arguments[0].Value;
+				}
+
+				if (pathInfo == null)
+					throw new ApplicationException("Path not found: " + pathName);
+
+				// Put it in the local cache,
+				networkCache.SetPathInfo(pathName, pathInfo);
+			}
+			return pathInfo;
+		}
+
+		internal DataAddress CreateDatabase() {
+			// The child reference is a sparse node element
+			NodeId childId = NodeId.CreateSpecialSparseNode((byte) 1, 4);
+
+			// Create a branch,
+			TreeBranch rootBranch = new TreeBranch(NodeId.CreateInMemoryNode(0L), MaxBranchSize);
+			rootBranch.Set(childId, 4, Key.Tail, childId, 4);
+
+			TreeWrite seq = new TreeWrite();
+			seq.NodeWrite(rootBranch);
+			IList<NodeId> refs = Persist(seq);
+
+			// The written root node reference,
+			NodeId rootId = refs[0];
+
+			// Return the root,
+			return new DataAddress(rootId);
+		}
+
+		internal ITransaction CreateTransaction(DataAddress rootNode) {
+			return new NetworkTreeSystemTransaction(this, 0, rootNode);
+		}
+
+		internal ITransaction CreateTransaction() {
+			return new NetworkTreeSystemTransaction(this, 0);
+		}
+
+		internal DataAddress FlushTransaction(ITransaction transaction) {
+			NetworkTreeSystemTransaction netTransaction = (NetworkTreeSystemTransaction) transaction;
+			try {
+				netTransaction.Checkout();
+				return new DataAddress(netTransaction.RootNodeId);
+			} catch (IOException e) {
+				throw new ApplicationException(e.Message, e);
+			}
+		}
+
+		internal DataAddress PerformCommit(String pathName, DataAddress proposal) {
+			// Get the PathInfo object for the given path name,
+			PathInfo pathInfo = GetPathInfoFor(pathName);
+
+			// We can only commit on the root leader,
+			IServiceAddress rootServer = pathInfo.RootLeader;
+			try {
+				// TODO; If the root leader is not available, we need to go through
+				//   a new leader election process.
+
+				MessageStream outputStream = new MessageStream();
+				outputStream.AddMessage(new Message("commit", pathName, pathInfo.VersionNumber, proposal));
+
+				Message m = ProcessSingleRoot(outputStream, rootServer);
+
+				if (m.HasError) {
+					// Rethrow commit fault locally,
+					if (m.Error.Source.Equals("Deveel.Data.Net.CommitFaultException"))
+						throw new CommitFaultException(m.ErrorMessage);
+
+					throw new ApplicationException(m.ErrorMessage);
+				}
+				// Return the DataAddress of the result transaction,
+				return (DataAddress) m.Arguments[0].Value;
+
+			} catch (InvalidPathInfoException) {
+				// Clear the cache and requery the manager server for a new path info,
+				networkCache.SetPathInfo(pathName, null);
+				return PerformCommit(pathName, proposal);
+			}
+		}
+
+		internal String[] FindAllPaths() {
+			MessageStream outputStream = new MessageStream();
+			outputStream.AddMessage(new Message("getAllPaths"));
+
+			// Process a command on the manager,
+			IEnumerable<Message> inputStream = ProcessManager(outputStream);
+
+			foreach (Message m in inputStream) {
+				if (m.HasError) {
+					log.Error(String.Format("'getAllPaths' command failed: {0}", m.ErrorMessage));
+					log.Error(m.ErrorStackTrace);
+					throw new ApplicationException(m.ErrorMessage);
+				}
+
+				return (String[]) m.Arguments[0].Value;
+			}
+
+			throw new ApplicationException("Bad formatted message stream");
+		}
+
+		internal string GetPathType(string pathName) {
+			PathInfo pathInfo = GetPathInfoFor(pathName);
+			return pathInfo.PathType;
+		}
+
+		private DataAddress InternalGetPathNow(PathInfo pathInfo, IServiceAddress rootServer) {
+			MessageStream outputStream = new MessageStream();
+			outputStream.AddMessage(new Message("getPathNow", pathInfo.PathName, pathInfo.VersionNumber));
+
+			Message m = ProcessSingleRoot(outputStream, rootServer);
+			if (m.HasError)
+				throw new ApplicationException(m.ErrorMessage);
+
+			return (DataAddress) m.Arguments[0].Value;
+		}
+
+		internal DataAddress GetPathNow(string pathName) {
+			// Get the PathInfo object for the given path name,
+			PathInfo pathInfo = GetPathInfoFor(pathName);
+
+			// Try the root leader first,
+			IServiceAddress rootServer = pathInfo.RootLeader;
+			try {
+				DataAddress dataAddress = InternalGetPathNow(pathInfo, rootServer);
+
+				// TODO: if the root leader is not available, query the replicated
+				//   root servers with this path.
+
+				return dataAddress;
+			} catch (InvalidPathInfoException e) {
+				// Clear the cache and requery the manager server for a new path info,
+				networkCache.SetPathInfo(pathName, null);
+				return GetPathNow(pathName);
+			}
+		}
+
+		private DataAddress[] InternalGetPathHistorical(PathInfo pathInfo, IServiceAddress server,
+			long timeStart, long timeEnd) {
+			Message message = new Message("getPathHistorical", pathInfo.PathName, pathInfo.VersionNumber, timeStart, timeEnd);
+
+			Message m = ProcessSingleRoot(message.AsStream(), server);
+			if (m.HasError)
+				throw new ApplicationException(m.ErrorMessage);
+
+			return (DataAddress[]) m.Arguments[0].Value;
+		}
+
+		internal DataAddress[] GetPathHistorical(string pathName, long timeStart, long timeEnd) {
+
+			// Get the PathInfo object for the given path name,
+			PathInfo pathInfo = GetPathInfoFor(pathName);
+
+			// Try the root leader first,
+			IServiceAddress rootServer = pathInfo.RootLeader;
+			try {
+				DataAddress[] dataAddresses = InternalGetPathHistorical(pathInfo, rootServer, timeStart, timeEnd);
+
+				// TODO: if the root leader is not available, query the replicated
+				//   root servers with this path.
+
+				return dataAddresses;
+
+			} catch (InvalidPathInfoException) {
+				// Clear the cache and requery the manager server for a new path info,
+				networkCache.SetPathInfo(pathName, null);
+				return GetPathHistorical(pathName, timeStart, timeEnd);
+			}
+		}
+
+		internal void DisposeTransaction(ITransaction transaction) {
+			((NetworkTreeSystemTransaction) transaction).Dispose();
+		}
+
+		public void CheckPoint() {
+			// This is a 'no-op' for the network system. This is called when a cache
+			// flush occurs, so one idea might be to use this as some sort of hint?
+		}
+
+		public IList<ITreeNode> FetchNodes(NodeId[] nids) {
+			// The number of nodes,
+			int nodeCount = nids.Length;
+			// The array of read nodes,
+			ITreeNode[] resultNodes = new ITreeNode[nodeCount];
+
+
+			// Resolve special nodes first,
+			{
+				int i = 0;
+				foreach (NodeId nodeId in nids) {
+					if (nodeId.IsSpecial) {
+						resultNodes[i] = nodeId.CreateSpecialTreeNode();
+					}
+					++i;
+				}
+			}
+
+			// Group all the nodes to the same block,
+			List<BlockId> uniqueBlocks = new List<BlockId>();
+			List<List<NodeId>> uniqueBlockList = new List<List<NodeId>>();
+			{
+				int i = 0;
+				foreach (NodeId nodeId in nids) {
+					// If it's not a special node,
+					if (!nodeId.IsSpecial) {
+						// Get the block id and add it to the list of unique blocks,
+						DataAddress address = new DataAddress(nodeId);
+						// Check if the node is in the local cache,
+						ITreeNode node = networkCache.GetNode(address);
+						if (node != null) {
+							resultNodes[i] = node;
 						} else {
-							// Not local,
-							closeness = 10000;
+							// Not in the local cache so we need to bundle this up in a node
+							// request on the block servers,
+							// Group this node request by the block identifier
+							BlockId blockId = address.BlockId;
+							int ind = uniqueBlocks.IndexOf(blockId);
+							if (ind == -1) {
+								ind = uniqueBlocks.Count;
+								uniqueBlocks.Add(blockId);
+								uniqueBlockList.Add(new List<NodeId>());
+							}
+							List<NodeId> blist = uniqueBlockList[ind];
+							blist.Add(nodeId);
+						}
+					}
+					++i;
+				}
+			}
+
+			// Exit early if no blocks,
+			if (uniqueBlocks.Count == 0) {
+				return resultNodes;
+			}
+
+			// Resolve server records for the given block identifiers,
+			IDictionary<BlockId, IList<BlockServerElement>> serversMap = GetServerListForBlocks(uniqueBlocks);
+
+			// The result nodes list,
+			List<ITreeNode> nodes = new List<ITreeNode>();
+
+			// Checksumming objects
+			byte[] checksumBuf = null;
+			Crc32 crc32 = null;
+
+			// For each unique block list,
+			foreach (List<NodeId> blist in uniqueBlockList) {
+				// Make a block server request for each node in the block,
+				MessageStream blockServerMsg = new MessageStream();
+				BlockId blockId = null;
+				foreach (NodeId nodeId in blist) {
+					DataAddress address = new DataAddress(nodeId);
+					blockServerMsg.AddMessage(new Message("readFromBlock", address));
+					blockId = address.BlockId;
+				}
+
+				if (blockId == null) {
+					throw new ApplicationException("block_id == null");
+				}
+
+				// Get the shuffled list of servers the block is stored on,
+				IList<BlockServerElement> servers = serversMap[blockId];
+
+				// Go through the servers one at a time to fetch the block,
+				bool success = false;
+				for (int z = 0; z < servers.Count && !success; ++z) {
+					BlockServerElement server = servers[z];
+					// If the server is up,
+					if (server.IsStatusUp) {
+						// Open a connection with the block server,
+						IMessageProcessor blockServerProc = connector.Connect(server.Address, ServiceType.Block);
+						IEnumerable<Message> messageIn = blockServerProc.Process(blockServerMsg);
+						++NetworkCommCount;
+						++NetworkFetchCommCount;
+
+						bool isError = false;
+						bool severeError = false;
+						bool crcError = false;
+						bool connectionError = false;
+
+						// Turn each none-error message into a node
+						foreach (Message m in messageIn) {
+							if (m.HasError) {
+								// See if this error is a block read error. If it is, we don't
+								// tell the manager server to lock this server out completely.
+								bool isBlockReadError = m.Error.Source.Equals("Deveel.Data.Net.BlockReadException");
+								// If it's a connection fault,
+								if (IsConnectionFailMessage(m)) {
+									connectionError = true;
+								} else if (!isBlockReadError) {
+									// If it's something other than a block read error or
+									// connection failure, we set the severe flag,
+									severeError = true;
+								}
+								isError = true;
+							} else if (isError == false) {
+								// The reply contains the block of data read.
+								NodeSet nodeSet = (NodeSet) m.Arguments[0].Value;
+
+								DataAddress address = null;
+
+								// Catch any IOExceptions (corrupt zips, etc)
+								try {
+									// Decode the node items into Java node objects,
+									foreach (Node nodeItem in nodeSet) {
+										NodeId nodeId = nodeItem.Id;
+
+										address = new DataAddress(nodeId);
+										// Wrap around a buffered DataInputStream for reading values
+										// from the store.
+										BinaryReader input = new BinaryReader(nodeItem.Input);
+										short nodeType = input.ReadInt16();
+
+										ITreeNode readNode = null;
+
+										if (crc32 == null)
+											crc32 = new Crc32();
+										crc32.Initialize();
+
+										// Is the node type a leaf node?
+										if (nodeType == StoreLeafType) {
+											// Read the checksum,
+											input.ReadInt16(); // For future use...
+											int checksum = input.ReadInt32();
+											// Read the size
+											int leafSize = input.ReadInt32();
+
+											byte[] buf = StreamUtil.AsBuffer(nodeItem.Input);
+											if (buf == null) {
+												buf = new byte[leafSize + 12];
+												ByteBuffer.WriteInt4(leafSize, buf, 8);
+												input.Read(buf, 12, leafSize);
+											}
+
+											// Check the checksum...
+											crc32.ComputeHash(buf, 8, leafSize + 4);
+											int calcChecksum = (int) crc32.CrcValue;
+											if (checksum != calcChecksum) {
+												// If there's a CRC failure, we reject his node,
+												log.Warning(String.Format("CRC failure on node {0} @ {1}", nodeId, server.Address));
+												isError = true;
+												crcError = true;
+												// This causes the read to retry on a different server
+												// with this block id
+											} else {
+												// Create a leaf that's mapped to this data
+												ITreeNode leaf = new MemoryTreeLeaf(nodeId, buf);
+												readNode = leaf;
+											}
+
+										}
+											// Is the node type a branch node?
+										else if (nodeType == StoreBranchType) {
+											// Read the checksum,
+											input.ReadInt16(); // For future use...
+											int checksum = input.ReadInt32();
+
+											// Check the checksum objects,
+											if (checksumBuf == null)
+												checksumBuf = new byte[8];
+
+											// Note that the entire branch is loaded into memory,
+											int childDataSize = input.ReadInt32();
+											ByteBuffer.WriteInt4(childDataSize, checksumBuf, 0);
+											crc32.ComputeHash(checksumBuf, 0, 4);
+											long[] dataArr = new long[childDataSize];
+											for (int n = 0; n < childDataSize; ++n) {
+												long item = input.ReadInt64();
+												ByteBuffer.WriteInt8(item, checksumBuf, 0);
+												crc32.ComputeHash(checksumBuf, 0, 8);
+												dataArr[n] = item;
+											}
+
+											// The calculated checksum value,
+											int calcChecksum = (int) crc32.CrcValue;
+											if (checksum != calcChecksum) {
+												// If there's a CRC failure, we reject his node,
+												log.Warning(String.Format("CRC failure on node {0} @ {1}", nodeId, server.Address));
+												isError = true;
+												crcError = true;
+												// This causes the read to retry on a different server
+												// with this block id
+											} else {
+												// Create the branch node,
+												TreeBranch branch =
+													new TreeBranch(nodeId, dataArr, childDataSize);
+												readNode = branch;
+											}
+
+										} else {
+											log.Error(String.Format("Unknown node {0} type: {1}", address, nodeType));
+											isError = true;
+										}
+
+										// Is the node already in the list? If so we don't add it.
+										if (readNode != null && !IsInNodeList(nodeId, nodes)) {
+											// Put the read node in the cache and add it to the 'nodes'
+											// list.
+											networkCache.SetNode(address, readNode);
+											nodes.Add(readNode);
+										}
+
+									} // while (item_iterator.hasNext())
+
+								} catch (IOException e) {
+									// This catches compression errors, as well as any other misc
+									// IO errors.
+									if (address != null) {
+										log.Error(String.Format("IO Error reading node {0}", address));
+									}
+									log.Error(e.Message, e);
+									isError = true;
+								}
+
+							}
+
+						} // for (Message m : message_in)
+
+						// If there was no error while reading the result, we assume the node
+						// requests were successfully read.
+						if (isError == false) {
+							success = true;
+						} else {
+							// If this is a connection failure, we report the block failure.
+							if (connectionError) {
+								// If this is an error, we need to report the failure to the
+								// manager server,
+								ReportBlockServerFailure(server.Address);
+								// Remove the block id from the server list cache,
+								networkCache.RemoveServersWithBlock(blockId);
+							} else {
+								String failType = "General";
+								if (crcError) {
+									failType = "CRC Failure";
+								} else if (severeError) {
+									failType = "Exception during process";
+								}
+
+								// Report to the first manager the block failure, so it may
+								// investigate and hopefully correct.
+								ReportBlockIdCorruption(server.Address, blockId, failType);
+
+								// Otherwise, not a severe error (probably a corrupt block on a
+								// server), so shuffle the server list for this block_id so next
+								// time there's less chance of hitting this bad block.
+								IEnumerable<BlockServerElement> srvs = networkCache.GetServersWithBlock(blockId);
+								if (srvs != null) {
+									List<BlockServerElement> serverList = new List<BlockServerElement>();
+									serverList.AddRange(srvs);
+									CollectionsUtil.Shuffle(serverList);
+									networkCache.SetServersForBlock(blockId, serverList, 15*60*1000);
+								}
+							}
+							// We will now go retry the query on the next block server,
 						}
 
-					} catch (Exception e) {
-						// Unknown closeness,
-						// Log a severe error,
-						logger.Error("Cannot determine the proximity factor for address " + node, e);
-						closeness = Int32.MaxValue;
-					}
-
-					// Put it in the map,
-					proximityMap.Add(node, closeness);
-				}
-				return closeness;
-			}
-		}
-
-		private IDictionary<long, IList<BlockServerElement>> GetServersForBlock(IList<long> blockIds) {
-			// The result map,
-			Dictionary<long, IList<BlockServerElement>> resultMap = new Dictionary<long, IList<BlockServerElement>>();
-
-			List<long> noneCached = new List<long>(blockIds.Count);
-			foreach (long blockId in blockIds) {
-				IList<BlockServerElement> v = networkCache.GetServers(blockId);
-				// If it's cached (and the cache is current),
-				if (v != null) {
-					resultMap.Add(blockId, v);
-				}
-					// If not cached, add to the list of none cached entries,
-				else {
-					noneCached.Add(blockId);
-				}
-			}
-
-			// If there are no 'none_cached' blocks,
-			if (noneCached.Count == 0)
-				// Return the result,
-				return resultMap;
-
-			// Otherwise, we query the manager server for current records on the given
-			// blocks.
-
-			IMessageProcessor manager = connector.Connect(managerAddress, ServiceType.Manager);
-			MessageStream message_out = new MessageStream(MessageType.Request);
-
-			foreach (long block_id in noneCached) {
-				RequestMessage request = new RequestMessage("getServerListForBlock");
-				request.Arguments.Add(block_id);
-				message_out.AddMessage(request);
-			}
-
-			MessageStream message_in = (MessageStream) manager.Process(message_out);
-
-			int n = 0;
-			foreach (ResponseMessage m in message_in) {
-				if (m.HasError)
-					throw new Exception(m.ErrorMessage, m.Error.AsException());
-
-				int sz = m.Arguments[0].ToInt32();
-				List<BlockServerElement> srvs = new List<BlockServerElement>(sz);
-				IServiceAddress[] addresses = (IServiceAddress[]) m.Arguments[1].Value;
-				int[] status = (int[]) m.Arguments[2].Value;
-				for (int i = 0; i < sz; ++i) {
-					srvs.Add(new BlockServerElement(addresses[i], (ServiceStatus) status[i]));
-				}
-
-				// Shuffle the list
-				CollectionsUtil.Shuffle(srvs);
-
-				// Move the server closest to this node to the start of the list,
-				int closest = 0;
-				int cur_close_factor = Int32.MaxValue;
-				for (int i = 0; i < sz; ++i) {
-					BlockServerElement elem = srvs[i];
-					int closeness_factor = GetProximity(elem.Address);
-					if (closeness_factor < cur_close_factor) {
-						cur_close_factor = closeness_factor;
-						closest = i;
 					}
 				}
 
-				// Swap if necessary,
-				if (closest > 0) {
-					CollectionsUtil.Swap(srvs, 0, closest);
+				// If the nodes were not successfully read, we generate an exception,
+				if (!success) {
+					// Remove from the cache,
+					networkCache.RemoveServersWithBlock(blockId);
+					throw new ApplicationException(
+						"Unable to fetch node from a block server" +
+						" (block = " + blockId + ")");
 				}
-
-				// Put it in the result map,
-				long block_id = noneCached[n];
-				resultMap.Add(block_id, srvs);
-				// Add it to the cache,
-				// NOTE: TTL hard-coded to 15 minute
-				networkCache.SetServers(block_id, srvs, 15*60*1000);
-
-				++n;
 			}
 
-			// Return the list
-			return resultMap;
+			int sz = nodes.Count;
+			if (sz == 0) {
+				throw new ApplicationException("Empty nodes list");
+			}
+
+			for (int i = 0; i < sz; ++i) {
+				ITreeNode node = nodes[i];
+				NodeId nodeId = node.Id;
+				for (int n = 0; n < nids.Length; ++n) {
+					if (nids[n].Equals(nodeId)) {
+						resultNodes[n] = node;
+					}
+				}
+			}
+
+			// Check the result_nodes list is completely populated,
+			for (int n = 0; n < resultNodes.Length; ++n) {
+				if (resultNodes[n] == null) {
+					throw new ApplicationException("Assertion failed: result_nodes not completely populated.");
+				}
+			}
+
+			return resultNodes;
 		}
 
-		private static bool IsInNodeList(long reference, IList<ITreeNode> nodes) {
+		public bool IsNodeAvailable(NodeId nodeId) {
+			// Special node ref,
+			if (nodeId.IsSpecial)
+				return true;
+
+			// Check if it's in the local network cache
+			DataAddress address = new DataAddress(nodeId);
+			return (networkCache.GetNode(address) != null);
+		}
+
+		private bool IsInNodeList(NodeId id, IEnumerable<ITreeNode> nodes) {
 			foreach (ITreeNode node in nodes) {
-				if (reference == node.Id)
+				if (id.Equals(node.Id))
 					return true;
 			}
 			return false;
 		}
 
-		private static byte[] ReadNodeAsBuffer(Node node) {
-			Stream input = node.Input;
-			MemoryStream outputStream = new MemoryStream();
-			int readCount;
-			byte[] buffer = new byte[1024];
-			while ((readCount = input.Read(buffer, 0, 1024)) != 0) {
-				outputStream.Write(buffer, 0, readCount);
-			}
-
-			return outputStream.ToArray();
-		}
-
-		private TreeGraph CreateDiagnosticRootGraph(Key left_key, long reference) {
-
-			// The node being returned
-			TreeGraph node;
-
-			// Fetch the node,
-			ITreeNode tree_node = FetchNodes(new long[] { reference })[0];
-
-			if (tree_node is TreeLeaf) {
-				TreeLeaf leaf = (TreeLeaf)tree_node;
-				// The number of bytes in the leaf
-				int leaf_size = leaf.Length;
-
-				// Set up the leaf node object
-				node = new TreeGraph("leaf", reference);
-				node.SetProperty("key", left_key.ToString());
-				node.SetProperty("leaf_size", leaf_size);
-
-			} else if (tree_node is TreeBranch) {
-				TreeBranch branch = (TreeBranch)tree_node;
-				// Set up the branch node object
-				node = new TreeGraph("branch", reference);
-				node.SetProperty("key", left_key.ToString());
-				node.SetProperty("branch_size", branch.ChildCount);
-				// Recursively add each child into the tree
-				for (int i = 0; i < branch.ChildCount; ++i) {
-					long child_ref = branch.GetChild(i);
-					// If the ref is a special node, skip it
-					if ((child_ref & 0x01000000000000000L) != 0) {
-						// Should we record special nodes?
-					} else {
-						Key new_left_key = (i > 0) ? branch.GetKey(i) : left_key;
-						TreeGraph bn = new TreeGraph("child_meta", reference);
-						bn.SetProperty("extent", branch.GetChildLeafElementCount(i));
-						node.AddChild(bn);
-						node.AddChild(CreateDiagnosticRootGraph(new_left_key, child_ref));
-					}
-				}
-			} else {
-				throw new IOException("Unknown node class: " + tree_node);
-			}
-
-			return node;
-		}
-
-		private void DoReachCheck(TextWriter warning_log, long node, IIndex node_list, int cur_depth) {
-			// Is the node in the list?
-			bool inserted = node_list.InsertUnique(node, node, SortedIndex.KeyComparer);
-
-			if (inserted) {
-				// Fetch the node,
-				try {
-					ITreeNode tree_node = FetchNodes(new long[] { node })[0];
-					if (tree_node is TreeBranch) {
-						// Get the child nodes,
-						TreeBranch branch = (TreeBranch)tree_node;
-						int children_count = branch.ChildCount;
-						for (int i = 0; i < children_count; ++i) {
-							long child_node_ref = branch.GetChild(i);
-							// Recurse,
-							if (cur_depth + 1 == reachability_tree_depth) {
-								// It's a known leaf node, so insert now without traversing
-								node_list.InsertUnique(child_node_ref, child_node_ref, SortedIndex.KeyComparer);
-							} else {
-								// Recurse,
-								DoReachCheck(warning_log, child_node_ref, node_list, cur_depth + 1);
-							}
-						}
-					} else if (tree_node is TreeLeaf) {
-						reachability_tree_depth = cur_depth;
-					} else {
-						throw new IOException("Unknown node class: " + tree_node);
-					}
-				} catch (InvalidDataState e) {
-					// Report the error,
-					warning_log.WriteLine("Invalid Data Set (msg: " + e.Message + ")");
-					warning_log.WriteLine("Block: " + e.Address.BlockId);
-					warning_log.WriteLine("Data:  " + e.Address.DataId);
-				}
-			}
-		}
-
-		private List<long> DoPersist(TreeWrite sequence, int tryCount) {
+		private NodeId[] InternalPersist(TreeWrite sequence, int tryCount) {
 			// NOTE: nodes are written in order of branches and then leaf nodes. All
 			//   branch nodes and leafs are grouped together.
 
@@ -310,74 +733,72 @@ namespace Deveel.Data.Net {
 			int sz = nodes.Count;
 			// The list of allocated referenced for the nodes,
 			DataAddress[] refs = new DataAddress[sz];
-			long[] outRefs = new long[sz];
+			NodeId[] outNodeIds = new NodeId[sz];
 
-			MessageStream allocateMessage = new MessageStream(MessageType.Request);
-
-			// Make a connection with the manager server,
-			IMessageProcessor manager = connector.Connect(managerAddress, ServiceType.Manager);
+			MessageStream allocateMessageStream = new MessageStream();
 
 			// Allocate the space first,
 			for (int i = 0; i < sz; ++i) {
 				ITreeNode node = nodes[i];
-				RequestMessage request = new RequestMessage("allocateNode");
 				// Is it a branch node?
 				if (node is TreeBranch) {
 					// Branch nodes are 1K in size,
-					request.Arguments.Add(1024);
-				} else {
-					// Leaf nodes are 4k in size,
-					request.Arguments.Add(4096);
+					allocateMessageStream.AddMessage(new Message("allocateNode", 1024));
 				}
-
-				allocateMessage.AddMessage(request);
+					// Otherwise, it must be a leaf node,
+				else {
+					// Leaf nodes are 4k in size,
+					allocateMessageStream.AddMessage(new Message("allocateNode", 4096));
+				}
 			}
 
-			// The result of the set of allocations,
-			MessageStream resultStream = (MessageStream) manager.Process(allocateMessage);
-			//DEBUG: ++network_comm_count;
+			// Process a command on the manager,
+			IEnumerable<Message> resultStream = ProcessManager(allocateMessageStream);
 
 			// The unique list of blocks,
-			List<long> uniqueBlocks = new List<long>();
+			List<BlockId> uniqueBlocks = new List<BlockId>();
 
 			// Parse the result stream one message at a time, the order will be the
 			// order of the allocation messages,
 			int n = 0;
-			foreach (ResponseMessage m in resultStream) {
-				if (m.HasError)
-					throw m.Error.AsException();
-
-				DataAddress addr = (DataAddress) m.Arguments[0].Value;
-				refs[n] = addr;
-				// Make a list of unique block identifiers,
-				if (!uniqueBlocks.Contains(addr.BlockId)) {
-					uniqueBlocks.Add(addr.BlockId);
+			foreach (Message m in resultStream) {
+				if (m.HasError) {
+					throw new ApplicationException(m.ErrorMessage);
+				} else {
+					DataAddress addr = (DataAddress) m.Arguments[0].Value;
+					refs[n] = addr;
+					// Make a list of unique block identifiers,
+					if (!uniqueBlocks.Contains(addr.BlockId)) {
+						uniqueBlocks.Add(addr.BlockId);
+					}
 				}
 				++n;
 			}
 
 			// Get the block to server map for each of the blocks,
 
-			IDictionary<long, IList<BlockServerElement>> blockToServerMap = GetServersForBlock(uniqueBlocks);
+			IDictionary<BlockId, IList<BlockServerElement>> blockToServerMap =
+				GetServerListForBlocks(uniqueBlocks);
 
 			// Make message streams for each unique block
-			int ubid_count = uniqueBlocks.Count;
-			MessageStream[] ubidStream = new MessageStream[ubid_count];
+			int ubidCount = uniqueBlocks.Count;
+			MessageStream[] ubidStream = new MessageStream[ubidCount];
 			for (int i = 0; i < ubidStream.Length; ++i) {
-				ubidStream[i] = new MessageStream(MessageType.Request);
+				ubidStream[i] = new MessageStream();
 			}
 
 			// Scan all the blocks and create the message streams,
 			for (int i = 0; i < sz; ++i) {
+
 				byte[] nodeBuf;
 
 				ITreeNode node = nodes[i];
 				// Is it a branch node?
 				if (node is TreeBranch) {
-					TreeBranch branch = (TreeBranch)node;
-					// Make a copy of the branch (NOTE; we Clone() the array here).
-					long[] curNodeData = (long[])branch.ChildPointers.Clone();
-					int curNdsz = branch.DataSize;
+					TreeBranch branch = (TreeBranch) node;
+					// Make a copy of the branch (NOTE; we clone() the array here).
+					long[] curNodeData = (long[]) branch.NodeData.Clone();
+					int curNdsz = branch.NodeDataSize;
 					branch = new TreeBranch(refs[i].Value, curNodeData, curNdsz);
 
 					// The number of children
@@ -385,21 +806,23 @@ namespace Deveel.Data.Net {
 					// For each child, if it's a heap node, look up the child id and
 					// reference map in the sequence and set the reference accordingly,
 					for (int o = 0; o < chsz; ++o) {
-						long childRef = branch.GetChild(o);
-						if (childRef < 0) {
+						NodeId childId = branch.GetChild(o);
+						if (childId.IsInMemory) {
 							// The ref is currently on the heap, so adjust accordingly
-							int ref_id = sequence.LookupRef(i, o);
-							branch.SetChildOverride(o, refs[ref_id].Value);
+							int refId = sequence.LookupRef(i, o);
+							branch.SetChildOverride(refs[refId].Value, o);
 						}
 					}
 
 					// Turn the branch into a 'node_buf' byte[] array object for
 					// serialization.
-					long[] nodeData = branch.ChildPointers;
-					int ndsz = branch.DataSize;
+					long[] nodeData = branch.NodeData;
+					int ndsz = branch.NodeDataSize;
 					MemoryStream bout = new MemoryStream(1024);
-					BinaryWriter dout = new BinaryWriter(bout, Encoding.Unicode);
-					dout.Write(BranchType);
+					BinaryWriter dout = new BinaryWriter(bout);
+					dout.Write(StoreBranchType);
+					dout.Write((short) 0); // Reserved for future
+					dout.Write(0); // The crc32 checksum will be written here,
 					dout.Write(ndsz);
 					for (int o = 0; o < ndsz; ++o) {
 						dout.Write(nodeData[o]);
@@ -409,23 +832,35 @@ namespace Deveel.Data.Net {
 					// Turn it into a byte array,
 					nodeBuf = bout.ToArray();
 
+					// Write the crc32 of the data,
+					Crc32 checksum = new Crc32();
+					checksum.ComputeHash(nodeBuf, 8, nodeBuf.Length - 8);
+					ByteBuffer.WriteInt4((int) checksum.CrcValue, nodeBuf, 4);
+
 					// Put this branch into the local cache,
 					networkCache.SetNode(refs[i], branch);
 
-				} else {
+				}
 					// If it's a leaf node,
-
-					TreeLeaf leaf = (TreeLeaf)node;
+				else {
+					TreeLeaf leaf = (TreeLeaf) node;
 					int lfsz = leaf.Length;
 
-					nodeBuf = new byte[lfsz + 6];
-					// Technically, we could comment these next two lines out.
-					ByteBuffer.WriteInt2(LeafType, nodeBuf, 0);
-					ByteBuffer.WriteInt4(lfsz, nodeBuf, 2);
-					leaf.Read(0, nodeBuf, 6, lfsz);
+					nodeBuf = new byte[lfsz + 12];
+
+					// Format the data,
+					ByteBuffer.WriteInt2(StoreLeafType, nodeBuf, 0);
+					ByteBuffer.WriteInt2(0, nodeBuf, 2); // Reserved for future
+					ByteBuffer.WriteInt4(lfsz, nodeBuf, 8);
+					leaf.Read(0, nodeBuf, 12, lfsz);
+
+					// Calculate and set the checksum,
+					Crc32 checksum = new Crc32();
+					checksum.ComputeHash(nodeBuf, 8, nodeBuf.Length - 8);
+					ByteBuffer.WriteInt4((int) checksum.CrcValue, nodeBuf, 4);
 
 					// Put this leaf into the local cache,
-					leaf = new ByteArrayTreeLeaf(refs[i].Value, nodeBuf);
+					leaf = new MemoryTreeLeaf(refs[i].Value, nodeBuf);
 					networkCache.SetNode(refs[i], leaf);
 
 				}
@@ -433,17 +868,12 @@ namespace Deveel.Data.Net {
 				// The DataAddress this node is being written to,
 				DataAddress address = refs[i];
 				// Get the block id,
-				long blockId = address.BlockId;
+				BlockId blockId = address.BlockId;
 				int bid = uniqueBlocks.IndexOf(blockId);
-				RequestMessage request = new RequestMessage("writeToBlock");
-				request.Arguments.Add(address);
-				request.Arguments.Add(nodeBuf);
-				request.Arguments.Add(0);
-				request.Arguments.Add(nodeBuf.Length);
-				ubidStream[bid].AddMessage(request);
+				ubidStream[bid].AddMessage(new Message("writeToBlock", address, nodeBuf, 0, nodeBuf.Length));
 
-				// Update 'outRefs' array,
-				outRefs[i] = refs[i].Value;
+				// Update 'out_refs' array,
+				outNodeIds[i] = refs[i].Value;
 			}
 
 			// A log of successfully processed operations,
@@ -452,619 +882,419 @@ namespace Deveel.Data.Net {
 			// Now process the streams on the servers,
 			for (int i = 0; i < ubidStream.Length; ++i) {
 				// The output message,
-				MessageStream requestMessageStream = ubidStream[i];
-
+				MessageStream outputStream = ubidStream[i];
 				// Get the servers this message needs to be sent to,
-				long block_id = uniqueBlocks[i];
-				IList<BlockServerElement> blockServers = blockToServerMap[block_id];
-
+				BlockId blockId = uniqueBlocks[i];
+				IList<BlockServerElement> blockServers = blockToServerMap[blockId];
 				// Format a message for writing this node out,
 				int bssz = blockServers.Count;
 				IMessageProcessor[] blockServerProcs = new IMessageProcessor[bssz];
-
 				// Make the block server connections,
 				for (int o = 0; o < bssz; ++o) {
 					IServiceAddress address = blockServers[o].Address;
 					blockServerProcs[o] = connector.Connect(address, ServiceType.Block);
-					MessageStream responseMessageStream = (MessageStream) blockServerProcs[o].Process(requestMessageStream);
-					//DEBUG: ++network_comm_count;
+					IEnumerable<Message> inputStream = blockServerProcs[o].Process(outputStream);
+					++NetworkCommCount;
 
-					if (responseMessageStream.HasError) {
-						// If this is an error, we need to report the failure to the
-						// manager server,
-						ReportBlockServerFailure(address);
-						// Remove the block id from the server list cache,
-						networkCache.RemoveServers(block_id);
+					foreach (Message m in inputStream) {
+						if (m.HasError) {
+							// If this is an error, we need to report the failure to the
+							// manager server,
+							ReportBlockServerFailure(address);
+							// Remove the block id from the server list cache,
+							networkCache.RemoveServersWithBlock(blockId);
 
-						// Rollback any server writes already successfully made,
-						for (int p = 0; p < successProcess.Count; p += 2) {
-							IServiceAddress blockAddress = (IServiceAddress) successProcess[p];
-							MessageStream toRollback = (MessageStream) successProcess[p + 1];
+							// Rollback any server writes already successfully made,
+							for (int p = 0; p < successProcess.Count; p += 2) {
+								IServiceAddress blocksAddr = (IServiceAddress) successProcess[p];
+								MessageStream toRollback = (MessageStream) successProcess[p + 1];
 
-							List<DataAddress> rollbackNodes = new List<DataAddress>(128);
-							foreach(Message rm in toRollback) {
-								DataAddress raddr = (DataAddress) rm.Arguments[0].Value;
-								rollbackNodes.Add(raddr);
+								List<DataAddress> rollbackNodes = new List<DataAddress>(128);
+								foreach (Message rm in toRollback) {
+									DataAddress raddr = (DataAddress) rm.Arguments[0].Value;
+									rollbackNodes.Add(raddr);
+								}
+								// Create the rollback message,
+								MessageStream rollbackMsg = new MessageStream();
+								rollbackMsg.AddMessage(new Message("rollbackNodes", new object[] {rollbackNodes.ToArray()}));
+
+								// Send it to the block server,
+								IEnumerable<Message> responseStream = connector.Connect(blocksAddr, ServiceType.Block).Process(rollbackMsg);
+								++NetworkCommCount;
+								foreach (Message rbm in responseStream) {
+									// If rollback generated an error we throw the error now
+									// because this likely is a serious network error.
+									if (rbm.HasError) {
+										throw new NetworkWriteException("Write failed (rollback failed): " + rbm.ErrorMessage);
+									}
+								}
+
 							}
 
-							// Create the rollback message,
-							RequestMessage rollbackRequest = new RequestMessage("rollbackNodes");
-							rollbackRequest.Arguments.Add(rollbackNodes.ToArray());
+							// Retry,
+							if (tryCount > 0)
+								return InternalPersist(sequence, tryCount - 1);
 
-							// Send it to the block server,
-							Message responseMessage = connector.Connect(blockAddress, ServiceType.Block).Process(rollbackRequest);
-							//DEBUG: ++network_comm_count;
-
-							// If rollback generated an error we throw the error now
-							// because this likely is a serious network error.
-							if (responseMessage.HasError)
-								throw new NetworkException("Rollback wrote failed: " + responseMessage.ErrorMessage);
+							// Otherwise we fail the write
+							throw new NetworkWriteException(m.ErrorMessage);
 						}
-
-						// Retry,
-						if (tryCount > 0)
-							return DoPersist(sequence, tryCount - 1);
-
-						// Otherwise we fail the write
-						throw new NetworkException(responseMessageStream.ErrorMessage);
 					}
 
 					// If we succeeded without an error, add to the log
 					successProcess.Add(address);
-					successProcess.Add(requestMessageStream);
+					successProcess.Add(outputStream);
 
 				}
 			}
 
 			// Return the references,
-			return new List<long>(outRefs);
-
+			return outNodeIds;
 		}
 
-		internal void SetMaxNodeCacheHeapSize(long value) {
-			max_transaction_node_heap_size = value;
-		}
 
-		public DataAddress CreateEmptyDatabase() {
-			TreeNodeHeap nodeHeap = new TreeNodeHeap(17, 4 * 1024 * 1024);
-
-			TreeLeaf headLeaf = nodeHeap.CreateLeaf(null, Key.Head, 256);
-			// Insert a tree identification pattern
-			headLeaf.Write(0, new byte[] { 1, 1, 1, 1 }, 0, 4);
-
-			// Create an empty tail node
-			TreeLeaf tailLeaf = nodeHeap.CreateLeaf(null, Key.Tail, 256);
-			// Insert a tree identification pattern
-			tailLeaf.Write(0, new byte[] { 1, 1, 1, 1 }, 0, 4);
-
-			// The write sequence,
-			TreeWrite seq = new TreeWrite();
-			seq.NodeWrite(headLeaf);
-			seq.NodeWrite(tailLeaf);
-			IList<long> refs = Persist(seq);
-
-			// Create a branch,
-			int maxBranchSize = MaxBranchSize;
-			TreeBranch rootBranch = nodeHeap.CreateBranch(null, maxBranchSize);
-			rootBranch.Set(refs[0], 4,
-			                Key.Tail.GetEncoded((1)), 
-							Key.Tail.GetEncoded((2)),
-			                refs[1], 4);
-
-			seq = new TreeWrite();
-			seq.NodeWrite(rootBranch);
-			refs = Persist(seq);
-
-			// The written root node reference,
-			long root_id = refs[0];
-
-			// Delete the head and tail leaf, and the root branch
-			nodeHeap.Delete(headLeaf.Id);
-			nodeHeap.Delete(tailLeaf.Id);
-			nodeHeap.Delete(rootBranch.Id);
-
-			// Return the root,
-			return new DataAddress(root_id);
-		}
-
-		public IServiceAddress GetRootServer(string pathName) {
-
-			// Check if this is stored in the cache first,
-			lock(pathToRoot) {
-				IServiceAddress saddr;
-				if (pathToRoot.TryGetValue(pathName, out saddr))
-					return saddr;
-			}
-
-			// It isn't, so query the manager server on the network
-			IMessageProcessor manager = connector.Connect(managerAddress, ServiceType.Manager);
-			RequestMessage requestMessage = new RequestMessage("getRootForPath");
-			requestMessage.Arguments.Add(pathName);
-			// Process the 'getRootFor' command,
-			Message msg_in = manager.Process(requestMessage);
-			//DEBUG ++networkCommCount;
-
-			if (msg_in.HasError)
-				throw new Exception(msg_in.ErrorMessage, msg_in.Error.AsException());
-
-			// Return the service address result,
-			IServiceAddress address = (IServiceAddress) msg_in.Arguments[0].Value;
-			// Put it in the map,
-			lock(pathToRoot) {
-				pathToRoot[pathName] = address;
-			}
-
-			return address;
-		}
-
-		public ITransaction CreateTransaction(DataAddress rootNode) {
-			return new Transaction(this, 0, rootNode);
-		}
-
-		public ITransaction CreateEmptyTransaction() {
-			return new Transaction(this, 0);
-		}
-
-		public DataAddress FlushTransaction(ITransaction transaction) {
-			Transaction net_transaction = (Transaction)transaction;
-
-			try {
-				net_transaction.CheckOut();
-				return new DataAddress(net_transaction.RootNodeId);
-			} catch (IOException e) {
-				throw new Exception(e.Message, e);
-			}
-		}
-
-		public void DisposeTransaction(ITransaction transaction) {
-			((Transaction)transaction).Dispose();
-		}
-
-		public DataAddress Commit(IServiceAddress root_server, String path_name, DataAddress proposal) {
-			IMessageProcessor processor = connector.Connect(root_server, ServiceType.Root);
-			RequestMessage request = new RequestMessage("commit");
-			request.Arguments.Add(path_name);
-			request.Arguments.Add(proposal);
-			Message response = processor.Process(request);
-
-			if (response.HasError) {
-				MessageError et = response.Error;
-				// If it's a commit fault exception, wrap it locally.
-				if (et.Source.Equals("Deveel.Data.Net.CommitFaultException"))
-					throw new CommitFaultException(et.Message);
-
-				throw new Exception(et.Message);
-			}
-
-			// Return the DataAddress of the result transaction,
-			return (DataAddress) response.Arguments[0].Value;
-		}
-
-		public string[] FindAllPaths() {
-			IMessageProcessor processor = connector.Connect(managerAddress, ServiceType.Manager);
-			RequestMessage request = new RequestMessage("getAllPaths");
-			Message response = processor.Process(request);
-			if (response.HasError) {
-				logger.Error("An error occurred in 'getAllPath': " + response.ErrorMessage);
-				throw new Exception(response.ErrorMessage);
-			}
-			
-			return (string[])response.Arguments[0].Value;
-		}
-
-		public DataAddress GetSnapshot(IServiceAddress root_server, String name) {
-			IMessageProcessor processor = connector.Connect(root_server, ServiceType.Root);
-			RequestMessage request = new RequestMessage("getSnapshot");
-			request.Arguments.Add(name);
-			Message response = processor.Process(request);
-			if (response.HasError)
-				throw new Exception(response.ErrorMessage);
-
-			return (DataAddress) response.Arguments[0].Value;
-		}
-
-		public DataAddress[] GetSnapshots(IServiceAddress rootServer, string name, DateTime timeStart, DateTime timeEnd) {
-			IMessageProcessor processor = connector.Connect(rootServer, ServiceType.Root);
-			RequestMessage request = new RequestMessage("getSnapshots");
-			request.Arguments.Add(name);
-			request.Arguments.Add(timeStart.ToBinary());
-			request.Arguments.Add(timeEnd.ToBinary());
-			Message response = processor.Process(request);
-			if (response.HasError)
-				throw new Exception(response.ErrorMessage);
-
-			return (DataAddress[]) response.Arguments[0].Value;
-		}
-
-		#region Implementation of ITreeStorageSystem
-		
-		public int MaxLeafByteSize {
-			get { return 6134; }
-		}
-		
-		public int MaxBranchSize {
-			get { return 14; }
-		}
-		
-		public long NodeHeapMaxSize {
-			get { return max_transaction_node_heap_size; }
-		}
-
-		public void CheckPoint() {
-			// This is a 'no-op' for the network system. This is called when a cache
-			// flush occurs, so one idea might be to use this as some sort of hint?
-		}
-
-		public IList<ITreeNode> FetchNodes(long[] nids) {
-			// The number of nodes,
-			int node_count = nids.Length;
-			// The array of read nodes,
-			ITreeNode[] result_nodes = new ITreeNode[node_count];
-
-			// Resolve special nodes first,
-			{
-				int i = 0;
-				foreach (long nodeId in nids) {
-					if ((nodeId & 0x01000000000000000L) != 0)
-						result_nodes[i] = SparseLeafNode.Create(nodeId);
-
-					++i;
-				}
-			}
-
-			// Group all the nodes to the same block,
-			List<long> uniqueBlocks = new List<long>();
-			List<List<long>> uniqueBlockList = new List<List<long>>();
-			{
-				int i = 0;
-				foreach (long node_ref in nids) {
-					// If it's not a special node,
-					if ((node_ref & 0x01000000000000000L) == 0) {
-						// Get the block id and add it to the list of unique blocks,
-						DataAddress address = new DataAddress(node_ref);
-						// Check if the node is in the local cache,
-						ITreeNode node = networkCache.GetNode(address);
-						if (node != null) {
-							result_nodes[i] = node;
-						} else {
-							// Not in the local cache so we need to bundle this up in a node
-							// request on the block servers,
-							// Group this node request by the block identifier
-							long blockId = address.BlockId;
-							int ind = uniqueBlocks.IndexOf(blockId);
-							if (ind == -1) {
-								ind = uniqueBlocks.Count;
-								uniqueBlocks.Add(blockId);
-								uniqueBlockList.Add(new List<long>());
-							}
-							List<long> blist = uniqueBlockList[ind];
-							blist.Add(node_ref);
-						}
-					}
-					++i;
-				}
-			}
-
-			// Exit early if no blocks,
-			if (uniqueBlocks.Count == 0)
-				return result_nodes;
-
-			// Resolve server records for the given block identifiers,
-			IDictionary<long, IList<BlockServerElement>> servers_map = GetServersForBlock(uniqueBlocks);
-
-			// The result nodes list,
-			List<ITreeNode> nodes = new List<ITreeNode>();
-
-			// For each unique block list,
-			foreach (List<long> blist in uniqueBlockList) {
-				// Make a block server request for each node in the block,
-				MessageStream block_server_msg = new MessageStream(MessageType.Request);
-				long block_id = -1;
-				foreach (long node_ref in blist) {
-					DataAddress address = new DataAddress(node_ref);
-					RequestMessage request = new RequestMessage("readFromBlock");
-					request.Arguments.Add(address);
-					block_server_msg.AddMessage(request);
-					block_id = address.BlockId;
-				}
-
-				if (block_id == -1)
-					throw new ApplicationException("block_id == -1");
-
-				// Get the shuffled list of servers the block is stored on,
-				IList<BlockServerElement> servers = servers_map[block_id];
-
-				// Go through the servers one at a time to fetch the block,
-				bool success = false;
-				for (int z = 0; z < servers.Count && !success; ++z) {
-					BlockServerElement server = servers[z];
-
-					// If the server is up,
-					if (server.IsStatusUp) {
-						// Open a connection with the block server,
-						IMessageProcessor block_server_proc = connector.Connect(server.Address, ServiceType.Block);
-						MessageStream message_in = (MessageStream) block_server_proc.Process(block_server_msg);
-						// DEBUG: ++networkCommCount;
-						// DEBUG: ++networkFetchCommCount;
-
-						bool is_error = false;
-						bool severe_error = false;
-						// Turn each none-error message into a node
-						foreach (ResponseMessage m in message_in) {
-							if (m.HasError) {
-								// See if this error is a block read error. If it is, we don't
-								// tell the manager server to lock this server out completely.
-								bool is_block_read_error = m.Error.Source.Equals("Deveel.Data.Net.BlockReadException");
-								if (!is_block_read_error) {
-									// If it's something other than a block read error, we mark
-									// this error as severe,
-									severe_error = true;
-								}
-								is_error = true;
-							} else if (!is_error) {
-								// The reply contains the block of data read.
-								NodeSet node_set = (NodeSet)m.Arguments[0].Value;
-
-								// Decode the node items into node objects,
-								IEnumerator<Node> item_iterator = node_set.GetEnumerator();
-
-								while (item_iterator.MoveNext()) {
-									// Get the node item,
-									Node node_item = item_iterator.Current;
-
-									long node_ref = node_item.Id;
-
-									DataAddress address = new DataAddress(node_ref);
-									// Wrap around a buffered DataInputStream for reading values
-									// from the store.
-									BinaryReader input = new BinaryReader(node_item.Input, Encoding.Unicode);
-									short node_type = input.ReadInt16();
-
-									ITreeNode read_node;
-
-									// Is the node type a leaf node?
-									if (node_type == LeafType) {
-										// Read the key
-										int leaf_size = input.ReadInt32();
-
-										byte[] buf = ReadNodeAsBuffer(node_item);
-										if (buf == null) {
-											buf = new byte[leaf_size + 6];
-											input.Read(buf, 6, leaf_size);
-											// Technically, we could comment these next two lines out.
-											ByteBuffer.WriteInt2(node_type, buf, 0);
-											ByteBuffer.WriteInt4(leaf_size, buf, 2);
-										}
-
-										// Create a leaf that's mapped to this data
-										read_node = new ByteArrayTreeLeaf(node_ref, buf); ;
-
-									}
-										// Is the node type a branch node?
-									else if (node_type == BranchType) {
-										// Note that the entire branch is loaded into memory,
-										int child_data_size = input.ReadInt32();
-										long[] data_arr = new long[child_data_size];
-										for (int n = 0; n < child_data_size; ++n) {
-											data_arr[n] = input.ReadInt64();
-										}
-										// Create the branch node,
-										read_node = new TreeBranch(node_ref, data_arr, child_data_size);
-									} else {
-										throw new InvalidDataState("Unknown node type: " + node_type, address);
-									}
-
-									// Is the node already in the list? If so we don't add it.
-									if (!IsInNodeList(node_ref, nodes)) {
-										// Put the read node in the cache and add it to the 'nodes'
-										// list.
-										networkCache.SetNode(address, read_node);
-										nodes.Add(read_node);
-									}
-								}
-							}
-						}
-
-						// If there was no error while reading the result, we assume the node
-						// requests were successfully read.
-						if (is_error == false) {
-							success = true;
-						} else {
-							if (severe_error) {
-								// If this is an error, we need to report the failure to the
-								// manager server,
-								ReportBlockServerFailure(server.Address);
-								// Remove the block id from the server list cache,
-								networkCache.RemoveServers(block_id);
-							} else {
-								// Otherwise, not a severe error (probably a corrupt block on a
-								// server), so shuffle the server list for this block_id so next
-								// time there's less chance of hitting this bad block.
-								IList<BlockServerElement> srvs = networkCache.GetServers(block_id);
-								List<BlockServerElement> server_list = new List<BlockServerElement>();
-								server_list.AddRange(srvs);
-								CollectionsUtil.Shuffle(server_list);
-								networkCache.SetServers(block_id, server_list, 15 * 60 * 1000);
-							}
-						}
-
-					}
-				}
-
-				// If the nodes were not successfully read, we generate an exception,
-				if (!success) {
-					// Remove from the cache,
-					networkCache.RemoveServers(block_id);
-					throw new ApplicationException("Unable to fetch node from block server");
-				}
-			}
-
-			int sz = nodes.Count;
-			if (sz == 0)
-				throw new ApplicationException("Empty nodes list");
-
-			for (int i = 0; i < sz; ++i) {
-				ITreeNode node = nodes[i];
-				long node_ref = node.Id;
-				for (int n = 0; n < nids.Length; ++n) {
-					if (nids[n] == node_ref)
-						result_nodes[n] = node;
-				}
-			}
-
-			// Check the result_nodes list is completely populated,
-			for (int n = 0; n < result_nodes.Length; ++n) {
-				if (result_nodes[n] == null)
-					throw new ApplicationException("Assertion failed: result_nodes not completely populated.");
-			}
-
-			return result_nodes;
-		}
-
-		public bool IsNodeAvailable(long node_ref) {
-			// Special node ref,
-			if ((node_ref & 0x01000000000000000L) != 0) {
-				return true;
-			}
-			// Check if it's in the local network cache
-			DataAddress address = new DataAddress(node_ref);
-			return (networkCache.GetNode(address) != null);
-		}
-
-		public bool LinkLeaf(Key key, long reference) {
+		public bool LinkLeaf(Key key, NodeId id) {
 			// NO-OP: A network tree system does not perform reference counting.
 			//   Instead performs reachability testing and garbage collection through
 			//   an external process.
 			return true;
 		}
 
-		public void DisposeNode(long nid) {
+		public void DisposeNode(NodeId nid) {
 			// NO-OP: Nodes can not be easily disposed, therefore this can do nothing
 			//   except provide a hint to the garbage collector to reclaim resources
 			//   on this node in the next cycle.
 		}
 
 		public ErrorStateException SetErrorState(Exception error) {
-			Logger.Network.Error("Entering error state", error);
-			errorState = new ErrorStateException(error);
-			return errorState;
+			log.Error("Error state", error);
+			errorState = new ErrorStateException(error.Message, error);
+			throw errorState;
 		}
 
 		public void CheckErrorState() {
+			// We wrap the critical stop error a second time to ensure the stack
+			// trace accurately reflects where the failure originated.
+
 			if (errorState != null)
-				throw errorState;
+				throw new ErrorStateException(errorState.Message, errorState);
 		}
 
-		public IList<long> Persist(TreeWrite write) {
-			return DoPersist(write, 1);
+		private void ReportBlockServerFailure(IServiceAddress address) {
+			// Report the failure,
+			log.Warning(String.Format("Reporting failure for {0} to manager server", address));
+
+			// Failure throttling,
+			lock (failureFloodControl) {
+				DateTime currentTime = DateTime.Now;
+				DateTime lastAddressFailTime;
+				if (failureFloodControl.TryGetValue(address, out lastAddressFailTime) &&
+				    lastAddressFailTime.AddMilliseconds((30*1000)) > currentTime) {
+					// We don't respond to failure notifications on the same address if a
+					// failure notice arrived within a minute of the last one accepted.
+					return;
+				}
+				failureFloodControl[address] = currentTime;
+			}
+
+			Message message = new Message("notifyBlockServerFailure", address);
+
+			// Process the failure report message on the manager server,
+			NotifyAllManagers(message.AsStream());
 		}
 
-		#endregion
+		private void ReportBlockIdCorruption(IServiceAddress blockServer, BlockId blockId, String failType) {
+			// Report the failure,
+			log.Warning(String.Format("Reporting a data failure (type = {0}) for block {1} at block server {2}",
+			                          failType, blockId, blockServer));
 
-		public void CreateReachabilityList(TextWriter warning_log, long node, IIndex node_list) {
-			CheckErrorState();
+			// Failure throttling,
+			lock (failureFloodControlBidc) {
+				DateTime currentTime = DateTime.Now;
+				DateTime lastAddressFailTime;
+				if (failureFloodControlBidc.TryGetValue(blockServer, out lastAddressFailTime) &&
+				    lastAddressFailTime.AddMilliseconds((10*1000)) > currentTime) {
+					// We don't respond to failure notifications on the same address if a
+					// failure notice arrived within a minute of the last one accepted.
+					return;
+				}
 
-			lock (reachability_lock) {
-				reachability_tree_depth = -1;
-				DoReachCheck(warning_log, node, node_list, 1);
+				failureFloodControlBidc[blockServer] = currentTime;
+			}
+
+			Message message = new Message("notifyBlockIdCorruption", blockServer, blockId, failType);
+
+			// Process the failure report message on the manager server,
+			// (Ignore any error message generated)
+			ProcessManager(message.AsStream());
+		}
+
+		private IDictionary<BlockId, IList<BlockServerElement>> GetServerListForBlocks(List<BlockId> blockIds) {
+			// The result map,
+			Dictionary<BlockId, IList<BlockServerElement>> resultMap = new Dictionary<BlockId, IList<BlockServerElement>>();
+
+			List<BlockId> noneCached = new List<BlockId>(blockIds.Count);
+			foreach (BlockId blockId in blockIds) {
+				IList<BlockServerElement> v = networkCache.GetServersWithBlock(blockId);
+				// If it's cached (and the cache is current),
+				if (v != null) {
+					resultMap.Add(blockId, v);
+				}
+					// If not cached, add to the list of none cached entries,
+				else {
+					noneCached.Add(blockId);
+				}
+			}
+
+			// If there are no 'none_cached' blocks,
+			if (noneCached.Count == 0) {
+				// Return the result,
+				return resultMap;
+			}
+
+			// Otherwise, we query the manager server for current records on the given
+			// blocks.
+
+			MessageStream outputStream = new MessageStream();
+
+			foreach (BlockId blockId in noneCached) {
+				outputStream.AddMessage(new Message("getServerList", blockId));
+			}
+
+			// Process a command on the manager,
+			IEnumerable<Message> inputStream = ProcessManager(outputStream);
+
+			int n = 0;
+			foreach (Message m in inputStream) {
+				if (m.HasError)
+					throw new ApplicationException(m.ErrorMessage);
+
+				int sz = (int) m.Arguments[0].Value;
+				List<BlockServerElement> srvs = new List<BlockServerElement>(sz);
+				for (int i = 0; i < sz; ++i) {
+					IServiceAddress address = (IServiceAddress) m.Arguments[1 + (i*2)].Value;
+					ServiceStatus status = (ServiceStatus) m.Arguments[1 + (i*2) + 1].Value;
+					srvs.Add(new BlockServerElement(address, status));
+				}
+
+				// Shuffle the list
+				CollectionsUtil.Shuffle(srvs);
+
+				// Move the server closest to this node to the start of the list,
+				int closest = 0;
+				int curCloseFactor = Int32.MaxValue;
+				for (int i = 0; i < sz; ++i) {
+					BlockServerElement elem = srvs[i];
+					int closenessFactor = FindClosenessToHere(elem.Address);
+					if (closenessFactor < curCloseFactor) {
+						curCloseFactor = closenessFactor;
+						closest = i;
+					}
+				}
+
+				// Swap if necessary,
+				if (closest > 0)
+					CollectionsUtil.Swap(srvs, 0, closest);
+
+				// Put it in the result map,
+				BlockId blockId = noneCached[n];
+				resultMap[blockId] = srvs;
+				// Add it to the cache,
+				// NOTE: TTL hard-coded to 15 minute
+				networkCache.SetServersForBlock(blockId, srvs, 15*60*1000);
+				++n;
+			}
+
+			// Return the list
+			return resultMap;
+		}
+
+		private int FindClosenessToHere(IServiceAddress address) {
+			TcpServiceAddress tcpAddress = address as TcpServiceAddress;
+			if (tcpAddress == null)
+				return Int32.MaxValue;
+
+			lock(closenessMap) {
+				int closeness;
+				if (!closenessMap.TryGetValue(address, out closeness)) {
+
+					try {
+						IPAddress machineAddress = tcpAddress.ToIPAddress();
+
+						IEnumerable<NetworkInterface> localInterfaces = NetworkInterface.GetAllNetworkInterfaces();
+						bool isLocal = false;
+						
+						foreach (NetworkInterface netint in localInterfaces)
+						{
+							IEnumerable<IPAddress> addresses = netint.GetIPProperties().DnsAddresses;
+							foreach (IPAddress addr in addresses)
+							{
+								// If this machine address is on this machine, return true,
+								if (machineAddress.Equals(addr)) {
+									isLocal = true;
+									goto interface_loop;
+								}
+							}
+						}
+
+						interface_loop:;
+						// If the interface is local,
+						if (isLocal) {
+							closeness = 0;
+						} else {
+							// Not local,
+							closeness = 10000;
+						}
+
+					} catch (SocketException e) {
+						// Unknown closeness,
+						// Log a severe error,
+						log.Error("Unable to determine if node local", e);
+						closeness = Int32.MaxValue;
+					}
+
+					// Put it in the map,
+					closenessMap[address] = closeness;
+				}
+
+				return closeness;
 			}
 		}
 
-		public TreeGraph CreateDiagnosticGraph(ITransaction t) {
+
+		public IList<NodeId> Persist(TreeWrite write) {
+			return InternalPersist(write, 3);
+		}
+
+		private void doReachCheck(TextWriter warningLog, NodeId node, SortedIndex nodeList, int curDepth) {
+			throw new NotImplementedException();
+		}
+
+		public void CreateReachabilityList(TextWriter warningLog, NodeId node, SortedIndex nodeList) {
+			CheckErrorState();
+			lock (reachabilityLock) {
+				reachabilityTreeDepth = -1;
+				doReachCheck(warningLog, node, nodeList, 1);
+			}
+		}
+
+		public TreeReportNode CreateDiagnosticGraph(ITransaction t) {
 			CheckErrorState();
 
 			// The key object transaction
-			Transaction ts = (Transaction)t;
+			NetworkTreeSystemTransaction ts = (NetworkTreeSystemTransaction) t;
 			// Get the root node ref
-			long root_node_ref = ts.RootNodeId;
+			NodeId rootNodeId = ts.RootNodeId;
 			// Add the child node (the root node of the version graph).
-			return CreateDiagnosticRootGraph(Key.Head, root_node_ref);
+			return CreateDiagnosticRootGraph(Key.Head, rootNodeId);
+		}
+
+		private TreeReportNode CreateDiagnosticRootGraph(Key leftKey, NodeId id) {
+			// The node being returned
+			TreeReportNode node;
+
+			// Fetch the node,
+			ITreeNode treeNode = FetchNodes(new NodeId[] {id})[0];
+
+			if (treeNode is TreeLeaf) {
+				TreeLeaf leaf = (TreeLeaf) treeNode;
+				// The number of bytes in the leaf
+				int leafSize = leaf.Length;
+
+				// Set up the leaf node object
+				node = new TreeReportNode("leaf", id);
+				node.SetProperty("key", leftKey.ToString());
+				node.SetProperty("leaf_size", leafSize);
+
+			} else if (treeNode is TreeBranch) {
+				TreeBranch branch = (TreeBranch) treeNode;
+				// Set up the branch node object
+				node = new TreeReportNode("branch", id);
+				node.SetProperty("key", leftKey.ToString());
+				node.SetProperty("branch_size", branch.ChildCount);
+				// Recursively add each child into the tree
+				for (int i = 0; i < branch.ChildCount; ++i) {
+					NodeId childId = branch.GetChild(i);
+					// If the ref is a special node, skip it
+					if (childId.IsSpecial) {
+						// Should we record special nodes?
+					} else {
+						Key newLeftKey = (i > 0) ? branch.GetKey(i) : leftKey;
+						TreeReportNode bn = new TreeReportNode("child_meta", id);
+						bn.SetProperty("extent", branch.GetChildLeafElementCount(i));
+						node.ChildNodes.Add(bn);
+						node.ChildNodes.Add(CreateDiagnosticRootGraph(newLeftKey, childId));
+					}
+				}
+
+			} else {
+				throw new IOException("Unknown node class: " + treeNode);
+			}
+
+			return node;
 		}
 
 		#region MemoryTreeLeaf
 
-		private sealed class ByteArrayTreeLeaf : TreeLeaf {
+		class MemoryTreeLeaf : TreeLeaf {
+			private readonly byte[] data;
+			private readonly NodeId nodeId;
 
-			private readonly byte[] buffer;
-			private readonly long id;
-
-			public ByteArrayTreeLeaf(long id, byte[] buffer) {
-				this.id = id;
-				this.buffer = buffer;
+			public MemoryTreeLeaf(NodeId nodeId, byte[] data) {
+				this.nodeId = nodeId;
+				this.data = data;
 			}
 
-			// ---------- Implemented from TreeLeaf ----------
-
-			public override long Id {
-				get { return id; }
-			}
 
 			public override int Length {
-				get { return buffer.Length - 6; }
+				get { return data.Length - 12; }
 			}
 
 			public override int Capacity {
-				get { throw new Exception(); }
+				get { throw new ApplicationException("Immutable leaf does not have a meaningful capacity"); }
 			}
 
-			public override void Read(int position, byte[] buf, int off, int len) {
-				Array.Copy(buffer, 6 + position, buf, off, len);
-			}
-
-			public override void WriteTo(IAreaWriter writer) {
-				writer.Write(buffer, 6, Length);
-			}
-
-			public override void Shift(int position, int offset) {
-				throw new IOException("Cannot write an immutable leaf");
-			}
-
-			public override void Write(int position, byte[] buf, int off, int len) {
-				throw new IOException("Cannot write an immutable leaf");
-			}
-
-			public override void SetLength(int size) {
-				throw new IOException("Cannot write an immutable leaf");
+			public override NodeId Id {
+				get { return nodeId; }
 			}
 
 			public override long MemoryAmount {
-				get { return 8 + buffer.Length + 64; }
+				get { return 8 + data.Length + 64; }
 			}
 
+			public override void SetLength(int value) {
+				throw new IOException("Write methods not available for immutable leaf");
+			}
+
+			public override void Read(int position, byte[] buffer, int offset, int count) {
+				Array.Copy(data, 12 + position, buffer, offset, count);
+			}
+
+			public override void Write(int position, byte[] buffer, int offset, int count) {
+				throw new IOException("Write methods not available for immutable leaf");
+			}
+
+			public override void WriteTo(IAreaWriter area) {
+				area.Write(data, 12, Length);
+			}
+
+			public override void Shift(int position, int offset) {
+				throw new IOException("Write methods not available for immutable leaf");
+			}
 		}
 
 		#endregion
 
-		#region Transaction
+		#region NetworkTreeSystemTransaction
 
-		private class Transaction : TreeSystemTransaction {
-			internal Transaction(ITreeSystem storeSystem, long versionId, DataAddress rootNode)
-				: base(storeSystem, versionId, rootNode.Value, false) {
-			}
-
-			public Transaction(ITreeSystem tree_system, long version_id)
-				: base(tree_system, version_id, -1, false) {
+		class NetworkTreeSystemTransaction : TreeSystemTransaction {
+			public NetworkTreeSystemTransaction(ITreeSystem treeStore, long versionId) 
+				: this(treeStore, versionId, null) {
 				SetToEmpty();
 			}
-		}
 
-		#endregion
-
-		#region InvalidDataState
-
-		private sealed class InvalidDataState : ApplicationException {
-
-			private readonly DataAddress address;
-
-			public InvalidDataState(string message, DataAddress address)
-				: base(message) {
-				this.address = address;
+			public NetworkTreeSystemTransaction(ITreeSystem treeStore, long versionId, DataAddress rootNodeId) 
+				: base(treeStore, versionId, rootNodeId.Value, false) {
 			}
-
-			public DataAddress Address {
-				get { return address; }
-			}
-
 		}
 
 		#endregion

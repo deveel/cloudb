@@ -18,7 +18,7 @@ namespace Deveel.Data {
 			get { return branchNodes.AsReadOnly(); }
 		}
 
-		internal int LookupRef(int branchId, int childIndex) {
+		public int LookupRef(int branchId, int childIndex) {
 			// NOTE: Returns the reference for branches normalized on a node list that
 			//  includes branch and leaf nodes together in order branch + leaf.
 

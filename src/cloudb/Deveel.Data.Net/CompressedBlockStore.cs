@@ -7,12 +7,12 @@ using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
 	public sealed class CompressedBlockStore : IBlockStore {
-		private readonly long blockId;
+		private readonly BlockId blockId;
 		private readonly string fileName;
 		private FileStream content;
 		private StrongPagedAccess pagedAccess;
 
-		public CompressedBlockStore(long blockId, string fileName) {
+		public CompressedBlockStore(BlockId blockId, string fileName) {
 			this.blockId = blockId;
 			this.fileName = fileName;
 		}
@@ -107,7 +107,7 @@ namespace Deveel.Data.Net {
 
 				// Turn it into a node array,
 				int sz = nodeIds.Count;
-				long[] lnodeIds = new long[sz];
+				NodeId[] lnodeIds = new NodeId[sz];
 				for (int i = 0; i < sz; ++i) {
 					DataAddress daddr = new DataAddress(blockId, nodeIds[i]);
 					lnodeIds[i] = daddr.Value;
@@ -168,12 +168,12 @@ namespace Deveel.Data.Net {
 			bool[] empty = new bool[16384];
 
 			// Read the header,
-			int last_header_item = 0;
+			int lastHeaderItem = 0;
 			for (int n = 0; n < 16384; ++n) {
 				pos[n] = reader.ReadInt32();
 				lens[n] = reader.ReadInt16();
 				if (pos[n] != 0) {
-					last_header_item = n + 1;
+					lastHeaderItem = n + 1;
 				} else {
 					empty[n] = true;
 				}
@@ -186,9 +186,9 @@ namespace Deveel.Data.Net {
 				throw new ApplicationException("Destination file exists: " + destFile);
 
 			// Input file
-			int headerSize = (last_header_item + 1) * 6;
-			MemoryStream header_out = new MemoryStream(headerSize);
-			BinaryWriter dheader_out = new BinaryWriter(header_out);
+			int headerSize = (lastHeaderItem + 1) * 6;
+			MemoryStream headerOut = new MemoryStream(headerSize);
+			BinaryWriter dheaderOut = new BinaryWriter(headerOut);
 
 			{
 				using (FileStream outputFile = new FileStream(destFile, FileMode.OpenOrCreate, FileAccess.ReadWrite)) {
@@ -202,20 +202,18 @@ namespace Deveel.Data.Net {
 				using (FileStream contents = new FileStream(sourceFile, FileMode.Open, FileAccess.Read, FileShare.None)) {
 					// The compression algorithm works as follows;
 
-					MemoryStream bout;
-
 					int fPos = headerSize;
 
-					for (int i = 0; i < last_header_item; ++i) {
+					for (int i = 0; i < lastHeaderItem; ++i) {
 						MemoryStream boutToWrite = null;
 						int compressStart;
 						int compressEnd;
 						// For each node,
 						int n = i + 1;
 						while (true) {
-							bout = new MemoryStream(16384);
-							DeflateStream compress_out = new DeflateStream(bout, CompressionMode.Compress);
-							BinaryWriter compressWriter = new BinaryWriter(compress_out);
+							MemoryStream bout = new MemoryStream(16384);
+							DeflateStream compressOut = new DeflateStream(bout, CompressionMode.Compress);
+							BinaryWriter compressWriter = new BinaryWriter(compressOut);
 							for (int p = i; p < n; ++p) {
 								int nodePos = pos[p];
 								if (nodePos > 0) {
@@ -233,7 +231,7 @@ namespace Deveel.Data.Net {
 							compressWriter.Flush();
 
 							int compressSize = (int) bout.Length;
-							if (n == last_header_item) {
+							if (n == lastHeaderItem) {
 								compressStart = i;
 								compressEnd = n;
 								boutToWrite = bout;
@@ -257,11 +255,11 @@ namespace Deveel.Data.Net {
 
 						int entry_count = (compressEnd - compressStart);
 
-						dheader_out.Write(fPos);
-						dheader_out.Write((short) boutToWrite.Length);
+						dheaderOut.Write(fPos);
+						dheaderOut.Write((short) boutToWrite.Length);
 						for (int p = 1; p < entry_count; ++p) {
-							dheader_out.Write(-(i + 1));
-							dheader_out.Write((short) 0);
+							dheaderOut.Write(-(i + 1));
+							dheaderOut.Write((short) 0);
 						}
 
 						fPos += (int) boutToWrite.Length;
@@ -270,23 +268,23 @@ namespace Deveel.Data.Net {
 					}
 
 					// The final header element
-					dheader_out.Write((int) 0);
-					dheader_out.Write((short) 0);
+					dheaderOut.Write((int) 0);
+					dheaderOut.Write((short) 0);
 
-					dheader_out.Flush();
-					dheader_out.Close();
+					dheaderOut.Flush();
+					dheaderOut.Close();
 					fileOutput.Flush();
 				}
 			}
 
 			// Write out the header,
 			{
-				using (FileStream output_file = new FileStream(destFile, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 2048, FileOptions.WriteThrough)) {
-					output_file.Seek(0, SeekOrigin.Begin);
-					byte[] header_buf = header_out.ToArray();
-					output_file.Write(header_buf, 0, header_buf.Length);
+				using (FileStream outputFile = new FileStream(destFile, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 2048, FileOptions.WriteThrough)) {
+					outputFile.Seek(0, SeekOrigin.Begin);
+					byte[] headerBuf = headerOut.ToArray();
+					outputFile.Write(headerBuf, 0, headerBuf.Length);
 					// Sync the changes,
-					output_file.Flush();
+					outputFile.Flush();
 				}
 			}
 

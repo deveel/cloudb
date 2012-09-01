@@ -25,6 +25,8 @@ namespace Deveel.Data {
 		/// Gets the maximum size of the local transaction node heaps.
 		/// </summary>
 		long NodeHeapMaxSize { get; }
+
+		bool NotifyNodeChanged { get; }
 		
 
 		/// <summary>
@@ -41,7 +43,7 @@ namespace Deveel.Data {
 		/// <returns>
 		/// Returns a list of <see cref="ITreeNode"/> of the nodes fetched.
 		/// </returns>
-		IList<ITreeNode> FetchNodes(long[] nids);
+		IList<ITreeNode> FetchNodes(NodeId[] nids);
 
 		/// <summary>
 		/// Checks if a node with the given identifier is cached.
@@ -51,27 +53,32 @@ namespace Deveel.Data {
 		/// Returns <b>true</b> if the node identified was stored in the
 		/// local cache, ot <b>false</b> otherwise.
 		/// </returns>
-		bool IsNodeAvailable(long nodeId);
-		
+		bool IsNodeAvailable(NodeId nodeId);
+
 		/// <summary>
-		/// Creates a shadow link to the leaf identified.
+		/// Creates a shadow link to the leaf node with the given reference.
 		/// </summary>
 		/// <param name="key"></param>
-		/// <param name="reference"></param>
+		/// <param name="id"></param>
 		/// <remarks>
-		/// A shadow link is a reference from a branch to a leaf that
-		/// is already linked by another branch.
+		/// A shadow link is a reference from a branch to a leaf that is already 
+		/// linked to from another branch.
 		/// <para>
-		/// The number of <see cref="DisposeNode"/> operations needed to make 
-		/// a leaf node eligible for reclaimation is dependant on the number 
-		/// of shadow links established on the leaf.
+		/// The number of <see cref="DisposeNode"/> operations needed to make a leaf 
+		/// node eligible for reclamation is dependent on the number of shadow links 
+		/// established on the leaf. If the implementation supports reference counting, 
+		/// then this method should increment the reference count on the leaf node, and 
+		/// <see cref="DisposeNode"/> should decrement the reference count. Assuming a 
+		/// newly written node starts with a reference count of 1, once the reference 
+		/// count is 0 the node resources can be reclaimed.
 		/// </para>
 		/// </remarks>
 		/// <returns>
-		/// Returns <b>true</b> if establishing the shadow link was successful, 
-		/// othrwise <b>false</b> if the shadow link was not possible.
+		/// Returns <b>true</b> if establishing the shadow link was successful, or <b>false</b>
+		/// if the shadow link was not possible either because the reference count reached 
+		/// max capacity or shadow linking is not permitted.
 		/// </returns>
-		bool LinkLeaf(Key key, long reference);
+		bool LinkLeaf(Key key, NodeId id);
 
 		/// <summary>
 		/// Disposes a node that was created or linked to the system.
@@ -82,7 +89,7 @@ namespace Deveel.Data {
 		/// this method decrements the number of references to the node, untill
 		/// total removal from the cache.
 		/// </remarks>
-		void DisposeNode(long nid);
+		void DisposeNode(NodeId nid);
 
 		/// <summary>
 		/// Sets the current state of the tree in error.
@@ -110,6 +117,6 @@ namespace Deveel.Data {
 		/// Returns a list of node identifiers for every node written to the 
 		/// backing storage on the completion of the process.
 		/// </returns>
-		IList<long> Persist(TreeWrite write);
+		IList<NodeId> Persist(TreeWrite write);
 	}
 }

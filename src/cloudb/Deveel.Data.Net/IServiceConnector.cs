@@ -1,7 +1,6 @@
 ﻿using System;
 
-using Deveel.Data.Net.Client;
-using Deveel.Data.Net.Serialization;
+using Deveel.Data.Net.Messaging;
 
 namespace Deveel.Data.Net {
 	/// <summary>
@@ -15,6 +14,7 @@ namespace Deveel.Data.Net {
 		/// </summary>
 		IMessageSerializer MessageSerializer { get; set; }
 
+		IServiceAuthenticator Authenticator { get; set; }
 
 		/// <summary>
 		/// Opens a connection with the service at the given address.

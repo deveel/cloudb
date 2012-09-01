@@ -1,41 +1,54 @@
 ﻿using System;
 
 namespace Deveel.Data.Net {
-	public sealed class MachineProfile {
+	public class MachineProfile {
+		private readonly IServiceAddress address;
+
+		private bool isBlock;
+		private bool isRoot;
+		private bool isManager;
+
+		private long memoryUsed;
+		private long memoryTotal;
+		private long diskUsed;
+		private long diskTotal;
+
+		private String errorMessage;
+
 		internal MachineProfile(IServiceAddress address) {
 			this.address = address;
 		}
 
-		private readonly IServiceAddress address;
-		private ServiceType type;
-
-		private long memoryUsed;
-		private long memoryTotal;
-		private long storageUsed;
-		private long storageTotal;
-
-		private string errorState;
-		private bool hasError;
-
-		public ServiceType ServiceType {
-			get { return type; }
-			internal set { type = value; }
+		public IServiceAddress ServiceAddress {
+			get { return address; }
 		}
 
 		public bool IsBlock {
-			get { return (type & ServiceType.Block) != 0; }
-		}
-
-		public bool IsManager {
-			get { return (type & ServiceType.Manager) != 0; }
+			get { return isBlock; }
+			internal set { isBlock = value; }
 		}
 
 		public bool IsRoot {
-			get { return (type & ServiceType.Root) != 0; }
+			get { return isRoot; }
+			internal set { isRoot = value; }
 		}
 
-		public IServiceAddress Address {
-			get { return address; }
+		public bool IsManager {
+			get { return isManager; }
+			internal set { isManager = value; }
+		}
+
+		internal bool IsNotAssigned {
+			get { return !isBlock && !isManager && !isRoot; }
+		}
+
+		public bool IsError {
+			get { return (errorMessage != null); }
+		}
+
+		public string ErrorMessage {
+			get { return errorMessage; }
+			internal set { errorMessage = value; }
 		}
 
 		public long MemoryUsed {
@@ -48,26 +61,25 @@ namespace Deveel.Data.Net {
 			internal set { memoryTotal = value; }
 		}
 
-		public long StorageUsed {
-			get { return storageUsed; }
-			internal set { storageUsed = value; }
+		public long DiskUsed {
+			get { return diskUsed; }
+			internal set { diskUsed = value; }
 		}
 
-		public long StorageTotal {
-			get { return storageTotal; }
-			internal set { storageTotal = value; }
+		public long DiskTotal {
+			get { return diskTotal; }
+			internal set { diskTotal = value; }
 		}
 
-		public string ErrorState {
-			get { return errorState; }
-			internal set {
-				errorState = value;
-				hasError = (value != null);
-			}
-		}
+		public bool IsInRole(ServiceType serviceType) {
+			if (serviceType == ServiceType.Manager)
+				return isManager;
+			if (serviceType == ServiceType.Root)
+				return isRoot;
+			if (serviceType == ServiceType.Block)
+				return isBlock;
 
-		public bool HasError {
-			get { return hasError; }
+			return false;
 		}
 	}
 }

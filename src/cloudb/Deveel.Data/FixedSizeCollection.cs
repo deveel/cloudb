@@ -78,9 +78,9 @@ namespace Deveel.Data {
 			return -(low + 1);  // key not found.
 		}
 
-		protected abstract object GetRecordKey(long recordIndex);
+		protected abstract object GetRecordKey(long recordPos);
 
-		protected abstract int CompareRecordTo(long recordIndex, object recordKey);
+		protected abstract int CompareRecordTo(long recordPos, object recordKey);
 
 		protected void SetPosition(long record_num) {
 			data.Position = record_num * RecordSize;

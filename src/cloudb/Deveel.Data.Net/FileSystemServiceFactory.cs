@@ -34,7 +34,7 @@ namespace Deveel.Data.Net {
 					if (!Directory.Exists(npath))
 						Directory.CreateDirectory(npath);
 
-					root = new FileSystemRootService(connector, npath);
+					root = new FileSystemRootService(connector, serviceAddress, npath);
 				}
 
 				service = root;

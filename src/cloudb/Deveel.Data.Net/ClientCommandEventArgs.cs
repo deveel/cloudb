@@ -1,6 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 
-using Deveel.Data.Net.Client;
+using Deveel.Data.Net.Messaging;
 
 namespace Deveel.Data.Net {
 	public delegate void ClientCommandEventHandler(object sender, ClientCommandEventArgs args);
@@ -12,10 +13,10 @@ namespace Deveel.Data.Net {
 		private readonly ServiceType serviceType;
 		private readonly DateTime requestTime;
 		private readonly DateTime responseTime;
-		private readonly Message requestMessage;
-		private readonly Message responseMessage;
+		private readonly IEnumerable<Message> requestMessage;
+		private readonly IEnumerable<Message> responseMessage;
 
-		internal ClientCommandEventArgs(string localEndPoint, string remoteEndPoint, ServiceType serviceType, Message requestMessage, DateTime requestTime) {
+		internal ClientCommandEventArgs(string localEndPoint, string remoteEndPoint, ServiceType serviceType, IEnumerable<Message> requestMessage, DateTime requestTime) {
 			this.localEndPoint = localEndPoint;
 			this.remoteEndPoint = remoteEndPoint;
 			this.serviceType = serviceType;
@@ -23,7 +24,8 @@ namespace Deveel.Data.Net {
 			this.requestMessage = requestMessage;
 		}
 
-		internal ClientCommandEventArgs(string localEndPoint, string remoteEndPoint, ServiceType serviceType, Message requestMessage, DateTime requestTime, Message responseMessage, DateTime responseTime)
+		internal ClientCommandEventArgs(string localEndPoint, string remoteEndPoint, ServiceType serviceType, IEnumerable<Message> requestMessage, DateTime requestTime, 
+			IEnumerable<Message> responseMessage, DateTime responseTime)
 			: this(localEndPoint, remoteEndPoint, serviceType, requestMessage, requestTime) {
 			this.responseMessage = responseMessage;
 			this.responseTime = responseTime;
@@ -38,11 +40,11 @@ namespace Deveel.Data.Net {
 			get { return localEndPoint; }
 		}
 
-		public Message ResponseMessage {
+		public IEnumerable<Message> ResponseMessage {
 			get { return responseMessage; }
 		}
 
-		public Message RequestMessage {
+		public IEnumerable<Message> RequestMessage {
 			get { return requestMessage; }
 		}
 
@@ -66,8 +68,10 @@ namespace Deveel.Data.Net {
 			get { return !hasResponse ? TimeSpan.Zero : responseTime - requestTime; }
 		}
 
+		/*
 		public bool HasError {
 			get { return hasResponse ? responseMessage.HasError : false; }
 		}
+		*/
 	}
 }

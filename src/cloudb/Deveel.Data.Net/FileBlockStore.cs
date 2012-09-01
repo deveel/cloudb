@@ -7,13 +7,13 @@ using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
 	public sealed class FileBlockStore : IBlockStore {
-		private readonly long blockId;
+		private readonly BlockId blockId;
 		private readonly string fileName;
 		private FileStream content;
 		private int length;
 		private StrongPagedAccess pagedAccess;
 		
-		public FileBlockStore(long blockId, string fileName) {
+		public FileBlockStore(BlockId blockId, string fileName) {
 			this.blockId = blockId;
 			this.fileName = fileName;
 		}

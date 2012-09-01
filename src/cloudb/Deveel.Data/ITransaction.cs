@@ -39,6 +39,10 @@ namespace Deveel.Data {
 		/// current transaction.
 		/// </returns>
 		IDataFile GetFile(Key key, FileAccess access);
+
+		IDataRange GetRange(Key minKey, Key maxKey);
+
+		IDataRange GetFullRange();
 		
 		/// <summary>
 		/// This method is a convenience that indicates the transaction object the

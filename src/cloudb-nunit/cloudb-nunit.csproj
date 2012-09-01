@@ -67,9 +67,6 @@
   <ItemGroup>
     <Compile Include="Deveel.Data.Configuration\PropertiesConfigSourceTest.cs" />
     <Compile Include="Deveel.Data.Diagnostics\SimpleConsoleLogger.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\BinaryRpcSerializerTest.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\JsonRpcMessageSerializerTest.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\XmlRpcMessageSerializerTest.cs" />
     <Compile Include="Deveel.Data.Net\FakeAdminService.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -77,8 +74,6 @@
     <Compile Include="Deveel.Data.Net\FakeServiceAddress.cs" />
     <Compile Include="Deveel.Data.Net\FakeServiceAddressHandler.cs" />
     <Compile Include="Deveel.Data.Net\FakeServiceConnector.cs" />
-    <Compile Include="Deveel.Data.Net\HttpMessageFormat.cs" />
-    <Compile Include="Deveel.Data.Net\HttpNetworkTest.cs" />
     <Compile Include="Deveel.Data.Net\NetworkServiceTestBase.cs" />
     <Compile Include="Deveel.Data.Net\NetworkStoreType.cs" />
     <Compile Include="Deveel.Data.Net\NetworkTestBase.cs" />

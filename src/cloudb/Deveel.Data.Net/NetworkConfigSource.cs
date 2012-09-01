@@ -14,9 +14,9 @@ namespace Deveel.Data.Net {
 
 		private IServiceAddress[] networkNodes;
 
-		public const string ConnectWhiteList = "connect_whitelist";
-		public const string NetworkNodeList = "network_nodelist";
-		public const string ConfigCheckTimeout = "configcheck_timeout";
+		private const string ConnectWhiteList = "connect_whitelist";
+		private const string NetworkNodeList = "network_nodelist";
+		private const string ConfigCheckTimeout = "configcheck_timeout";
 
 		public NetworkConfigSource(string source) {
 			this.source = source;

@@ -1,154 +1,139 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 
 using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
 	public sealed class FileSystemRootService : RootService {
-		public FileSystemRootService(IServiceConnector connector, string basePath)
-			: base(connector) {
-			this.basePath = basePath;
+		private readonly string path;
+		private readonly List<string> pathInitializationQueue;
+
+
+		public FileSystemRootService(IServiceConnector connector, IServiceAddress address, string path) 
+			: base(connector, address) {
+			this.path = path;
+
+			pathInitializationQueue = new List<string>(64);
 		}
 
-		private string basePath;
+		protected override void ProcessInitQueue() {
+			lock (PathInitLock) {
+				lock (pathInitializationQueue) {
+					pathInitializationQueue.Reverse();
+
+					for (int i = pathInitializationQueue.Count - 1; i >= 0; i--) {
+						string f = pathInitializationQueue[i];
+						try {
+							// Load the path info from the managers,
+							PathInfo pathInfo = LoadFromManagers(Path.GetFileName(f), -1);
+							// Add to the queue,
+							AddPathToQueue(pathInfo);
+							// Remove the item,
+							pathInitializationQueue.RemoveAt(i);
+						} catch (Exception e) {
+							Logger.Info("Error on path init", e);
+							Logger.Info(String.Format("Trying path init {0} later", Path.GetFileName(f)));
+						}
+					}
+				}
+			}
+		}
 
 		protected override void OnStart() {
 			try {
-				// Read the manager service address from the properties file,
-				Util.Properties p = new Util.Properties();
+
+				// Read the manager server address from the properties file,
+				Properties p = new Properties();
 
 				// Contains the root properties,
-				string propFile = Path.Combine(basePath, "00.properties");
+				string propFile = Path.Combine(path, "00.properties");
 				if (File.Exists(propFile)) {
-					using (FileStream fin = new FileStream(propFile, FileMode.Open, FileAccess.Read)) {
-						p.Load(fin);
+					FileStream fin = new FileStream(propFile, FileMode.Open, FileAccess.Read, FileShare.Read);
+					p.Load(fin);
+					fin.Close();
+				}
+
+				// Fetch the manager server property,
+				String v = p.GetProperty("manager_server_address");
+				if (v != null) {
+					String[] addresses = v.Split(',');
+					int sz = addresses.Length;
+					ManagerServices = new IServiceAddress[sz];
+					for (int i = 0; i < sz; ++i) {
+						ManagerServices[i] = ServiceAddresses.ParseString(addresses[i]);
 					}
 				}
 
-				// Fetch the manager service property,
-				string v = p.GetProperty("manager_address");
-				if (v != null) {
-					ManagerAddress = ServiceAddresses.ParseString(v);
-				}
 			} catch (IOException e) {
 				throw new ApplicationException("IO Error: " + e.Message);
 			}
 
-		}
-
-		protected override void CreatePath(string pathName, string pathTypeName) {
-			string f = Path.Combine(basePath, pathName);
-			FileInfo fileInfo = new FileInfo(f);
-			if (fileInfo.Exists)
-				throw new ApplicationException("Path file for '" + pathName + "' exists on this root service.");
-
-			// Create the root file
-			using (fileInfo.Create()) {
-				// immediately call Dispose on the stream...
-			}
-
-			// Create a summary file for storing information about the path
-			string summaryFile = Path.Combine(basePath, pathName + ".summary");
-			Util.Properties p = new Util.Properties();
-			p.SetProperty("path_type", pathTypeName);
-			using (FileStream fileStream = new FileStream(summaryFile, FileMode.CreateNew, FileAccess.Write)) {
-				p.Store(fileStream, null);
-			}
-		}
-
-		protected override void DeletePath(string pathName) {
-			// Check the file exists,
-			string f = Path.Combine(basePath, pathName);
-			if (!File.Exists(f))
-				throw new ApplicationException("Path file for '" + pathName + "' doesn't exist on this root service.");
-
-			// We simply add a '.delete' file to indicate it's deleted
-			string delFile = Path.Combine(basePath, pathName + ".deleted");
-			File.Create(delFile);
-		}
-
-		protected override PathAccess FetchPathAccess(string pathName) {
-			// Read it from the file system.
-			string f = Path.Combine(basePath, pathName);
-
-			// If it doesn't exist, generate an error
-			if (!File.Exists(f))
-				throw new ApplicationException("Path '" + pathName + "' not found input this root service.");
-
-			// If it does exist, does the .deleted file exist indicating this root
-			// path was removed,
-			if (File.Exists(Path.Combine(basePath, pathName + ".deleted")))
-				throw new ApplicationException("Path '" + pathName + "' did exist but was deleted.");
-
-			// Read the summary data for this path.
-			string summaryFile = Path.Combine(basePath, pathName + ".summary");
-
-			Util.Properties p = new Util.Properties();
-
-			using (FileStream fileStream = new FileStream(summaryFile, FileMode.Open, FileAccess.Read)) {
-				p.Load(fileStream);
-			}
-
-			string pathType = p.GetProperty("path_type");
-
-			// Format it into a PathAccess object,
-			FileStream accessStream = new FileStream(f, FileMode.Open, FileAccess.ReadWrite, FileShare.None, 1024, FileOptions.WriteThrough);
-			return new PathAccess(accessStream, pathName, pathType);
-		}
-
-		protected override IList<PathStatus> ListPaths() {
-			List<PathStatus> list = new List<PathStatus>();
-			string[] all_files = Directory.GetFiles(basePath);
-			foreach (string file in all_files) {
-				string fname = Path.GetFileNameWithoutExtension(file);
-				string ext = Path.GetExtension(file);
-				bool deleted = false;
-				if (ext.Equals(".deleted")) {
-					deleted = true;
-				} else if (ext.Equals(".summary") ||
-						   ext.Equals(".properties")) {
-					continue;
+			// Adds all the files to the path info queue,
+			string[] rootFiles = Directory.GetFiles(path);
+			foreach (string f in rootFiles) {
+				String fname = Path.GetFileName(f);
+				if (!fname.Contains(".")) {
+					pathInitializationQueue.Add(f);
 				}
-
-				list.Add(new PathStatus(fname, deleted));
 			}
 
-			return list;
+			base.OnStart();
 		}
 
-		protected override void OnBindingWithManager(IServiceAddress managerAddress) {
+		protected override PathAccess CreatePathAccesss(string pathName) {
+			return new FilePathAccess(this, pathName);
+		}
+
+		protected override void OnManagersSet(IServiceAddress[] addresses) {
+			StringBuilder b = new StringBuilder();
+			for (int i = 0; i < addresses.Length; ++i) {
+				b.Append(addresses[i].ToString());
+				if (i < addresses.Length - 1) {
+					b.Append(",");
+				}
+			}
+
+			// Write the manager server address to the properties file,
+			Properties p = new Properties();
+			p.SetProperty("manager_server_address", b.ToString());
+
 			// Contains the root properties,
-			string propFile = Path.Combine(basePath, "00.properties");
-			using(FileStream fileStream = new FileStream(propFile, FileMode.OpenOrCreate, FileAccess.ReadWrite)) {
-				// Write the manager server address to the properties file,
-				Properties p = new Properties();
-				if (fileStream.Length > 0)
-					p.Load(fileStream);
+			string propFile = Path.Combine(path, "00.properties");
+			FileStream fout = new FileStream(propFile, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None);
+			p.Store(fout, null);
+			fout.Close();
 
-				p.SetProperty("manager_address", managerAddress.ToString());
-
-				fileStream.SetLength(0);
-				p.Store(fileStream, null);
-				fileStream.Close();
-			}
+			base.OnManagersSet(addresses);
 		}
 
-		protected override void OnUnbindingWithManager(IServiceAddress managerAddress) {
+		protected override void OnManagersClear() {
+			// Write the manager server address to the properties file,
+			Properties p = new Properties();
+			p.SetProperty("manager_server_address", "");
+
 			// Contains the root properties,
-			string propFile = Path.Combine(basePath, "00.properties");
-			using (FileStream fileStream = new FileStream(propFile, FileMode.OpenOrCreate, FileAccess.ReadWrite)) {
-				// Write the manager server address to the properties file,
-				Properties p = new Properties();
-				if (fileStream.Length > 0)
-					p.Load(fileStream);
+			string propFile = Path.Combine(path, "00.properties");
+			FileStream fout = new FileStream(propFile, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None);
+			p.Store(fout, null);
+			fout.Close();
+		}
 
-				p.Remove("manager_address");
+		#region FilePathAccess
 
-				fileStream.SetLength(0);
-				p.Store(fileStream, null);
-				fileStream.Close();
+		class FilePathAccess : PathAccess {
+			public FilePathAccess(FileSystemRootService service, string pathName) 
+				: base(service, pathName) {
+			}
+
+			protected override Stream CreatePathStream() {
+				string path = ((FileSystemRootService) RootService).path;
+				return new FileStream(System.IO.Path.Combine(path, PathName), FileMode.OpenOrCreate, FileAccess.ReadWrite,
+				                      FileShare.None, 2048, FileOptions.WriteThrough);
 			}
 		}
+
+		#endregion
 	}
 }

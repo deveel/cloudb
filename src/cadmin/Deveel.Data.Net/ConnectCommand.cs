@@ -4,8 +4,7 @@ using System.Collections.Generic;
 using Deveel.Configuration;
 using Deveel.Console;
 using Deveel.Console.Commands;
-using Deveel.Data.Net.Client;
-using Deveel.Data.Net.Serialization;
+using Deveel.Data.Net.Messaging;
 
 namespace Deveel.Data.Net {
 	internal class ConnectCommand : Command {

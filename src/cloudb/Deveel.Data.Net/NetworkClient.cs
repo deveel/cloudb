@@ -1,163 +1,116 @@
-using System;
+﻿using System;
 using System.IO;
 
-using Deveel.Data.Net.Serialization;
+using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
-	public class NetworkClient : IDisposable {
-		public NetworkClient(IServiceAddress managerAddress, IServiceConnector connector)
-			: this(managerAddress, connector, ManagerCacheState.GetCache(managerAddress)) {
+	public abstract class NetworkClient {
+		private IServiceConnector networkConnector;
+		private ServiceStatusTracker serviceTracker;
+		private readonly IServiceAddress[] managerAddresses;
+
+		private NetworkTreeSystem treeSystem;
+		private readonly INetworkCache localNetworkCache;
+
+
+		private long maximumTransactionNodeCacheHeapSize;
+
+		internal NetworkClient(IServiceAddress[] managerServers, IServiceConnector connector)
+			: this(managerServers, connector, MachineState.GetCacheForManager(managerServers)) {
 		}
 
-		public NetworkClient(IServiceAddress managerAddress, IServiceConnector connector, INetworkCache cache) {
-			if (!(connector.MessageSerializer is IRpcMessageSerializer) || 
-				!((IRpcMessageSerializer)connector.MessageSerializer).SupportsMessageStream)
-				throw new ArgumentException("The connector given has an invalid message serializer for this context (must be a IRPC serializer).");
-			
-			this.connector = connector;
-			this.managerAddress = managerAddress;
-			this.cache = cache;
+		internal NetworkClient(IServiceAddress[] managerServers, IServiceConnector connector, INetworkCache lnc) {
+			this.networkConnector = connector;
+			this.managerAddresses = managerServers;
+			this.localNetworkCache = lnc;
+			// Default values,
+			MaxTransactionNodeCacheHeapSize = 14*1024*1024;
 		}
-
-		private IServiceConnector connector;
-		private readonly IServiceAddress managerAddress;
-		private NetworkTreeSystem storageSystem;
-		private readonly INetworkCache cache;
-		private bool connected;
-
-		private long maxTransactionNodeCacheHeapSize;
 
 		public long MaxTransactionNodeCacheHeapSize {
-			get { return maxTransactionNodeCacheHeapSize; }
-			set { maxTransactionNodeCacheHeapSize = value; }
-		}
-		
-		public bool IsConnected {
-			get { return connected; }
-		}
-		
-		private void CheckConnected() {
-			if (!connected)
-				throw new InvalidOperationException("The client is not connected.");
+			get { return maximumTransactionNodeCacheHeapSize; }
+			set { maximumTransactionNodeCacheHeapSize = value; }
 		}
 
-		public void Connect() {
-			if (connected)
-				throw new InvalidOperationException("The client is already connected.");
-			
-			storageSystem = new NetworkTreeSystem(connector, managerAddress, cache);
-			storageSystem.SetMaxNodeCacheHeapSize(maxTransactionNodeCacheHeapSize);
-			connected = true;
-		}
+		internal void ConnectNetwork() {
+			if (networkConnector != null) {
+				throw new ApplicationException("Already connected");
+			}
 
-		private void OnDisconnected() {
-			connector = null;
-			storageSystem = null;
+			serviceTracker = new ServiceStatusTracker(networkConnector);
+			treeSystem = new NetworkTreeSystem(networkConnector, managerAddresses, localNetworkCache, serviceTracker);
+			treeSystem.NodeHeapMaxSize = MaxTransactionNodeCacheHeapSize;
 		}
 
 		internal void Disconnect() {
-			CheckConnected();
-			
-			if (connector != null)
-				connector.Close();
-
-			OnDisconnected();
-
-			connected = false;
+			if (networkConnector != null) {
+				try {
+					networkConnector.Close();
+				} finally {
+					try {
+						serviceTracker.Stop();
+					} finally {
+						networkConnector = null;
+						serviceTracker = null;
+						treeSystem = null;
+					}
+				}
+			}
 		}
 
-		public DataAddress CreateEmptyDatabase() {
-			CheckConnected();
-			
+		public TreeReportNode CreateDiagnosticGraph(ITransaction t) {
+			return treeSystem.CreateDiagnosticGraph(t);
+		}
+
+		public DataAddress CreateDatabase() {
 			try {
-				return storageSystem.CreateEmptyDatabase();
+				return treeSystem.CreateDatabase();
 			} catch (IOException e) {
 				throw new NetworkWriteException(e.Message, e);
 			}
 		}
 
-		public ITransaction CreateEmptyTransaction() {
-			CheckConnected();
-			
-			// Create the transaction object and return it,
-			return storageSystem.CreateEmptyTransaction();
+		public string[] QueryAllNetworkPaths() {
+			return treeSystem.FindAllPaths();
 		}
 
-		public ITransaction CreateTransaction(DataAddress rootNode) {
-			CheckConnected();
-			
-			return storageSystem.CreateTransaction(rootNode);
-		}
-
-		public DataAddress FlushTransaction(ITransaction transaction) {
-			CheckConnected();
-			
-			return storageSystem.FlushTransaction(transaction);
-		}
-
-		public DataAddress Commit(string pathName, DataAddress proposal) {
-			CheckConnected();
-			
-			IServiceAddress rootAddress = storageSystem.GetRootServer(pathName);
-			return storageSystem.Commit(rootAddress, pathName, proposal);
-		}
-
-		public void DisposeTransaction(ITransaction transaction) {
-			CheckConnected();
-			
-			try {
-				storageSystem.DisposeTransaction(transaction);
-			} catch (IOException e) {
-				throw new Exception("IO Error: " + e.Message);
-			}
-		}
-
-		public DataAddress[] GetHistoricalSnapshots(string pathName, DateTime timeStart, DateTime timeEnd) {
-			CheckConnected();
-			
-			IServiceAddress rootAddress = storageSystem.GetRootServer(pathName);
-			return storageSystem.GetSnapshots(rootAddress, pathName, timeStart, timeEnd);
+		public string GetPathType(string pathName) {
+			return treeSystem.GetPathType(pathName);
 		}
 
 		public DataAddress GetCurrentSnapshot(string pathName) {
-			CheckConnected();
-			
-			IServiceAddress rootAddress = storageSystem.GetRootServer(pathName);
-
-			if (rootAddress == null)
-				throw new Exception("There are no root servers in the network for path '" + pathName + "'");
-
-			return storageSystem.GetSnapshot(rootAddress, pathName);
+			return treeSystem.GetPathNow(pathName);
 		}
 
-		public string[] GetNetworkPaths() {
-			CheckConnected();
-			
-			return storageSystem.FindAllPaths();
+		public ITransaction CreateTransaction(DataAddress rootNode) {
+			// Create the transaction object and return it,
+			return treeSystem.CreateTransaction(rootNode);
 		}
 
-		public TreeGraph CreateDiagnosticGraph(ITransaction t) {
-			CheckConnected();
-			
-			return storageSystem.CreateDiagnosticGraph(t);
+		public ITransaction CreateTransaction() {
+			// Create the transaction object and return it,
+			return treeSystem.CreateTransaction();
 		}
 
-		public void CreateReachabilityList(TextWriter warning_log, DataAddress root_node, IIndex discovered_node_list) {
-			CheckConnected();
-			
+		public DataAddress FlushTransaction(ITransaction transaction) {
+			return treeSystem.FlushTransaction(transaction);
+		}
+
+		public DataAddress Commit(string pathName, DataAddress proposal) {
+			return treeSystem.PerformCommit(pathName, proposal);
+		}
+
+		public void DisposeTransaction(ITransaction transaction) {
 			try {
-				storageSystem.CreateReachabilityList(warning_log, root_node.Value, discovered_node_list);
+				treeSystem.DisposeTransaction(transaction);
 			} catch (IOException e) {
 				throw new ApplicationException("IO Error: " + e.Message);
 			}
 		}
 
-		#region Implementation of IDisposable
-
-		public void Dispose() {
-			Disconnect();
+		public DataAddress[] GetHistoricalSnapshots(string pathName, DateTime timeStart, DateTime timeEnd) {
+			// Return the historical root nodes
+			return treeSystem.GetPathHistorical(pathName, DateTimeUtil.GetMillis(timeStart), DateTimeUtil.GetMillis(timeEnd));
 		}
-
-		#endregion
 	}
 }

@@ -1,6 +1,6 @@
 ﻿using System;
 
-using Deveel.Data.Net.Client;
+using Deveel.Data.Net.Messaging;
 
 namespace Deveel.Data.Net {
 	public interface IService : IDisposable {

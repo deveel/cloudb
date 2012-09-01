@@ -1,13 +1,13 @@
 ﻿using System;
 
 namespace Deveel.Data.Net {
-	public sealed class NetworkWriteException : ApplicationException {
-		internal NetworkWriteException(string message, Exception innerException)
-			: base(message, innerException) {
+	public class NetworkWriteException : ApplicationException {
+		public NetworkWriteException(string message)
+			: this(message, null) {
 		}
 
-		internal NetworkWriteException(string message)
-			: base(message) {
+		public NetworkWriteException(string message, Exception innerException)
+			: base(message, innerException) {
 		}
 	}
 }

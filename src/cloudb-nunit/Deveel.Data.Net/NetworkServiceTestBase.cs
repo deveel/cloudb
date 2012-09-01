@@ -13,15 +13,16 @@ namespace Deveel.Data.Net {
 		public void StartManager() {
 			MachineProfile machine = NetworkProfile.GetMachineProfile(LocalAddress);
 			Assert.IsNotNull(machine);
-			Assert.IsNull(NetworkProfile.ManagerServer);
+			Assert.IsEmpty(NetworkProfile.GetManagerServers());
 			Assert.IsFalse(machine.IsManager);
 			NetworkProfile.StartService(LocalAddress, ServiceType.Manager);
+			NetworkProfile.RegisterManager(LocalAddress);
 
 			NetworkProfile.Refresh();
 
 			machine = NetworkProfile.GetMachineProfile(LocalAddress);
 			Assert.IsNotNull(machine);
-			Assert.IsNotNull(NetworkProfile.ManagerServer);
+			Assert.IsNotNull(NetworkProfile.GetManagerServers());
 			Assert.IsTrue(machine.IsManager);
 		}
 

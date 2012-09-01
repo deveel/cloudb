@@ -7,14 +7,14 @@ using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
 	public sealed class MemoryBlockStore : IBlockStore {
-		private readonly long blockId;
+		private readonly BlockId blockId;
 		private MemoryStream content;
 		private int length;
 		private StrongPagedAccess pagedAccess;
 
 		private const int Header = 6 * 16384;
 
-		internal MemoryBlockStore(long blockId) {
+		internal MemoryBlockStore(BlockId blockId) {
 			this.blockId = blockId;
 		}
 
@@ -47,12 +47,12 @@ namespace Deveel.Data.Net {
 			if (dataId < 0 || dataId >= 16384)
 				throw new ArgumentException("dataId out of range");
 
-			byte[] tmp_area = new byte[6];
+			byte[] tmpArea = new byte[6];
 
 			// Seek to the position of this data id in the table,
 			int pos = dataId * 6;
 			int dataIdPos = pagedAccess.ReadInt32(pos);
-			int dataIdLength = ((int)pagedAccess.ReadInt16(pos + 4)) & 0x0FFFF;
+			int dataIdLength = (pagedAccess.ReadInt16(pos + 4)) & 0x0FFFF;
 
 			// These values should be 0, if not we've already written data here,
 			if (dataIdPos != 0 || dataIdLength != 0)
@@ -64,10 +64,10 @@ namespace Deveel.Data.Net {
 			pagedAccess.InvalidateSection(length, count);
 
 			// Write the table entry,
-			ByteBuffer.WriteInt4(length, tmp_area, 0);
-			ByteBuffer.WriteInt2((short)count, tmp_area, 4);
+			ByteBuffer.WriteInt4(length, tmpArea, 0);
+			ByteBuffer.WriteInt2((short)count, tmpArea, 4);
 			content.Seek(pos, SeekOrigin.Begin);
-			content.Write(tmp_area, 0, 6);
+			content.Write(tmpArea, 0, 6);
 			pagedAccess.InvalidateSection(pos, 6);
 
 			// Set the new content length
@@ -81,7 +81,7 @@ namespace Deveel.Data.Net {
 			// Seek to the position of this data id in the table,
 			int pos = dataId * 6;
 			int dataIdPos = pagedAccess.ReadInt32(pos);
-			int dataIdLength = ((int)pagedAccess.ReadInt16(pos + 4)) & 0x0FFFF;
+			int dataIdLength = (pagedAccess.ReadInt16(pos + 4)) & 0x0FFFF;
 
 			// If position for the data_id is 0, the data hasn't been written,
 			count = Math.Min(count, dataIdLength);
@@ -105,7 +105,7 @@ namespace Deveel.Data.Net {
 			// Seek to the position of this data id in the table,
 			int pos = dataId * 6;
 			int dataIdPos = pagedAccess.ReadInt32(pos);
-			int dataIdLength = ((int)pagedAccess.ReadInt16(pos + 4)) & 0x0FFFF;
+			int dataIdLength = (pagedAccess.ReadInt16(pos + 4)) & 0x0FFFF;
 
 			// If position for the data_id is 0, the data hasn't been written,
 			byte[] buf = new byte[dataIdLength];
@@ -124,20 +124,20 @@ namespace Deveel.Data.Net {
 			if (dataId < 0 || dataId >= 16384)
 				throw new ArgumentException("data_id out of range");
 
-			byte[] tmp_area = new byte[6];
+			byte[] tmpArea = new byte[6];
 
 			// Seek to the position of this data id in the table,
 			int pos = dataId * 6;
 			int dataIdPos = pagedAccess.ReadInt32(pos);
-			int dataIdLength = ((int)pagedAccess.ReadInt16(pos + 4)) & 0x0FFFF;
+			int dataIdLength = (pagedAccess.ReadInt16(pos + 4)) & 0x0FFFF;
 
 			// Clear it,
-			for (int i = 0; i < tmp_area.Length; ++i) {
-				tmp_area[i] = 0;
+			for (int i = 0; i < tmpArea.Length; ++i) {
+				tmpArea[i] = 0;
 			}
 			// Write the cleared entry in,
 			content.Seek(pos, SeekOrigin.Begin);
-			content.Write(tmp_area, 0, 6);
+			content.Write(tmpArea, 0, 6);
 			pagedAccess.InvalidateSection(pos, 6);
 		}
 
@@ -156,12 +156,12 @@ namespace Deveel.Data.Net {
 		public long CreateChecksum() {
 			Adler32 adler32 = new Adler32();
 			long a1 = 0, a2 = 0;
-			byte[] header_value = new byte[Header];
+			byte[] headerValue = new byte[Header];
 			content.Seek(0, SeekOrigin.Begin);
-			content.Read(header_value, 0, Header);
+			content.Read(headerValue, 0, Header);
 			for (int i = 0; i < Header; i += 6) {
-				int pos = ByteBuffer.ReadInt4(header_value, i);
-				int len = ((int)ByteBuffer.ReadInt2(header_value, i + 4)) & 0x0FFFF;
+				int pos = ByteBuffer.ReadInt4(headerValue, i);
+				int len = ((int)ByteBuffer.ReadInt2(headerValue, i + 4)) & 0x0FFFF;
 
 				byte[] node = new byte[len];
 				content.Seek(pos, SeekOrigin.Begin);

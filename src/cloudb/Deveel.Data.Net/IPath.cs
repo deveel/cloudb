@@ -53,5 +53,7 @@ namespace Deveel.Data.Net {
 		/// If the proposed set of changes was rejected.
 		/// </exception>
 		DataAddress Commit(IPathConnection connection, DataAddress rootNode);
+
+		string GetStats(IPathConnection connection, DataAddress snapshot);
 	}
 }

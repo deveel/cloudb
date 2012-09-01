@@ -4,25 +4,18 @@ using System.Collections.Generic;
 using Deveel.Data.Store;
 
 namespace Deveel.Data {
-	/// <summary>
-	/// This is a temporary storage for organizing nodes
-	/// during the modification of a tree.
-	/// </summary>
-	/// <remarks>
-	/// <b>Note</b>: This class is not thread-safe, since it is intended
-	/// as a temporary cache for nodes during a tree manipulation: it is
-	/// responsibility of external threads to enforce cuncurrency locks.
-	/// </remarks>
 	public sealed class TreeNodeHeap {
 		private long nodeIdSeq;
+
 		private readonly IHashNode[] hash;
 		private IHashNode hashEnd;
 		private IHashNode hashStart;
 
 		private int totalBranchNodeCount;
 		private int totalLeafNodeCount;
-		private long memoryUsed;
 
+
+		private long memoryUsed;
 		private long maxMemoryLimit;
 
 		public TreeNodeHeap(int hashSize, long maxMemoryLimit) {
@@ -31,16 +24,21 @@ namespace Deveel.Data {
 			this.maxMemoryLimit = maxMemoryLimit;
 		}
 
-		private int CalcHashValue(long p) {
-			int pp = ((int)-p & 0x0FFFFFFF);
-			return pp % hash.Length;
+		private int CalcHashValue(NodeId p) {
+			int hc = p.GetHashCode();
+			if (hc < 0) {
+				hc = -hc;
+			}
+			return hc % hash.Length;
 		}
 
-		private void HashNode(IHashNode node) {
-			int hash_index = CalcHashValue(node.Id);
-			IHashNode old_node = hash[hash_index];
-			hash[hash_index] = node;
-			node.NextHash = old_node;
+		private void PutInHash(IHashNode node) {
+			NodeId nodeId = node.Id;
+
+			int hashIndex = CalcHashValue(nodeId);
+			IHashNode oldNode = hash[hashIndex];
+			hash[hashIndex] = node;
+			node.NextHash = oldNode;
 
 			// Add it to the start of the linked list,
 			if (hashStart != null) {
@@ -54,6 +52,8 @@ namespace Deveel.Data {
 
 			// Update the 'memory_used' variable
 			memoryUsed += node.MemoryAmount;
+
+			// STATS
 			if (node is TreeBranch) {
 				++totalBranchNodeCount;
 			} else {
@@ -61,129 +61,70 @@ namespace Deveel.Data {
 			}
 		}
 
-		private long NextNodeId() {
+
+		private NodeId NextNodePointer() {
 			long p = nodeIdSeq;
 			++nodeIdSeq;
+			// ISSUE: What happens if the node id sequence overflows?
+			//   The boundary is large enough that if we were to create a billion
+			//   nodes a second continuously, it would take 18 years to overflow.
 			nodeIdSeq = nodeIdSeq & 0x0FFFFFFFFFFFFFFFL;
-			return -p;
+
+			return NodeId.CreateInMemoryNode(p);
 		}
 
-		internal void Flush() {
-			List<IHashNode> to_flush = null;
-			int all_node_count = 0;
-			// If the memory use is above some limit then we need to flush out some
-			// of the nodes,
-			if (memoryUsed > maxMemoryLimit) {
-				all_node_count = totalBranchNodeCount + totalLeafNodeCount;
-				// The number to clean,
-				int to_clean = (int)(all_node_count * 0.30);
-
-				// Make an array of all nodes to flush,
-				to_flush = new List<IHashNode>(to_clean);
-				// Pull them from the back of the list,
-				IHashNode node = hashEnd;
-				while (to_clean > 0 && node != null) {
-					to_flush.Add(node);
-					node = node.Previous;
-					--to_clean;
-				}
-			}
-
-			// If there are nodes to flush,
-			if (to_flush != null) {
-				// Read each group and call the node flush routine,
-
-				// The mapping of transaction to node list
-				Dictionary<ITransaction, List<long>> tran_map = new Dictionary<ITransaction, List<long>>();
-				// Read the list backwards,
-				for (int i = to_flush.Count - 1; i >= 0; --i) {
-					IHashNode node = to_flush[i];
-					// Get the transaction of this node,
-					ITransaction tran = node.Transaction;
-					// Find the list of this transaction,
-					List<long> node_list;
-					if (!tran_map.TryGetValue(tran, out node_list)) {
-						node_list = new List<long>(to_flush.Count);
-						tran_map[tran] = node_list;
-					}
-					// Add to the list
-					node_list.Add(node.Id);
-				}
-				// Now read the key and dispatch the clean up to the transaction objects,
-				foreach(KeyValuePair<ITransaction, List<long>> pair in tran_map) {
-					ITransaction tran = pair.Key;
-					List<long> node_list = pair.Value;
-					// Convert to a 'long[]' array,
-					int sz = node_list.Count;
-					long[] refs = new long[sz];
-					for (int i = 0; i < sz; ++i) {
-						refs[i] = node_list[i];
-					}
-					// Sort the references,
-					Array.Sort(refs);
-					// Tell the transaction to clean up these nodes,
-					((TreeSystemTransaction)tran).FlushNodes(refs);
-				}
-
-			}
-		}
-
-		public ITreeNode FetchNode(long id) {
+		public ITreeNode FetchNode(NodeId pointer) {
 			// Fetches the node out of the heap hash array.
-			int hashIndex = CalcHashValue(id);
-			IHashNode hash_node = hash[hashIndex];
-			while (hash_node != null &&
-				   hash_node.Id != id) {
-				hash_node = hash_node.NextHash;
+			int hashIndex = CalcHashValue(pointer);
+			IHashNode hashNode = hash[hashIndex];
+			while (hashNode != null &&
+				   !hashNode.Id.Equals(pointer)) {
+				hashNode = hashNode.NextHash;
 			}
 
-			return hash_node;
+			return hashNode;
 		}
 
-		public TreeBranch CreateBranch(ITransaction tran, int maxBranchChildren) {
-			long p = NextNodeId();
+		public TreeBranch CreateBranch(TreeSystemTransaction tran, int maxBranchChildren) {
+			NodeId p = NextNodePointer();
 			HeapTreeBranch node = new HeapTreeBranch(tran, p, maxBranchChildren);
-			HashNode(node);
+			PutInHash(node);
 			return node;
 		}
 
-		public TreeLeaf CreateLeaf(ITransaction tran, Key key, int maxLeafSize) {
-			long p = NextNodeId();
+		public TreeLeaf CreateLeaf(TreeSystemTransaction tran, Key key, int maxLeafSize) {
+			NodeId p = NextNodePointer();
 			HeapTreeLeaf node = new HeapTreeLeaf(tran, p, maxLeafSize);
-			HashNode(node);
+			PutInHash(node);
 			return node;
 		}
 
-		public ITreeNode Copy(ITreeNode nodeToCopy, int maxBranchSize, int maxLeafSize, ITransaction tran, bool locked) {
+		public ITreeNode Copy(ITreeNode nodeToCopy, int maxBranchSize, int maxLeafSize, TreeSystemTransaction tran) {
 			// Create a new pointer for the copy
-			long p = NextNodeId();
-			if (locked) {
-				p = (long)((ulong)p & 0x0DFFFFFFFFFFFFFFFL);
-			}
+			NodeId p = NextNodePointer();
 			IHashNode node;
 			if (nodeToCopy is TreeLeaf) {
-				node = new HeapTreeLeaf(tran, p, (TreeLeaf)nodeToCopy, maxLeafSize);
+				node = new HeapTreeLeaf(tran, p, (TreeLeaf) nodeToCopy, maxLeafSize);
 			} else {
-				node = new HeapTreeBranch(tran, p, (TreeBranch)nodeToCopy, maxBranchSize);
+				node = new HeapTreeBranch(tran, p, (TreeBranch) nodeToCopy, maxBranchSize);
 			}
-
-			HashNode(node);
+			PutInHash(node);
 			// Return pointer to node
-			return node;
+			return (ITreeNode) node;
 		}
 
-		public void Delete(long id) {
-			int hash_index = CalcHashValue(id);
+		public void Delete(NodeId pointer) {
+			int hash_index = CalcHashValue(pointer);
 			IHashNode hash_node = hash[hash_index];
 			IHashNode previous = null;
 			while (hash_node != null &&
-			       hash_node.Id != id) {
+			       !(hash_node.Id.Equals(pointer))) {
 				previous = hash_node;
 				hash_node = hash_node.NextHash;
 			}
-			if (hash_node == null) {
-				throw new ApplicationException("Node not found!");
-			}
+			if (hash_node == null)
+				throw new InvalidOperationException("Node not found!");
+
 			if (previous == null) {
 				hash[hash_index] = hash_node.NextHash;
 			} else {
@@ -215,6 +156,8 @@ namespace Deveel.Data {
 
 			// Update the 'memory_used' variable
 			memoryUsed -= hash_node.MemoryAmount;
+
+			// KEEP STATS
 			if (hash_node is TreeBranch) {
 				--totalBranchNodeCount;
 			} else {
@@ -222,39 +165,99 @@ namespace Deveel.Data {
 			}
 		}
 
+		internal void FlushCache() {
+			IList<IHashNode> toFlush = null;
+			// If the memory use is above some limit then we need to flush out some
+			// of the nodes,
+			if (memoryUsed > maxMemoryLimit) {
+				int allNodeCount = totalBranchNodeCount + totalLeafNodeCount;
+				// The number to clean,
+				int toClean = (int) (allNodeCount*0.30);
+
+				// Make an array of all nodes to flush,
+				toFlush = new List<IHashNode>(toClean);
+				// Pull them from the back of the list,
+				IHashNode node = hashEnd;
+				while (toClean > 0 && node != null) {
+					toFlush.Add(node);
+					node = node.Previous;
+					--toClean;
+				}
+			}
+
+			// If there are nodes to flush,
+			if (toFlush != null) {
+				// Read each group and call the node flush routine,
+
+				// The mapping of transaction to node list
+				Dictionary<TreeSystemTransaction, List<NodeId>> tranMap = new Dictionary<TreeSystemTransaction, List<NodeId>>();
+				// Read the list backwards,
+				for (int i = toFlush.Count - 1; i >= 0; --i) {
+					IHashNode node = toFlush[i];
+					// Get the transaction of this node,
+					TreeSystemTransaction tran = node.Transaction;
+					// Find the list of this transaction,
+					List<NodeId> nodeList = tranMap[tran];
+					if (nodeList == null) {
+						nodeList = new List<NodeId>(toFlush.Count);
+						tranMap.Add(tran, nodeList);
+					}
+					// Add to the list
+					nodeList.Add(node.Id);
+				}
+
+				// Now read the key and dispatch the clean up to the transaction objects,
+				foreach (KeyValuePair<TreeSystemTransaction, List<NodeId>> pair in tranMap) {
+					TreeSystemTransaction tran = pair.Key;
+					List<NodeId> nodeList = pair.Value;
+					// Convert to a 'NodeId[]' array,
+					NodeId[] refs = nodeList.ToArray();
+
+					// Sort the references,
+					Array.Sort(refs);
+
+					// Tell the transaction to clean up these nodes,
+					tran.FlushNodesToStore(refs);
+				}
+
+			}
+		}
+
+		#region IHashNode
+
 		private interface IHashNode : ITreeNode {
 			IHashNode NextHash { get; set; }
 
 			IHashNode Previous { get; set; }
+
 			IHashNode Next { get; set; }
 
-			ITransaction Transaction { get; }
+			TreeSystemTransaction Transaction { get; }
 		}
 
+		#endregion
+
+		#region HeapTreeBranch
+
 		private class HeapTreeBranch : TreeBranch, IHashNode {
+			private readonly TreeSystemTransaction transaction;
 			private IHashNode nextHash;
 			private IHashNode next;
 			private IHashNode previous;
 
-			private readonly ITransaction tran;
-
-			internal HeapTreeBranch(ITransaction tran, long nodeId, int maxChildren)
-				: base(nodeId, maxChildren) {
-				this.tran = tran;
+			public HeapTreeBranch(TreeSystemTransaction transaction, NodeId nodeId, int maxChildrenCount)
+				: base(nodeId, maxChildrenCount) {
+				this.transaction = transaction;
 			}
 
-			internal HeapTreeBranch(ITransaction tran, long nodeId, TreeBranch branch, int maxChildren)
-				: base(nodeId, branch, maxChildren) {
-				this.tran = tran;
+			public HeapTreeBranch(TreeSystemTransaction transaction, NodeId nodeId, TreeBranch branch, int maxChildrenCount)
+				: base(nodeId, branch, maxChildrenCount) {
+				this.transaction = transaction;
 			}
 
 			public IHashNode NextHash {
 				get { return nextHash; }
 				set { nextHash = value; }
-			}
-
-			public ITransaction Transaction {
-				get { return tran; }
 			}
 
 			public IHashNode Previous {
@@ -267,46 +270,44 @@ namespace Deveel.Data {
 				set { next = value; }
 			}
 
+			public TreeSystemTransaction Transaction {
+				get { return transaction; }
+			}
+
 			public override long MemoryAmount {
 				get { return base.MemoryAmount + (8*4); }
 			}
 		}
 
+		#endregion
+
+		#region HeapTreeLeaf
+
 		private class HeapTreeLeaf : TreeLeaf, IHashNode {
+			private readonly TreeSystemTransaction transaction;
+			private IHashNode nextHash;
+			private IHashNode next;
+			private IHashNode previous;
 
-			private IHashNode next_hash;
-			private IHashNode next_list;
-			private IHashNode previous_list;
+			private byte[] data;
 
-			private readonly ITransaction tran;
-
-			private readonly byte[] data;
-
-			private long nodeId;
+			private NodeId nodeId;
 			private int size;
 
-
-			internal HeapTreeLeaf(ITransaction tran, long nodeId, int maxCapacity) {
+			public HeapTreeLeaf(TreeSystemTransaction transaction, NodeId nodeId, int maxCapacity) {
 				this.nodeId = nodeId;
-				this.size = 0;
-				this.tran = tran;
-				this.data = new byte[maxCapacity];
-			}
-
-			internal HeapTreeLeaf(ITransaction tran, long nodeId, TreeLeaf toCopy, int maxCapacity)
-				: base() {
-				this.nodeId = nodeId;
-				this.size = toCopy.Length;
-				this.tran = tran;
-				// Copy the data into an array in this leaf.
+				size = 0;
+				this.transaction = transaction;
 				data = new byte[maxCapacity];
-				toCopy.Read(0, data, 0, size);
 			}
 
-			// ---------- Implemented from TreeLeaf ----------
-
-			public override long Id {
-				get { return nodeId; }
+			public HeapTreeLeaf(TreeSystemTransaction transaction, NodeId nodeId, TreeLeaf to_copy, int capacity) {
+				this.nodeId = nodeId;
+				this.size = to_copy.Length;
+				this.transaction = transaction;
+				// Copy the data into an array in this leaf.
+				this.data = new byte[capacity];
+				to_copy.Read(0, data, 0, size);
 			}
 
 			public override int Length {
@@ -317,17 +318,27 @@ namespace Deveel.Data {
 				get { return data.Length; }
 			}
 
-			public override void Read(int position, byte[] buffer, int offset, int count) {
-				Array.Copy(data, position, buffer, offset, count);
+			public override NodeId Id {
+				get { return nodeId; }
 			}
 
-			public override void Shift(int position, int off) {
-				if (off != 0) {
-					int new_size = Length + off;
-					Array.Copy(data, position, data, position + off, Length - position);
-					// Set the size
-					size = new_size;
+			public override long MemoryAmount {
+				get {
+					// The size of the member variables + byte estimate for heap use for
+					// object maintenance.
+					return 8 + 4 + data.Length + 64 + (8*4);
 				}
+			}
+
+			public override void SetLength(int value) {
+				if (value < 0 || value > Capacity)
+					throw new ArgumentException("Leaf size error: " + value);
+
+				size = value;
+			}
+
+			public override void Read(int position, byte[] buffer, int offset, int count) {
+				Array.Copy(data, position, buffer, offset, count);
 			}
 
 			public override void Write(int position, byte[] buffer, int offset, int count) {
@@ -337,42 +348,40 @@ namespace Deveel.Data {
 				}
 			}
 
-			public override void WriteTo(IAreaWriter writer) {
-				writer.Write(data, 0, Length);
+			public override void WriteTo(IAreaWriter area) {
+				area.Write(data, 0, Length);
 			}
 
-			public override void SetLength(int value) {
-				if (value< 0 || value > Capacity)
-					throw new ArgumentException("Specified leaf size is out of range.");
-
-				size = value;
+			public override void Shift(int position, int offset) {
+				if (offset != 0) {
+					int newSize = Length + offset;
+					Array.Copy(data, position,
+					           data, position + offset, Length - position);
+					// Set the size
+					size = newSize;
+				}
 			}
-
-			public override long MemoryAmount {
-				get { return 8 + 4 + data.Length + 64 + (8 * 4); }
-			}
-
-			// ---------- Implemented from HashNode ----------
 
 			public IHashNode NextHash {
-				get { return next_hash; }
-				set { next_hash = value; }
-			}
-
-			public ITransaction Transaction {
-				get { return tran; }
+				get { return nextHash; }
+				set { nextHash = value; }
 			}
 
 			public IHashNode Previous {
-				get { return previous_list; }
-				set { previous_list = value; }
+				get { return previous; }
+				set { previous = value; }
 			}
 
 			public IHashNode Next {
-				get { return next_list; }
-				set { next_list = value; }
+				get { return next; }
+				set { next = value; }
+			}
+
+			public TreeSystemTransaction Transaction {
+				get { return transaction; }
 			}
 		}
 
+		#endregion
 	}
 }

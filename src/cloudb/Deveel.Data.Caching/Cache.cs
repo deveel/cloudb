@@ -129,7 +129,7 @@ namespace Deveel.Data.Caching {
 		/// </summary>
 		/// <param name="key"></param>
 		/// <param name="val"></param>
-		protected void OnObjectAdded(object key, object val) {
+		protected virtual void OnObjectAdded(object key, object val) {
 			++current_cache_size;
 		}
 
@@ -138,14 +138,14 @@ namespace Deveel.Data.Caching {
 		/// </summary>
 		/// <param name="key"></param>
 		/// <param name="val"></param>
-		protected void OnObjectRemoved(Object key, Object val) {
+		protected virtual void OnObjectRemoved(Object key, Object val) {
 			--current_cache_size;
 		}
 
 		/// <summary>
 		/// Notifies that the cache has been entirely cleared of all elements.
 		/// </summary>
-		protected void OnAllCleared() {
+		protected virtual void OnAllCleared() {
 			current_cache_size = 0;
 		}
 

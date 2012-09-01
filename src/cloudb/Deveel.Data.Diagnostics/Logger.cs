@@ -282,6 +282,10 @@ namespace Deveel.Data.Diagnostics {
 		public void Info(string message) {
 			Log(LogLevel.Information, GetLoggingType(), message);
 		}
+
+		public void Info(string message, Exception error) {
+			Log(LogLevel.Information, GetLoggingType(), message, error);
+		}
 		
 		public object Clone() {
 			ILogger log = logger;

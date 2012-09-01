@@ -5,13 +5,16 @@ using Deveel.Data.Diagnostics;
 using Deveel.Data.Store;
 
 namespace Deveel.Data {
-	public sealed class FileSystemDatabase : IDatabase {
+	public class FileSystemDatabase : IDatabase {
 		private readonly string path;
-		private Logger debug;
+		private readonly Logger logger;
+
 		private LoggingBufferManager bufferManager;
 		private JournalledFileStore fileStore;
 		private StoreTreeSystem treeSystem;
-		private bool started;
+
+		private bool databaseStarted;
+
 		private long fileRolloverSize;
 		private int pageSize;
 		private int maxPageCount;
@@ -20,128 +23,135 @@ namespace Deveel.Data {
 		private long heapNodeCacheSize;
 		private long branchNodeCacheSize;
 
-		private readonly object lockObject = new object();
-		private readonly object commitLock = new object();
+		private readonly Object lockObject = new Object();
+		private readonly Object commitLock = new Object();
 
 		public FileSystemDatabase(string path) {
 			this.path = path;
-			
-			//TODO: we should find a way to set also a dedicated path to the logger ...
-			debug = (Logger) Logger.Store.Clone();
+			logger = Logger.GetLogger("FileSystemDatabase");
 
-			// set the defaults ...
-			fileRolloverSize = 512 * 1024 * 1024;
-			pageSize = 8 * 1024;
-			maxPageCount = 1024;
-			branchNodeSize = 16;
-			leafNodeSize = 4010;
-			heapNodeCacheSize = 14 * 1024 * 1024;
-			branchNodeCacheSize = 2 * 1024 * 1024;
+			SetDefaultValues();
+		}
+
+		private void SetDefaultValues() {
+			lock (lockObject) {
+				fileRolloverSize = 512*1024*1024;
+				pageSize = 8*1024;
+				maxPageCount = 1024;
+				branchNodeSize = 16;
+				leafNodeSize = 4010;
+				heapNodeCacheSize = 14*1024*1024;
+				branchNodeCacheSize = 2*1024*1024;
+			}
 		}
 
 		public int PageSize {
-			get {
-				lock(lockObject) {
-					return pageSize;
+			set {
+				lock (lockObject) {
+					pageSize = value;
 				}
 			}
-			set {
-				lock(lockObject) {
-					pageSize = value;
+			get {
+				lock (lockObject) {
+					return pageSize;
 				}
 			}
 		}
 
 		public int MaxPageCount {
-			get {
-				lock(lockObject) {
-					return maxPageCount;
+			set {
+				lock (lockObject) {
+					maxPageCount = value;
 				}
 			}
-			set {
-				lock(lockObject) {
-					maxPageCount = value;
+			get {
+				lock (lockObject) {
+					return maxPageCount;
 				}
 			}
 		}
 
 		public long FileRolloverSize {
-			get {
-				lock(lockObject) {
-					return fileRolloverSize;
+			set {
+				lock (lockObject) {
+					fileRolloverSize = value;
 				}
 			}
-			set {
-				lock(lockObject) {
-					fileRolloverSize = value;
+			get {
+				lock (lockObject) {
+					return fileRolloverSize;
 				}
 			}
 		}
 
 		public int BranchNodeSize {
-			get {
-				lock(lockObject) {
-					return branchNodeSize;
+			set {
+				lock (lockObject) {
+					branchNodeSize = value;
 				}
 			}
-			set {
-				lock(lockObject) {
-					branchNodeSize = value;
+			get {
+				lock (lockObject) {
+					return branchNodeSize;
 				}
 			}
 		}
 
 		public int LeafNodeSize {
-			get {
-				lock(lockObject) {
-					return leafNodeSize;
+			set {
+				lock (lockObject) {
+					leafNodeSize = value;
 				}
 			}
-			set {
-				lock(lockObject) {
-					leafNodeSize = value;
+			get {
+				lock (lockObject) {
+					return leafNodeSize;
 				}
 			}
 		}
 
 		public long HeapNodeCacheSize {
-			get {
-				lock(lockObject) {
-					return heapNodeCacheSize;
+			set {
+				lock (lockObject) {
+					heapNodeCacheSize = value;
 				}
 			}
-			set {
-				lock(lockObject) {
-					heapNodeCacheSize = value;
+			get {
+				lock (lockObject) {
+					return heapNodeCacheSize;
 				}
 			}
 		}
 
 		public long BranchNodeCacheSize {
 			get {
-				lock(lockObject) {
+				lock (lockObject) {
 					return branchNodeCacheSize;
 				}
 			}
 			set {
-				lock(lockObject) {
+				lock (lockObject) {
 					branchNodeCacheSize = value;
 				}
 			}
 		}
 
+		public ITreeSystem TreeSystem {
+			get { return treeSystem; }
+		}
+
 		public bool Start() {
 			lock (lockObject) {
 				// We can't start a database that is already started,
-				if (started || treeSystem != null)
+				if (databaseStarted || treeSystem != null)
 					return false;
 
-				// Make a data.db file with a single TreeSystem structure mapped into it
-				const string fileExt = "db";
+				// Make a data.koi file with a single TreeSystem structure mapped into it
+				const string fileExt = "cdb";
 				const string dbFileName = "data";
 
 				bufferManager = new LoggingBufferManager(path, path, false, maxPageCount, pageSize, fileExt, fileRolloverSize,
-				                                          debug, true);
+				                                          logger, true);
 				bufferManager.Start();
 
 				// The backing store
@@ -160,21 +170,21 @@ namespace Deveel.Data {
 				if (magicValue == 0) {
 					// Create a tree store inside the file store,
 					treeStore = new StoreTreeSystem(fileStore, branchNodeSize, leafNodeSize, heapNodeCacheSize,
-					                                 branchNodeCacheSize);
+					                                branchNodeCacheSize);
 					// Create the tree and returns a pointer to the tree,
 					long treePointer = treeStore.Create();
 
 					// Create an area object with state information about the tree
-					IAreaWriter area = fileStore.CreateArea(128);
-					area.WriteInt4(0x0101);    // The version value
-					area.WriteInt8(treePointer);
-					area.WriteInt4(branchNodeSize);
-					area.WriteInt4(leafNodeSize);
-					area.Finish();
-					long areaId = area.Id;
+					IAreaWriter awriter = fileStore.CreateArea(128);
+					awriter.WriteInt4(0x0101); // The version value
+					awriter.WriteInt8(treePointer);
+					awriter.WriteInt4(branchNodeSize);
+					awriter.WriteInt4(leafNodeSize);
+					awriter.Finish();
+					long dummy = awriter.Id;
 					IMutableArea harea = fileStore.GetMutableArea(-1);
-					harea.WriteInt4(0x092BA001);  // The magic value
-					harea.WriteInt8(areaId);
+					harea.WriteInt4(0x092BA001); // The magic value
+					harea.WriteInt8(awriter.Id);
 					harea.CheckOut();
 				} else if (magicValue == 0x092BA001) {
 					long apointer = headerArea.ReadInt8();
@@ -196,6 +206,7 @@ namespace Deveel.Data {
 					                                branchNodeCacheSize);
 					// Initialize the tree
 					treeStore.Init(treePointer);
+
 				} else {
 					throw new IOException("Data is corrupt, invalid magic value in store");
 				}
@@ -205,7 +216,7 @@ namespace Deveel.Data {
 
 				// Set up final internal state and return true
 				treeSystem = treeStore;
-				started = true;
+				databaseStarted = true;
 				return true;
 			}
 		}
@@ -216,7 +227,7 @@ namespace Deveel.Data {
 
 			lock (lockObject) {
 				// We can't stop a database that hasn't started
-				if (!started || treeSystem == null)
+				if (databaseStarted == false || treeSystem == null)
 					return;
 
 				// Close the store
@@ -229,19 +240,21 @@ namespace Deveel.Data {
 
 				// Clear the internal state
 				treeSystem = null;
-				started = false;
-
+				databaseStarted = false;
 			}
 		}
 
-		#region Implementation of IDatabase
+		public TreeReportNode CreateDiagnosticGraph() {
+			return treeSystem.CreateDiagnosticGraph();
+		}
+
 
 		public ITransaction CreateTransaction() {
 			return treeSystem.CreateTransaction();
 		}
 
 		public void Publish(ITransaction transaction) {
-			lock(commitLock) {
+			lock (commitLock) {
 				treeSystem.Commit(transaction);
 			}
 		}
@@ -252,24 +265,6 @@ namespace Deveel.Data {
 
 		public void CheckPoint() {
 			treeSystem.CheckPoint();
-		}
-
-		#endregion
-
-		public TreeGraph CreateGraph() {
-			return treeSystem.CreateGraph();
-		}
-
-		public static void CopyData(ITransaction source, ITransaction destination) {
-			// The transaction in this object,
-			TreeSystemTransaction sourcet = (TreeSystemTransaction)source;
-			foreach(Key key in sourcet.Keys) {
-				// Get the source and destination files
-				IDataFile sourceFile = sourcet.GetFile(key, FileAccess.ReadWrite);
-				IDataFile destFile = destination.GetFile(key, FileAccess.Write);
-				// Copy the data
-				sourceFile.CopyTo(destFile, sourceFile.Length);
-			}
 		}
 	}
 }

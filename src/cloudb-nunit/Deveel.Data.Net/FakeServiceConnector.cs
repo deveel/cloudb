@@ -1,10 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 
-using Deveel.Data.Net.Client;
-using Deveel.Data.Net.Serialization;
+using Deveel.Data.Net.Messaging;
 
 namespace Deveel.Data.Net {
-	public delegate Message ProcessCallback(ServiceType serviceType, Message inputStream);
+	public delegate IEnumerable<Message> ProcessCallback(ServiceType serviceType, IEnumerable<Message> inputStream);
 
 	public sealed class FakeServiceConnector : IServiceConnector {
 		public FakeServiceConnector(ProcessCallback callback) {
@@ -17,6 +17,7 @@ namespace Deveel.Data.Net {
 
 		private readonly ProcessCallback callback;
 		private IMessageSerializer serializer;
+		private IServiceAuthenticator authenticator;
 
 		public void Dispose() {
 		}
@@ -28,6 +29,11 @@ namespace Deveel.Data.Net {
 				return serializer;
 			}
 			set { serializer = value; }
+		}
+
+		public IServiceAuthenticator Authenticator {
+			get { return authenticator; }
+			set { authenticator = value; }
 		}
 
 		public void Close() {
@@ -48,7 +54,7 @@ namespace Deveel.Data.Net {
 				this.serviceType = serviceType;
 			}
 
-			public Message Process(Message messageStream) {
+			public IEnumerable<Message> Process(IEnumerable<Message> messageStream) {
 				return connector.callback(serviceType, messageStream);
 			}
 		}

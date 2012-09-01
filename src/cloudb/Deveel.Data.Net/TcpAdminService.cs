@@ -6,15 +6,13 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
-using Deveel.Data.Net.Client;
-using Deveel.Data.Net.Serialization;
+using Deveel.Data.Net.Messaging;
 
 namespace Deveel.Data.Net {
 	public class TcpAdminService : AdminService {
 		private bool polling;
 		private TcpListener listener;
 		private List<TcpConnection> connections;
-		private IMessageSerializer serializer;
 
 		public TcpAdminService(IServiceFactory serviceFactory, IPAddress address, int port, string password)
 			: this(serviceFactory, new TcpServiceAddress(address, port),  password) {
@@ -26,15 +24,6 @@ namespace Deveel.Data.Net {
 		
 		public TcpAdminService(IServiceFactory serviceFactory, TcpServiceAddress address, string password)
 			: base(address, new TcpServiceConnector(password), serviceFactory) {
-		}
-
-		public IMessageSerializer MessageSerializer {
-			get {
-				if (serializer == null)
-					serializer = new BinaryRpcMessageSerializer();
-				return serializer;
-			}
-			set { serializer = value; }
 		}
 		
 		public bool IsListening {
@@ -56,8 +45,8 @@ namespace Deveel.Data.Net {
 						// The socket to run the service,
 						s = listener.AcceptSocket();
 						s.NoDelay = true;
-						int cur_send_buf_size = s.SendBufferSize;
-						if (cur_send_buf_size < 256 * 1024) {
+						int curSendBufSize = s.SendBufferSize;
+						if (curSendBufSize < 256 * 1024) {
 							s.SendBufferSize = 256 * 1024;
 						}
 
@@ -153,10 +142,8 @@ namespace Deveel.Data.Net {
 				random = new Random();
 			}
 
-			private static ResponseMessage NoServiceError(RequestMessage request) {
-				ResponseMessage response = request.CreateResponse();
-				response.Arguments.Add(new MessageError(new Exception("The service requested is not being run on the instance")));
-				return response;
+			private static IEnumerable<Message> NoServiceError() {
+				return new Message(new MessageError(new Exception("The service requested is not being run on the instance"))).AsStream();
 			}
 
 			public void Close() {
@@ -178,6 +165,7 @@ namespace Deveel.Data.Net {
 					BinaryReader reader = new BinaryReader(new BufferedStream(socketStream, 4000), Encoding.Unicode);
 					BinaryWriter writer = new BinaryWriter(new BufferedStream(socketStream, 4000), Encoding.Unicode);
 
+					/*
 					// Write a random long and see if it gets pinged back from the client,
 					long rv = (long)random.NextDouble();
 					writer.Write(rv);
@@ -202,6 +190,10 @@ namespace Deveel.Data.Net {
 					string password = ((TcpServiceConnector) service.Connector).Password;
 					if (!passwordCode.Equals(password))
 						return;
+					*/
+
+					if (!service.Connector.Authenticator.Authenticate(AuthenticationPoint.Service, socketStream))
+						return;
 
 					// The main command dispatch loop for this connection,
 					while (open) {
@@ -215,11 +207,11 @@ namespace Deveel.Data.Net {
 
 						// Read the message stream object
 						IMessageSerializer serializer = service.MessageSerializer;
-						RequestMessage requestMessage = (RequestMessage) serializer.Deserialize(reader.BaseStream, MessageType.Request);
+						IEnumerable<Message> requestMessage = serializer.Deserialize(reader.BaseStream);
 
 						service.OnClientRequest(service.ServiceType, remoteEndPoint, requestMessage);
 
-						Message responseMessage;
+						IEnumerable<Message> responseMessage;
 
 						// For analytics
 						DateTime benchmarkStart = DateTime.Now;
@@ -231,7 +223,7 @@ namespace Deveel.Data.Net {
 							// For a block service in this machine
 						else if (destination == 'b') {
 							if (service.Block == null) {
-								responseMessage = NoServiceError(requestMessage);
+								responseMessage = NoServiceError();
 							} else {
 								responseMessage = service.Block.Processor.Process(requestMessage);
 							}
@@ -240,7 +232,7 @@ namespace Deveel.Data.Net {
 							// For a manager service in this machine
 						else if (destination == 'm') {
 							if (service.Manager == null) {
-								responseMessage = NoServiceError(requestMessage);
+								responseMessage = NoServiceError();
 							} else {
 								responseMessage = service.Manager.Processor.Process(requestMessage);
 							}
@@ -248,7 +240,7 @@ namespace Deveel.Data.Net {
 							// For a root service in this machine
 						else if (destination == 'r') {
 							if (service.Root == null) {
-								responseMessage = NoServiceError(requestMessage);
+								responseMessage = NoServiceError();
 							} else {
 								responseMessage = service.Root.Processor.Process(requestMessage);
 							}

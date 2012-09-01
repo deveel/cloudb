@@ -1,6 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 
-using Deveel.Data.Net.Client;
+using Deveel.Data.Net.Messaging;
 
 namespace Deveel.Data.Net {
 	public sealed class ClientConnection {
@@ -11,7 +12,7 @@ namespace Deveel.Data.Net {
 		private DateTime ended;
 		private bool connected;
 
-		private Message currentRequest;
+		private IEnumerable<Message> currentRequest;
 		private DateTime currentRequestTime;
 		private ServiceType currentServiceType;
 
@@ -88,7 +89,7 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		internal void Request(ServiceType serviceType, Message request) {
+		internal void Request(ServiceType serviceType, IEnumerable<Message> request) {
 			currentRequest = request;
 			currentRequestTime = DateTime.Now;
 			currentServiceType = serviceType;
@@ -99,7 +100,7 @@ namespace Deveel.Data.Net {
 			service.OnClientRequest(args);
 		}
 
-		internal void Response(Message response) {
+		internal void Response(IEnumerable<Message> response) {
 			ClientCommandEventArgs args = new ClientCommandEventArgs(LocalEndPoint, remoteEndPoint, currentServiceType,
 			                                                         currentRequest, currentRequestTime, response, DateTime.Now);
 

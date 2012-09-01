@@ -15,7 +15,7 @@ namespace Deveel.Data {
 
 		public abstract int Capacity { get; }
 
-		public abstract long Id { get; }
+		public abstract NodeId Id { get; }
 
 		public abstract long MemoryAmount { get; }
 
