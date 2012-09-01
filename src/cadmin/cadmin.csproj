@@ -97,6 +97,7 @@
     <Compile Include="Deveel.Data.Net\ConnectCommand.cs" />
     <Compile Include="Deveel.Data.Net\CreateCommand.cs" />
     <Compile Include="Deveel.Data.Net\DisconnectCommand.cs" />
+    <Compile Include="Deveel.Data.Net\FixCommand.cs" />
     <Compile Include="Deveel.Data.Net\IBlockMapProcess.cs" />
     <Compile Include="Deveel.Data.Net\LocateCommand.cs" />
     <Compile Include="Deveel.Data.Net\MoveCommand.cs" />

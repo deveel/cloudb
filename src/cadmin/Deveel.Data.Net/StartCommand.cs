@@ -32,29 +32,26 @@ namespace Deveel.Data.Net {
 			//    assigned.
 			// 2. Only one manager server can exist.
 
-			MachineProfile current_manager = context.Network.ManagerServer;
-			if (!role.Equals("manager") && current_manager == null) {
+			MachineProfile[] currentManagers = context.Network.GetManagerServers();
+			if (!role.Equals("manager") && currentManagers.Length == 0) {
 				Error.WriteLine("Error: Can not assign block or root role when no manager is available on the network.");
-				return CommandResultCode.ExecutionFailed;
-			} else if (role.Equals("manager") && current_manager != null) {
-				Out.WriteLine("Error: Can not assign manager because manager role already assigned.");
 				return CommandResultCode.ExecutionFailed;
 			}
 
 			// Check if the machine already performing the role,
-			bool already_doing_it = false;
+			bool alreadyDoingIt;
 			if (role.Equals("block")) {
-				already_doing_it = p.IsBlock;
+				alreadyDoingIt = p.IsBlock;
 			} else if (role.Equals("manager")) {
-				already_doing_it = p.IsManager;
+				alreadyDoingIt = p.IsManager;
 			} else if (role.Equals("root")) {
-				already_doing_it = p.IsRoot;
+				alreadyDoingIt = p.IsRoot;
 			} else {
 				Error.WriteLine("Unknown role " + role);
 				return CommandResultCode.SyntaxError;
 			}
 
-			if (already_doing_it) {
+			if (alreadyDoingIt) {
 				Error.WriteLine("Error: The machine is already assigned to the " + role + " role.");
 				return CommandResultCode.ExecutionFailed;
 			}
@@ -65,6 +62,7 @@ namespace Deveel.Data.Net {
 				context.Network.RegisterBlock(address);
 			} else if (role.Equals("manager")) {
 				context.Network.StartService(address, ServiceType.Manager);
+				context.Network.RegisterManager(address);
 			} else if (role.Equals("root")) {
 				context.Network.StartService(address, ServiceType.Root);
 				context.Network.RegisterRoot(address);

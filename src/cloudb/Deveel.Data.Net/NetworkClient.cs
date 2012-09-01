@@ -4,10 +4,11 @@ using System.IO;
 using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
-	public abstract class NetworkClient {
-		private IServiceConnector networkConnector;
+	public class NetworkClient {
+		private IServiceConnector connector;
 		private ServiceStatusTracker serviceTracker;
 		private readonly IServiceAddress[] managerAddresses;
+		private bool connected;
 
 		private NetworkTreeSystem treeSystem;
 		private readonly INetworkCache localNetworkCache;
@@ -15,16 +16,24 @@ namespace Deveel.Data.Net {
 
 		private long maximumTransactionNodeCacheHeapSize;
 
-		internal NetworkClient(IServiceAddress[] managerServers, IServiceConnector connector)
-			: this(managerServers, connector, MachineState.GetCacheForManager(managerServers)) {
+		public NetworkClient(IServiceAddress[] managerAddresses, IServiceConnector connector)
+			: this(managerAddresses, connector, MachineState.GetCacheForManager(managerAddresses)) {
 		}
 
-		internal NetworkClient(IServiceAddress[] managerServers, IServiceConnector connector, INetworkCache lnc) {
-			this.networkConnector = connector;
-			this.managerAddresses = managerServers;
+		public NetworkClient(IServiceAddress managerAddress, IServiceConnector connector)
+			: this(new IServiceAddress[] { managerAddress}, connector) {
+		}
+
+		public NetworkClient(IServiceAddress[] managerAddresses, IServiceConnector connector, INetworkCache lnc) {
+			this.connector = connector;
+			this.managerAddresses = managerAddresses;
 			this.localNetworkCache = lnc;
 			// Default values,
 			MaxTransactionNodeCacheHeapSize = 14*1024*1024;
+		}
+
+		public NetworkClient(IServiceAddress managerAddress, ServiceConnector connector, INetworkCache networkCache)
+			: this(new IServiceAddress[] { managerAddress}, connector, networkCache) {
 		}
 
 		public long MaxTransactionNodeCacheHeapSize {
@@ -32,28 +41,34 @@ namespace Deveel.Data.Net {
 			set { maximumTransactionNodeCacheHeapSize = value; }
 		}
 
-		internal void ConnectNetwork() {
-			if (networkConnector != null) {
-				throw new ApplicationException("Already connected");
-			}
-
-			serviceTracker = new ServiceStatusTracker(networkConnector);
-			treeSystem = new NetworkTreeSystem(networkConnector, managerAddresses, localNetworkCache, serviceTracker);
-			treeSystem.NodeHeapMaxSize = MaxTransactionNodeCacheHeapSize;
+		public bool IsConnected {
+			get { return connected; }
 		}
 
-		internal void Disconnect() {
-			if (networkConnector != null) {
+		public void ConnectNetwork() {
+			if (IsConnected)
+				throw new ApplicationException("Already connected");
+
+			serviceTracker = new ServiceStatusTracker(connector);
+			treeSystem = new NetworkTreeSystem(connector, managerAddresses, localNetworkCache, serviceTracker);
+			treeSystem.NodeHeapMaxSize = MaxTransactionNodeCacheHeapSize;
+			connected = true;
+		}
+
+		public void Disconnect() {
+			if (connector != null) {
 				try {
-					networkConnector.Close();
+					connector.Close();
 				} finally {
 					try {
 						serviceTracker.Stop();
 					} finally {
-						networkConnector = null;
+						connector = null;
 						serviceTracker = null;
 						treeSystem = null;
 					}
+
+					connected = false;
 				}
 			}
 		}

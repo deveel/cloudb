@@ -297,14 +297,16 @@ namespace Deveel.Data.Net {
 								long td = 0 /* TODO: GetTotalSpace(service.basePath) */;
 								long fd = 0 /* TODO: GetUsableSpace(service.basePath)*/;
 
+								MachineRoles roles = MachineRoles.None;
 								Message message = new Message();
-								if (service.block == null) {
-									message.Arguments.Add("block_server=no");
-								} else {
-									message.Arguments.Add(service.block.BlockCount.ToString());
-								}
-								message.Arguments.Add("manager_server=" + (service.manager == null ? "no" : "yes"));
-								message.Arguments.Add("root_server=" + (service.root == null ? "no" : "yes"));
+								if (service.block != null)
+									roles |= MachineRoles.Block;
+								if (service.manager != null)
+									roles |= MachineRoles.Manager;
+								if (service.root != null)
+									roles |= MachineRoles.Root;
+
+								message.Arguments.Add((byte) roles);
 								message.Arguments.Add(tm - fm);
 								message.Arguments.Add(tm);
 								message.Arguments.Add(td - fd);

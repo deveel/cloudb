@@ -43,11 +43,16 @@ namespace Deveel.Data.Net {
 			if (!BasePathWrapper.IsSupported)
 				throw new ApplicationException("Base path is not supported.");
 
-			MachineProfile manager = netProfile.ManagerServer;
-			if (manager == null)
+			MachineProfile[] managers = netProfile.GetManagerServers();
+			if (managers.Length == 0)
 				throw new ApplicationException();
 
-			NetworkClient client = new NetworkClient(manager.Address, netProfile.Connector);
+			IServiceAddress[] managerAddresses = new IServiceAddress[managers.Length];
+			for (int i = 0; i < managers.Length; i++) {
+				managerAddresses[i] = managers[i].ServiceAddress;
+			}
+
+			NetworkClient client = new NetworkClient(managerAddresses, netProfile.Connector);
 			BasePathWrapper wrapper = new BasePathWrapper();
 			object session = wrapper.CreateDbSession(client, path);
 
@@ -71,11 +76,16 @@ namespace Deveel.Data.Net {
 			if (!BasePathWrapper.IsSupported)
 				throw new ApplicationException("Base path is not supported.");
 
-			MachineProfile manager = netProfile.ManagerServer;
-			if (manager == null)
+			MachineProfile[] managers = netProfile.GetManagerServers();
+			if (managers.Length == 0)
 				throw new ApplicationException();
 
-			NetworkClient client = new NetworkClient(manager.Address, netProfile.Connector);
+			IServiceAddress[] managerAddresses = new IServiceAddress[managers.Length];
+			for (int i = 0; i < managers.Length; i++) {
+				managerAddresses[i] = managers[i].ServiceAddress;
+			}
+
+			NetworkClient client = new NetworkClient(managerAddresses, netProfile.Connector);
 			BasePathWrapper wrapper = new BasePathWrapper();
 			object session = wrapper.CreateDbSession(client, path);
 

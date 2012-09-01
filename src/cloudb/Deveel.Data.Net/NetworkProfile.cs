@@ -2,9 +2,10 @@
 using System.Collections.Generic;
 
 using Deveel.Data.Net.Messaging;
+using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
-	public partial class NetworkProfile {
+	public class NetworkProfile {
 		private NetworkConfigSource networkConfig;
 		private readonly IServiceConnector networkConnector;
 
@@ -14,7 +15,7 @@ namespace Deveel.Data.Net {
 			networkConnector = connector;
 		}
 
-		internal static bool IsConnectionFailure(Message m) {
+		private static bool IsConnectionFailure(Message m) {
 			MessageError et = m.Error;
 			// If it's a connect exception,
 			string exType = et.ErrorType;
@@ -43,6 +44,10 @@ namespace Deveel.Data.Net {
 			set { networkConfig = value; }
 		}
 
+		public IServiceConnector Connector {
+			get { return networkConnector; }
+		}
+
 		private List<MachineProfile> InspectNetwork() {
 			// If cached,
 			if (machineProfiles != null) {
@@ -61,7 +66,7 @@ namespace Deveel.Data.Net {
 				MachineProfile machineProfile = new MachineProfile(server);
 
 				// Request a report from the administration role on the machine,
-				IMessageProcessor mp = networkConnector.Connect(server, ServiceType.Admin);
+				IMessageProcessor mp = Connector.Connect(server, ServiceType.Admin);
 				Message message = new Message("report");
 				IEnumerable<Message> response = mp.Process(message.AsStream());
 				Message lastM = null;
@@ -74,22 +79,15 @@ namespace Deveel.Data.Net {
 					machineProfile.ErrorMessage = lastM.ErrorMessage;
 				} else {
 					// Get the message replies,
-					String b = (String) lastM.Arguments[0].Value;
-					bool isBlock = !b.Equals("block_server=no");
-					String m = (String) lastM.Arguments[1].Value;
-					bool isManager = !m.Equals("manager_server=no");
-					String r = (String) lastM.Arguments[2].Value;
-					bool isRoot = !r.Equals("root_server=no");
+					MachineRoles roles = (MachineRoles)(byte) lastM.Arguments[0].Value;
 
-					long usedMem = (long) lastM.Arguments[3].Value;
-					long totalMem = (long) lastM.Arguments[4].Value;
-					long usedDisk = (long) lastM.Arguments[5].Value;
-					long totalDisk = (long) lastM.Arguments[6].Value;
+					long usedMem = (long) lastM.Arguments[1].Value;
+					long totalMem = (long) lastM.Arguments[2].Value;
+					long usedDisk = (long) lastM.Arguments[3].Value;
+					long totalDisk = (long) lastM.Arguments[4].Value;
 
 					// Populate the lists,
-					machineProfile.IsBlock = isBlock;
-					machineProfile.IsRoot = isRoot;
-					machineProfile.IsManager = isManager;
+					machineProfile.Roles = roles;
 
 					machineProfile.MemoryUsed = usedMem;
 					machineProfile.MemoryTotal = totalMem;
@@ -108,7 +106,7 @@ namespace Deveel.Data.Net {
 		}
 
 		private Message Command(IServiceAddress machine, ServiceType serviceType, MessageStream message) {
-			IMessageProcessor proc = networkConnector.Connect(machine, serviceType);
+			IMessageProcessor proc = Connector.Connect(machine, serviceType);
 			IEnumerable<Message> msgIn = proc.Process(message);
 			Message lastM = null;
 			foreach (Message m in msgIn) {
@@ -180,7 +178,7 @@ namespace Deveel.Data.Net {
 
 			for (int i = 0; i < roots.Length; ++i) {
 				IServiceAddress rootServer = roots[i];
-				IMessageProcessor proc = networkConnector.Connect(rootServer, ServiceType.Root);
+				IMessageProcessor proc = Connector.Connect(rootServer, ServiceType.Root);
 				responses[i] = proc.Process(message.AsStream());
 			}
 
@@ -210,7 +208,7 @@ namespace Deveel.Data.Net {
 			// Send the command to all the root servers,
 			Message lastError = null;
 
-			IMessageProcessor proc = networkConnector.Connect(root, ServiceType.Root);
+			IMessageProcessor proc = Connector.Connect(root, ServiceType.Root);
 			IEnumerable<Message> response = proc.Process(message.AsStream());
 
 			int successCount = 0;
@@ -254,12 +252,12 @@ namespace Deveel.Data.Net {
 			// Success,
 
 			// Update the network profile,
-			if (roleType == ServiceType.Manager) {
-				machine.IsManager = status.Equals("start");
-			} else if (roleType == ServiceType.Root) {
-				machine.IsRoot = status.Equals("start");
-			} else if (roleType == ServiceType.Block) {
-				machine.IsBlock = status.Equals("start");
+			if (roleType == ServiceType.Manager && status.Equals("start")) {
+				machine.Roles |= MachineRoles.Manager;
+			} else if (roleType == ServiceType.Root && status.Equals("start")) {
+				machine.Roles |= MachineRoles.Root;
+			} else if (roleType == ServiceType.Block && status.Equals("start")) {
+				machine.Roles |= MachineRoles.Block;
 			}
 		}
 
@@ -527,7 +525,7 @@ namespace Deveel.Data.Net {
 			SendManagerCommand("removePathFromNetwork", pathName, rootServer);
 		}
 
-		public DataAddress[] GetHistoricalPathRoots(IServiceAddress root, String pathName, long timestamp, int maxCount) {
+		public DataAddress[] GetHistoricalPathRoots(IServiceAddress root, String pathName, DateTime timestamp, int maxCount) {
 			InspectNetwork();
 
 			// Check machine is in the schema,
@@ -537,7 +535,7 @@ namespace Deveel.Data.Net {
 				throw new NetworkAdminException("Machine '" + root + "' is not a root");
 
 			// Perform the command,
-			Message message = new Message("getPathHistorical", pathName, timestamp, timestamp);
+			Message message = new Message("getPathHistorical", pathName, DateTimeUtil.GetMillis(timestamp), DateTimeUtil.GetMillis(timestamp));
 
 			Message m = Command(root, ServiceType.Root, message.AsStream());
 			if (m.HasError) {

@@ -16,17 +16,17 @@ namespace Deveel.Data.Net {
 			// Refresh
 			context.Network.Refresh();
 
-			MachineProfile manager = context.Network.ManagerServer;
-			if (manager == null)
+			MachineProfile[] manager = context.Network.GetManagerServers();
+			if (manager.Length == 0)
 				throw new ApplicationException("Error: Manager currently not available.");
 
 			// Generate a map of server guid value to MachineProfile for that machine
 			// node currently available.
-			MachineProfile[] blockServers = context.Network.BlockServers;
+			MachineProfile[] blockServers = context.Network.GetBlockServers();
 			long[] availableBlockGuids = new long[blockServers.Length];
 			Dictionary<long, MachineProfile> sguidToAddress = new Dictionary<long, MachineProfile>();
 			for (int i = 0; i < blockServers.Length; ++i) {
-				long serverGuid = context.Network.GetBlockGuid(blockServers[i].Address);
+				long serverGuid = context.Network.GetBlockGuid(blockServers[i].ServiceAddress);
 				availableBlockGuids[i] = serverGuid;
 				sguidToAddress[availableBlockGuids[i]] = blockServers[i];
 			}
@@ -47,7 +47,7 @@ namespace Deveel.Data.Net {
 			foreach (long serverGuid in serverGuids) {
 				MachineProfile block = sguidToAddress[serverGuid];
 				// Fetch the list of blocks for the server,
-				long[] blockIds = context.Network.GetBlockList(block.Address);
+				long[] blockIds = context.Network.GetBlockList(block.ServiceAddress);
 				foreach (long blockId in blockIds) {
 					// Build the association,
 					List<long> list = blockIdMap[blockId];
@@ -163,7 +163,7 @@ namespace Deveel.Data.Net {
 							// doesn't hold the record. The association that should be
 							// removed is 'block_id -> sguid'
 
-							command.Out.WriteLine("Removing block association: " + blockId + " -> " + sguid_to_address[sguid].Address);
+							command.Out.WriteLine("Removing block association: " + blockId + " -> " + sguid_to_address[sguid].ServiceAddress);
 							context.Network.RemoveBlockAssociation(blockId, sguid);
 
 						}
@@ -173,63 +173,63 @@ namespace Deveel.Data.Net {
 							// Manager doesn't have a block_id association that it should
 							// have. The association made is 'block_id -> sguid'
 
-							command.Out.WriteLine("Adding block association: " + blockId + " -> " + sguid_to_address[sguid].Address);
+							command.Out.WriteLine("Adding block association: " + blockId + " -> " + sguid_to_address[sguid].ServiceAddress);
 							context.Network.AddBlockAssociation(blockId, sguid);
 						}
 					}
 				}
 			}
 
-			public void Process(long block_id, IList<long> available_sguids_containing_block_id, long[] available_block_servers, long min_threshold, IDictionary<long, MachineProfile> sguid_to_address) {
-				int block_availability = available_sguids_containing_block_id.Count;
+			public void Process(long blockId, IList<long> availableSguidsContainingBlockId, long[] availableBlockServers, long minThreshold, IDictionary<long, MachineProfile> sguidToAddress) {
+				int blockAvailability = availableSguidsContainingBlockId.Count;
 				// If a block has 0 availability,
-				if (block_availability == 0) {
-					command.Error.WriteLine("ERROR: Block " + block_id + " currently has 0 availability!");
+				if (blockAvailability == 0) {
+					command.Error.WriteLine("ERROR: Block " + blockId + " currently has 0 availability!");
 					command.Error.WriteLine("  I can't fix this - A block server containing a copy of this block needs to be added on the network.");
-				} else if (block_availability < min_threshold) {
+				} else if (blockAvailability < minThreshold) {
 					// The set of all block servers we can copy the block to,
-					List<long> dest_block_servers = new List<long>(available_block_servers.Length);
+					List<long> destBlockServers = new List<long>(availableBlockServers.Length);
 					// Of all the block servers, find the list of servers that don't
 					// contain the block_id
-					foreach (long available_server in available_block_servers) {
-						bool use_server = true;
-						foreach (long server in available_sguids_containing_block_id) {
-							if (server == available_server) {
-								use_server = false;
+					foreach (long availableServer in availableBlockServers) {
+						bool useServer = true;
+						foreach (long server in availableSguidsContainingBlockId) {
+							if (server == availableServer) {
+								useServer = false;
 								break;
 							}
 						}
-						if (use_server) {
-							dest_block_servers.Add(available_server);
+						if (useServer) {
+							destBlockServers.Add(availableServer);
 						}
 					}
 
-					long source_sguid = available_sguids_containing_block_id[0];
-					MachineProfile source_server = sguid_to_address[source_sguid];
+					long sourceSguid = availableSguidsContainingBlockId[0];
+					MachineProfile sourceServer = sguidToAddress[sourceSguid];
 
 					// Pick servers to bring the availability of the block to the ideal
 					// value of 3.
 
-					int ideal_count = (int)(min_threshold - block_availability);
-					for (int i = 0; i < ideal_count; ++i) {
-						int lid = r.Next(dest_block_servers.Count);
-						long dest_server_sguid = dest_block_servers[lid];
-						dest_block_servers.Remove(lid);
-						MachineProfile dest_server = sguid_to_address[dest_server_sguid];
+					int idealCount = (int)(minThreshold - blockAvailability);
+					for (int i = 0; i < idealCount; ++i) {
+						int lid = r.Next(destBlockServers.Count);
+						long destServerSguid = destBlockServers[lid];
+						destBlockServers.Remove(lid);
+						MachineProfile destServer = sguidToAddress[destServerSguid];
 
 						command.Out.Write("Copying ");
-						command.Out.Write(block_id);
+						command.Out.Write(blockId);
 						command.Out.Write(" from ");
-						command.Out.Write(source_server.Address);
+						command.Out.Write(sourceServer.ServiceAddress);
 						command.Out.Write(" to ");
-						command.Out.Write(dest_server.Address);
+						command.Out.Write(destServer.ServiceAddress);
 						command.Out.WriteLine(".");
 
 						// Send the command to copy,
-						context.Network.ProcessSendBlock(block_id, source_server.Address, dest_server.Address, dest_server_sguid);
+						context.Network.ProcessSendBlock(blockId, sourceServer.ServiceAddress, destServer.ServiceAddress, destServerSguid);
 					}
 
-					command.Out.WriteLine("block " + block_id + " can be copied to: " + dest_block_servers);
+					command.Out.WriteLine("block " + blockId + " can be copied to: " + destBlockServers);
 				}
 			}
 		}

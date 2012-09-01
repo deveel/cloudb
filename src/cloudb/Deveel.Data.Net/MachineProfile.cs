@@ -3,11 +3,8 @@
 namespace Deveel.Data.Net {
 	public class MachineProfile {
 		private readonly IServiceAddress address;
-
-		private bool isBlock;
-		private bool isRoot;
-		private bool isManager;
-
+		private MachineRoles roles;
+		
 		private long memoryUsed;
 		private long memoryTotal;
 		private long diskUsed;
@@ -23,23 +20,25 @@ namespace Deveel.Data.Net {
 			get { return address; }
 		}
 
+		public MachineRoles Roles {
+			get { return roles; }
+			internal set { roles = value; }
+		}
+
 		public bool IsBlock {
-			get { return isBlock; }
-			internal set { isBlock = value; }
+			get { return (roles & MachineRoles.Block) != 0; }
 		}
 
 		public bool IsRoot {
-			get { return isRoot; }
-			internal set { isRoot = value; }
+			get { return (roles & MachineRoles.Root) != 0; }
 		}
 
 		public bool IsManager {
-			get { return isManager; }
-			internal set { isManager = value; }
+			get { return (roles & MachineRoles.Manager) != 0; }
 		}
 
 		internal bool IsNotAssigned {
-			get { return !isBlock && !isManager && !isRoot; }
+			get { return roles == MachineRoles.None; }
 		}
 
 		public bool IsError {
@@ -73,11 +72,11 @@ namespace Deveel.Data.Net {
 
 		public bool IsInRole(ServiceType serviceType) {
 			if (serviceType == ServiceType.Manager)
-				return isManager;
+				return IsManager;
 			if (serviceType == ServiceType.Root)
-				return isRoot;
+				return IsRoot;
 			if (serviceType == ServiceType.Block)
-				return isBlock;
+				return IsBlock;
 
 			return false;
 		}

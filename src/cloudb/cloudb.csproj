@@ -137,7 +137,7 @@
     <Compile Include="Deveel.Data.Net\ServiceMessageQueue.cs" />
     <Compile Include="Deveel.Data.Net\ServiceNotConnectedException.cs" />
     <Compile Include="Deveel.Data.Net\ServiceProtocols.cs" />
-    <Compile Include="Deveel.Data.Net\ServiceRoles.cs" />
+    <Compile Include="Deveel.Data.Net\MachineRoles.cs" />
     <Compile Include="Deveel.Data.Net\ServiceState.cs" />
     <Compile Include="Deveel.Data.Net\ServiceStatus.cs" />
     <Compile Include="Deveel.Data.Net\ServiceStatusEventArgs.cs" />

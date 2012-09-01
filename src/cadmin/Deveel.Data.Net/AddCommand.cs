@@ -23,31 +23,81 @@ namespace Deveel.Data.Net {
 		public override bool RequiresContext {
 			get { return true; }
 		}
-		
-		private CommandResultCode AddPath(NetworkContext context, string pathType, string pathName, string rootAddress) {
-			IServiceAddress address = ServiceAddresses.ParseString(rootAddress);
-			Out.WriteLine("Adding path " + pathType + " " + pathName + " to root " + address.ToString());
 
-			MachineProfile p = context.Network.GetMachineProfile(address);
-			if (p == null) {
-				Error.WriteLine("error: Machine was not found in the network schema.");
-				return CommandResultCode.ExecutionFailed;
+		private CommandResultCode AddPath(NetworkContext context, string pathType, string pathName, string rootAddress) {
+			IServiceAddress[] addresses;
+
+			try {
+				addresses = ParseMachineAddressList(rootAddress);
+			} catch (FormatException) {
+				return CommandResultCode.SyntaxError;
 			}
-			if (!p.IsRoot) {
-				Error.WriteLine("error: Given machine is not a root.");
-				return CommandResultCode.ExecutionFailed;
+
+			// Check no duplicates in the list,
+			bool duplicateFound = false;
+			for (int i = 0; i < addresses.Length; ++i) {
+				for (int n = i + 1; n < addresses.Length; ++n) {
+					if (addresses[i].Equals(addresses[n])) {
+						duplicateFound = true;
+					}
+				}
+			}
+
+			if (duplicateFound) {
+				Out.WriteLine("Error: Duplicate root server in definition");
+				return CommandResultCode.SyntaxError;
+			}
+
+
+			Out.WriteLine("Adding path " + pathType + " " + pathName + ".");
+			Out.Write("Path Info ");
+			Out.Write("Leader: " + addresses[0]);
+			Out.Write(" Replicas: ");
+			for (int i = 1; i < addresses.Length; ++i) {
+				Out.Write(addresses[i]);
+				Out.Write(" ");
+			}
+			Out.WriteLine();
+			Out.Flush();
+
+			for (int i = 0; i < addresses.Length; ++i) {
+				MachineProfile p = context.Network.GetMachineProfile(addresses[i]);
+				if (p == null) {
+					Out.WriteLine("Error: Machine was not found in the network schema.");
+					return CommandResultCode.ExecutionFailed;
+				}
+				if (!p.IsRoot) {
+					Out.WriteLine("Error: Given machine is not a root.");
+					return CommandResultCode.ExecutionFailed;
+				}
 			}
 
 			// Add the path,
 			try {
-				context.Network.AddPath(address, pathName, pathType);
+				context.Network.AddPathToNetwork(pathName, pathType, addresses[0], addresses);
 			} catch (Exception e) {
 				Error.WriteLine("cannot add the path: " + e.Message);
 				return CommandResultCode.ExecutionFailed;
 			}
-			
+
 			Out.WriteLine("done.");
 			return CommandResultCode.Success;
+		}
+
+		private IServiceAddress[] ParseMachineAddressList(string rootAddress) {
+			String[] machines = rootAddress.Split(',');
+
+			try {
+				IServiceAddress[] services = new IServiceAddress[machines.Length];
+				for (int i = 0; i < machines.Length; ++i) {
+					services[i] = ServiceAddresses.ParseString(machines[i].Trim());
+				}
+				return services;
+			} catch (FormatException e) {
+				Out.WriteLine("Error parsing machine address: " + e.Message);
+				throw;
+			}
+
 		}
 
 		private CommandResultCode AddValue(NetworkContext context, CommandArguments args) {

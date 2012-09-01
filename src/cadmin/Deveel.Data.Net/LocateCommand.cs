@@ -14,7 +14,28 @@ namespace Deveel.Data.Net {
 		}
 
 		public override CommandResultCode Execute(IExecutionContext context, CommandArguments args) {
-			throw new NotImplementedException();
+			if (!args.MoveNext())
+				return CommandResultCode.SyntaxError;
+			if (!args.Current.Equals("path"))
+				return CommandResultCode.SyntaxError;
+			if (!args.MoveNext())
+				return CommandResultCode.SyntaxError;
+
+			string pathName = args.Current;
+
+			NetworkContext networkContext = (NetworkContext) context;
+			PathInfo pathInfo = networkContext.Network.GetPathInfo(pathName);
+			if (pathInfo == null) {
+				Out.WriteLine("The path '" + pathName + "' was not found.");
+				return CommandResultCode.ExecutionFailed;
+			}
+
+			IServiceAddress address = pathInfo.RootLeader;
+
+			Out.Write("Root " + address);
+			Out.WriteLine(" is managing path " + pathName);
+			Out.Flush();
+			return CommandResultCode.Success;
 		}
 
 		public override string Name {

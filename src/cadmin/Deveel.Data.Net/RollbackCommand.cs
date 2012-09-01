@@ -17,10 +17,14 @@ namespace Deveel.Data.Net {
 			get { return true; }
 		}
 
-		private void RollbackPathToTime(NetworkContext context, string pathName, DateTime time) {
-			IServiceAddress address = context.Network.GetRoot(pathName);
-			if (address == null)
-				throw new ApplicationException("path '" + pathName + "' was not found.");
+		private CommandResultCode RollbackPathToTime(NetworkContext context, string pathName, DateTime time) {
+			PathInfo pathInfo = context.Network.GetPathInfo(pathName);
+			if (pathInfo == null) {
+				Out.WriteLine("The path '" + pathName + "' was not found.");
+				return CommandResultCode.ExecutionFailed;
+			}
+
+			IServiceAddress address = pathInfo.RootLeader;
 
 			Out.WriteLine("Reverting path " + pathName + " to " + time);
 
@@ -28,12 +32,12 @@ namespace Deveel.Data.Net {
 
 			if (dataAddresses.Length == 0) {
 				Out.WriteLine("no historical roots found.");
-				return;
+				return CommandResultCode.ExecutionFailed;
 			}
 
 			Out.WriteLine();
 			Out.WriteLine("found the following roots:");
-			foreach(DataAddress da in dataAddresses) {
+			foreach (DataAddress da in dataAddresses) {
 				Out.WriteLine("  " + da);
 			}
 
@@ -48,23 +52,25 @@ namespace Deveel.Data.Net {
 			Out.WriteLine(" state.");
 			Out.WriteLine();
 
-			Question question = new Question("If you are sure you want to continue type YES (case-sensitive) ", new object[] { "YES", "no" }, 1);
+			Question question = new Question("If you are sure you want to continue type YES (case-sensitive) ",
+			                                 new object[] {"YES", "no"}, 1);
 			Answer answer = question.Ask(Application, false);
 			if (answer.SelectedOption != 0)
-				return;
+				return CommandResultCode.ExecutionFailed;
 
 			Out.WriteLine();
 
-			context.Network.PublishPath(address, pathName, dataAddresses[0]);
+			context.Network.SetPathRoot(address, pathName, dataAddresses[0]);
 			Out.WriteLine("done.");
+			return CommandResultCode.Success;
 		}
 
-		private void Rollback(NetworkContext networkContext, string pathName, string time, bool hours) {
+		private CommandResultCode Rollback(NetworkContext networkContext, string pathName, string time, bool hours) {
 			if (hours) {
 				int numHours;
 				if (!Int32.TryParse(time, out numHours)) {
 					Error.WriteLine("must be a valid number of hours.");
-					throw new FormatException();
+					return CommandResultCode.SyntaxError;
 				}
 
 				Out.WriteLine("reverting " + time + " hours.");
@@ -76,15 +82,18 @@ namespace Deveel.Data.Net {
 				try {
 					DateTime date = DateTime.Parse(time);
 
-					RollbackPathToTime(networkContext, pathName, date);
+					return RollbackPathToTime(networkContext, pathName, date);
 				} catch (FormatException) {
 					Error.Write("unable to parse timestamp '");
 					Error.Write(time);
 					Error.Write("': ");
 					Error.Write("must be formatted in one of the standards formats ");
 					Error.WriteLine("(eg. 'feb 25, 2010 2:25am')");
+					return CommandResultCode.SyntaxError;
 				}
 			}
+
+			return CommandResultCode.ExecutionFailed;
 		}
 
 		public override CommandResultCode Execute(IExecutionContext context, CommandArguments args) {
@@ -118,14 +127,12 @@ namespace Deveel.Data.Net {
 			}
 
 			try {
-				Rollback(networkContext, pathName, time, hours);
+				return Rollback(networkContext, pathName, time, hours);
 			} catch(Exception) {
 				Error.WriteLine("unable to rollback the path to the given date.");
 				Error.WriteLine();
 				return CommandResultCode.ExecutionFailed;
 			}
-
-			return CommandResultCode.Success;
 		}
 	}
 }

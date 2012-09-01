@@ -16,34 +16,37 @@ namespace Deveel.Data.Net {
 		public override string[] Synopsis {
 			get { return new string[] { "remove path <path-name> [ from <root> ]" }; }
 		}
-		
-		private CommandResultCode RemovePath(NetworkContext context, string pathName, String rootAddress) {
+
+		private CommandResultCode RemovePath(NetworkContext context, string pathName, string rootAddress) {
 			IServiceAddress address;
+
 			// If machine is null, we need to find the machine the path is on,
-			if (String.IsNullOrEmpty(rootAddress)) {
-				address = context.Network.GetRoot(pathName);
-				if (address == null) {
-					Error.WriteLine("error: unable to find path " + pathName);
+			if (rootAddress == null) {
+				PathInfo pathInfo = context.Network.GetPathInfo(pathName);
+				if (pathInfo == null) {
+					Out.WriteLine("The path '" + pathName + "' was not found.");
 					return CommandResultCode.ExecutionFailed;
 				}
+				address = pathInfo.RootLeader;
 			} else {
 				address = ServiceAddresses.ParseString(rootAddress);
 			}
-			
-			Out.WriteLine("removing path " + pathName + " from root " + address.ToString());
+
+			Out.WriteLine("Removing path " + pathName + " from root " + address);
+			Out.Flush();
 
 			MachineProfile p = context.Network.GetMachineProfile(address);
 			if (p == null) {
-				Error.WriteLine("error: machine was not found in the network schema.");
+				Out.WriteLine("Error: Machine was not found in the network schema.");
 				return CommandResultCode.ExecutionFailed;
 			}
 			if (!p.IsRoot) {
-				Error.WriteLine("error: given machine is not a root.");
+				Out.WriteLine("Error: Given machine is not a root.");
 				return CommandResultCode.ExecutionFailed;
 			}
 
 			// Remove the path,
-			context.Network.RemovePath(address, pathName);
+			context.Network.RemovePathFromNetwork(pathName, address);
 			Out.WriteLine("done.");
 			return CommandResultCode.Success;
 		}

@@ -145,7 +145,9 @@ namespace Deveel.Data.Net {
 					Out.WriteLine();
 				}
 				
-				connector = new HttpServiceConnector(userName, password);
+				// TODO: connector = new HttpServiceConnector(userName, password);
+				Out.WriteLine("Not supported yet.");
+				return CommandResultCode.ExecutionFailed;
 			} else {
 				return CommandResultCode.SyntaxError;
 			}
@@ -155,7 +157,8 @@ namespace Deveel.Data.Net {
 			if (format == "binary") {
 				serializer = new BinaryRpcMessageSerializer();
 			} else if (format == "xml") {
-				serializer = new XmlRpcMessageSerializer();
+				//TODO: serializer = new XmlRpcMessageSerializer();
+				return CommandResultCode.ExecutionFailed;
 			} else if (format == "json") {
 				if (JsonRpcMessageSerializer == null) {
 					Error.WriteLine("JSON serializer was not installed.");
@@ -253,14 +256,16 @@ namespace Deveel.Data.Net {
 					throw new ArgumentException("User name not specified. for HTTP connection.");
 				if (String.IsNullOrEmpty(password))
 					throw new ArgumentException("Password not specofoed for HTTP connection.");
-				connector = new HttpServiceConnector(user, password);
+				//TODO: connector = new HttpServiceConnector(user, password);
+				throw new NotSupportedException("HTTP not supported yet.");
 			} else {
 				throw new ArgumentException("Invalid protocol '" + protocol + "'.");
 			}
 
 			IMessageSerializer serializer;
 			if (format.Equals("xml", StringComparison.InvariantCultureIgnoreCase)) {
-				serializer = new XmlRpcMessageSerializer();
+				//TODO: serializer = new XmlRpcMessageSerializer();
+				throw new NotSupportedException("XML format not supported yet.");
 			} else if (format.Equals("binary", StringComparison.InvariantCultureIgnoreCase)) {
 				serializer = new BinaryRpcMessageSerializer();
 			} else if (format.Equals("json", StringComparison.InvariantCultureIgnoreCase)) {
