@@ -6,21 +6,21 @@ using Deveel.Data.Net.Messaging;
 
 namespace Deveel.Data.Net {
 	public sealed class FakeAdminService : AdminService {		
-		public FakeAdminService(FakeServiceConnector connector, NetworkStoreType storeType)
+		public FakeAdminService(FakeServiceConnector connector, StoreType storeType)
 			: base(FakeServiceAddress.Local, connector, new FakeServiceFactory(storeType)) {
 		}
 		
 		public FakeAdminService(FakeServiceConnector connector)
-			: this(connector, NetworkStoreType.Memory) {
+			: this(connector, StoreType.Memory) {
 		}
 		
-		public FakeAdminService(NetworkStoreType storeType)
+		public FakeAdminService(StoreType storeType)
 			: this(null, storeType) {
 			Connector = new FakeServiceConnector(ProcessCallback);
 		}
 
 		public FakeAdminService()
-			: this(NetworkStoreType.Memory) {
+			: this(StoreType.Memory) {
 		}
 		
 		internal IEnumerable<Message> ProcessCallback(ServiceType serviceType, IEnumerable<Message> inputStream) {
@@ -40,14 +40,14 @@ namespace Deveel.Data.Net {
 
 		private class FakeServiceFactory : IServiceFactory {
 			private IServiceFactory factory;
-			private readonly NetworkStoreType storeType;
+			private readonly StoreType storeType;
 
-			public FakeServiceFactory(NetworkStoreType storeType) {
+			public FakeServiceFactory(StoreType storeType) {
 				this.storeType = storeType;
 			}
 
 			public void Init(AdminService adminService) {
-				if (storeType == NetworkStoreType.FileSystem) {
+				if (storeType == StoreType.FileSystem) {
 					ConfigSource config = adminService.Config;
 					string basePath = config.GetString("node_directory", "./base");
 					factory = new FileSystemServiceFactory(basePath);

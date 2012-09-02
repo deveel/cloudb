@@ -12,12 +12,12 @@ namespace Deveel.Data.Net {
 	public abstract class NetworkTestBase {
 		private NetworkProfile networkProfile;
 		private AdminService adminService;
-		private readonly NetworkStoreType storeType;
+		private readonly StoreType storeType;
 		private string path;
 
 		private static readonly AutoResetEvent SetupEvent = new AutoResetEvent(true);
 
-		protected NetworkTestBase(NetworkStoreType storeType) {
+		protected NetworkTestBase(StoreType storeType) {
 			this.storeType = storeType;
 		}
 
@@ -40,7 +40,7 @@ namespace Deveel.Data.Net {
 		protected abstract IServiceAddress LocalAddress { get; }
 
 		protected virtual void Config(ConfigSource config) {
-			if (storeType == NetworkStoreType.FileSystem) {
+			if (storeType == StoreType.FileSystem) {
 				if (Directory.Exists(TestPath))
 					Directory.Delete(TestPath, true);
 
@@ -54,7 +54,7 @@ namespace Deveel.Data.Net {
 			Assert.IsInstanceOf(typeof(SimpleConsoleLogger), Logger.Network.BaseLogger);
 		}
 
-		protected abstract AdminService CreateAdminService(NetworkStoreType storeType);
+		protected abstract AdminService CreateAdminService(StoreType storeType);
 
 		protected abstract IServiceConnector CreateConnector();
 
@@ -86,7 +86,7 @@ namespace Deveel.Data.Net {
 				adminService.Stop();
 				adminService.Dispose();
 
-				if (storeType == NetworkStoreType.FileSystem &&
+				if (storeType == StoreType.FileSystem &&
 					Directory.Exists(TestPath))
 					Directory.Delete(TestPath, true);
 			} finally {

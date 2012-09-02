@@ -4,15 +4,15 @@ using System.Net;
 using NUnit.Framework;
 
 namespace Deveel.Data.Net {
-	[TestFixture(NetworkStoreType.FileSystem)]
-	[TestFixture(NetworkStoreType.Memory)]
+	[TestFixture(StoreType.FileSystem)]
+	[TestFixture(StoreType.Memory)]
 	public sealed class TcpNetworkTest : NetworkServiceTestBase {
 		private const string NetworkPassword = "123456";
 		
 		private static readonly TcpServiceAddress Local = new TcpServiceAddress(IPAddress.Loopback);
 
 		
-		public TcpNetworkTest(NetworkStoreType storeType)
+		public TcpNetworkTest(StoreType storeType)
 			: base(storeType) {
 		}
 
@@ -20,11 +20,11 @@ namespace Deveel.Data.Net {
 			get { return Local; }
 		}
 
-		protected override AdminService CreateAdminService(NetworkStoreType storeType) {
+		protected override AdminService CreateAdminService(StoreType storeType) {
 			IServiceFactory serviceFactory = null;
-			if (storeType == NetworkStoreType.Memory) {
+			if (storeType == StoreType.Memory) {
 				serviceFactory = new MemoryServiceFactory();
-			} else if (storeType == NetworkStoreType.FileSystem) {
+			} else if (storeType == StoreType.FileSystem) {
 				serviceFactory = new FileSystemServiceFactory(TestPath);
 			}
 

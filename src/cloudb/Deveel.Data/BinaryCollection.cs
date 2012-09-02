@@ -681,17 +681,38 @@ namespace Deveel.Data {
 			}
 		}
 
-		public ISortedCollection<Binary> Tail(Binary start) {
+		public bool IsEmpty {
+			get {
+				UpdateInternalState();
+
+				// If start_pos == end_pos then the list is empty
+				return startPos == endPos;
+			}
+		}
+
+		public BinaryCollection Tail(Binary start) {
 			return new BinaryCollection(root, Bounded(start), upperBound);
 		}
 
-		public ISortedCollection<Binary> Head(Binary end) {
+		ISortedCollection<Binary> ISortedCollection<Binary>.Tail(Binary start) {
+			return Tail(start);
+		}
+
+		ISortedCollection<Binary> ISortedCollection<Binary>.Head(Binary end) {
+			return Head(end);
+		}
+
+		public BinaryCollection Head(Binary end) {
 			return new BinaryCollection(root, lowerBound, Bounded(end));
 		}
 
-		public ISortedCollection<Binary> Sub(Binary start, Binary end) {
+		ISortedCollection<Binary> ISortedCollection<Binary>.Sub(Binary start, Binary end) {
+			return Sub(start, end);
+		}
+
+		public BinaryCollection Sub(Binary start, Binary end) {
 			// check the bounds not out of range of the parent bounds
-			return new BinaryCollection(root, Bounded(start), Bounded(end));
+			return new BinaryCollection(root, Bounded(start), Bounded(end));			
 		}
 
 		#region BinaryComparer

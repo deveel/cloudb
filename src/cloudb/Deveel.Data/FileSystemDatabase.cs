@@ -6,6 +6,8 @@ using Deveel.Data.Store;
 
 namespace Deveel.Data {
 	public class FileSystemDatabase : IDatabase {
+		private bool disposed;
+
 		private readonly string path;
 		private readonly Logger logger;
 
@@ -31,6 +33,10 @@ namespace Deveel.Data {
 			logger = Logger.GetLogger("FileSystemDatabase");
 
 			SetDefaultValues();
+		}
+
+		~FileSystemDatabase() {
+			Dispose(false);
 		}
 
 		private void SetDefaultValues() {
@@ -138,6 +144,21 @@ namespace Deveel.Data {
 
 		public ITreeSystem TreeSystem {
 			get { return treeSystem; }
+		}
+
+		private void Dispose(bool disposing) {
+			if (!disposed) {
+				if (disposing) {
+					if (databaseStarted)
+						Stop();
+				}
+				disposed = true;
+			}
+		}
+
+		public void Dispose() {
+			GC.SuppressFinalize(this);
+			Dispose(true);
 		}
 
 		public bool Start() {

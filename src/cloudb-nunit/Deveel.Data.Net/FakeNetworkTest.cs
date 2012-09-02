@@ -3,10 +3,10 @@
 using NUnit.Framework;
 
 namespace Deveel.Data.Net {
-	[TestFixture(NetworkStoreType.Memory)]
-	[TestFixture(NetworkStoreType.FileSystem)]
+	[TestFixture(StoreType.Memory)]
+	[TestFixture(StoreType.FileSystem)]
 	public class FakeNetworkTest : NetworkServiceTestBase {
-		public FakeNetworkTest(NetworkStoreType storeType)
+		public FakeNetworkTest(StoreType storeType)
 			: base(storeType) {
 		}
 
@@ -14,7 +14,7 @@ namespace Deveel.Data.Net {
 			get { return FakeServiceAddress.Local; }
 		}
 
-		protected override AdminService CreateAdminService(NetworkStoreType storeType) {
+		protected override AdminService CreateAdminService(StoreType storeType) {
 			return new FakeAdminService(storeType);
 		}
 

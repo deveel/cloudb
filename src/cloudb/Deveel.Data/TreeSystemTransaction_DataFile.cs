@@ -462,14 +462,14 @@ namespace Deveel.Data {
 					EnsureCorrectBounds();
 					target.EnsureCorrectBounds();
 					// Remember the source and target positions
-					long init_spos = Position;
-					long init_tpos = target.Position;
+					long initSpos = Position;
+					long initTpos = target.Position;
 					// Ok, the target shares the same tree system, therefore we may be able
 					// to optimize the copy.
 					CopyDataTo(start + Position,target, target.start + target.Position, size);
 					// Update the positions
-					Position = init_spos + size;
-					target.Position = init_tpos + size;
+					Position = initSpos + size;
+					target.Position = initTpos + size;
 					// Reset version to force a bound update
 					this.version = -1;
 					target.version = -1;

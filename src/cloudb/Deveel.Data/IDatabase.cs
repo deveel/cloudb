@@ -6,7 +6,7 @@ namespace Deveel.Data {
 	/// providing functionalities to create, publish and dispose
 	/// transaction objects.
 	/// </summary>
-	public interface IDatabase {
+	public interface IDatabase : IDisposable {
 		/// <summary>
 		/// Creates a transaction that encapsulates the latest snapshot
 		/// of the current state of the database, providing an interface

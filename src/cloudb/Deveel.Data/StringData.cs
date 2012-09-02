@@ -149,8 +149,8 @@ namespace Deveel.Data {
 		/// <param name="size">The number of characters to remove.</param>
 		public void Remove(long pos, long size) {
 			// Some checks
-			long data_size = CharCount;
-			Debug.Assert(pos >= 0 && size >= 0 && pos + size < data_size);
+			long dataSize = CharCount;
+			Debug.Assert(pos >= 0 && size >= 0 && pos + size < dataSize);
 
 			SetPosition(pos + size);
 			file.Shift(-(size * 2));
@@ -166,8 +166,8 @@ namespace Deveel.Data {
 		/// <returns></returns>
 		public string Substring(long pos, int size) {
 			// Some checks
-			long data_size = CharCount;
-			if (!(pos >= 0 && size >= 0 && pos + size < data_size))
+			long dataSize = CharCount;
+			if (!(pos >= 0 && size >= 0 && pos + size <= dataSize))
 				throw new ArgumentOutOfRangeException();
 
 			return ReadString(pos, size);

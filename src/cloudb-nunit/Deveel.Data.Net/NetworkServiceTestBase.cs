@@ -5,7 +5,7 @@ using NUnit.Framework;
 namespace Deveel.Data.Net {
 	[TestFixture]
 	public abstract class NetworkServiceTestBase : NetworkTestBase {
-		protected NetworkServiceTestBase(NetworkStoreType storeType) 
+		protected NetworkServiceTestBase(StoreType storeType) 
 			: base(storeType) {
 		}
 
