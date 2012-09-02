@@ -145,6 +145,8 @@
     <Compile Include="Deveel.Data.Util\Crc32.cs" />
     <Compile Include="Deveel.Data.Util\DateTimeUtil.cs" />
     <Compile Include="Deveel.Data.Util\StreamUtil.cs" />
+    <Compile Include="Deveel.Data\Binary.cs" />
+    <Compile Include="Deveel.Data\BinaryCollection.cs" />
     <Compile Include="Deveel.Data\IDataFile.cs" />
     <Compile Include="Deveel.Data\IDataRange.cs" />
     <Compile Include="Deveel.Data\IIndexCursor.cs" />
