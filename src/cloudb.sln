@@ -15,6 +15,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nant", "nant", "{A1B48D81-6
 		package.build = package.build
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudbase", "cloudbase\cloudbase.csproj", "{A3BF19E0-EDC3-4557-AE72-2F246DD21588}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudbase-nunit", "cloudbase-nunit\cloudbase-nunit.csproj", "{AECB127F-0026-408E-AE77-37DD30121560}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -37,6 +41,14 @@ Global
 		{A18511ED-5BA6-4811-B44F-F730FAD84CE8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A18511ED-5BA6-4811-B44F-F730FAD84CE8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A18511ED-5BA6-4811-B44F-F730FAD84CE8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A3BF19E0-EDC3-4557-AE72-2F246DD21588}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3BF19E0-EDC3-4557-AE72-2F246DD21588}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A3BF19E0-EDC3-4557-AE72-2F246DD21588}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A3BF19E0-EDC3-4557-AE72-2F246DD21588}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AECB127F-0026-408E-AE77-37DD30121560}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AECB127F-0026-408E-AE77-37DD30121560}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AECB127F-0026-408E-AE77-37DD30121560}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AECB127F-0026-408E-AE77-37DD30121560}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

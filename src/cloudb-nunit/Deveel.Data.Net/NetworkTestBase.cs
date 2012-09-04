@@ -77,12 +77,19 @@ namespace Deveel.Data.Net {
 			netConfig.AddNetworkNode(LocalAddress);
 			networkProfile.Configuration = netConfig;
 
+			OnSetUp();
+
 			SetupEvent.Set();
+		}
+
+		protected virtual void OnSetUp() {
 		}
 
 		[TearDown]
 		public void TearDown() {
 			try {
+				OnTearDown();
+
 				adminService.Stop();
 				adminService.Dispose();
 
@@ -92,6 +99,9 @@ namespace Deveel.Data.Net {
 			} finally {
 				SetupEvent.Set();
 			}
+		}
+
+		protected virtual void OnTearDown() {
 		}
 	}
 }

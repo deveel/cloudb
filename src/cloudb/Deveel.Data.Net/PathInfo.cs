@@ -56,8 +56,9 @@ namespace Deveel.Data.Net {
 		public override string ToString() {
 			StringBuilder b = new StringBuilder();
 			b.Append(pathType);
-			b.Append(",");
+			b.Append("|");
 			b.Append(versionNumber);
+			b.Append("|");
 			// Output the root servers list
 			int sz = rootServers.Length;
 			for (int i = 0; i < sz; ++i) {
@@ -69,13 +70,13 @@ namespace Deveel.Data.Net {
 				b.Append(addr.ToString());
 
 				if (i < rootServers.Length - 1)
-					b.Append(",");
+					b.Append("|");
 			}
 			return b.ToString();
 		}
 
 		public static PathInfo Parse(string name, string s) {
-			String[] parts = s.Split(',');
+			String[] parts = s.Split('|');
 
 			try {
 				string type = parts[0];

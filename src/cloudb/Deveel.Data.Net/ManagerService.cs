@@ -196,6 +196,10 @@ namespace Deveel.Data.Net {
 				}
 			}
 
+			//TODO: verfy this ...
+			// add the current manager address to the list
+			managers.Add(address);
+
 			IServiceAddress[] managersSet = managers.ToArray();
 
 			Message message = new Message("informOfManagers", new object[] {managersSet});
@@ -566,9 +570,9 @@ namespace Deveel.Data.Net {
 
 		private void AddPathToNetwork(string pathName, string pathType, IServiceAddress rootLeader,
 		                              IServiceAddress[] rootServers) {
-			if (pathType.Contains(","))
+			if (pathType.Contains("|"))
 				throw new ArgumentException("Invalid path type string", "pathType");
-			if (pathName.Contains(","))
+			if (pathName.Contains("|"))
 				throw new ArgumentException("Invalid path name string", "pathName");
 
 			string key = "path.info." + pathName;
@@ -688,7 +692,7 @@ namespace Deveel.Data.Net {
 			NotifyBlockServersOfCurrentBlockId(info.BlockServersToNotify, info.BlockId);
 		}
 
-		private long[] AllocateNewBlock(BlockId block_id) {
+		private long[] AllocateNewBlock(BlockId blockId) {
 
 			lock (allocationLock) {
 
@@ -697,27 +701,27 @@ namespace Deveel.Data.Net {
 				// can perform maintenance on all blocks preceding, such as compression.
 				long[] blockServersNotify = currentBlockIdServers;
 				if (blockServersNotify != null) {
-					NewBlockAllocInfo info = new NewBlockAllocInfo(block_id, blockServersNotify);
+					NewBlockAllocInfo info = new NewBlockAllocInfo(blockId, blockServersNotify);
 					new Timer(NewBlockAllocTask, info, 500, Timeout.Infinite);
 				}
 
 				// Assert the block isn't already allocated,
-				long[] currentServers = managerDb.GetBlockIdServerMap(block_id);
+				long[] currentServers = managerDb.GetBlockIdServerMap(blockId);
 				if (currentServers.Length > 0) {
-					throw new NetworkWriteException("Block already allocated: " + block_id);
+					throw new NetworkWriteException("Block already allocated: " + blockId);
 				}
 
 				// Allocate a group of servers from the poll of block servers for the
 				// given block_id
-				long[] servers = AllocateOnlineServerNodesForBlock(block_id);
+				long[] servers = AllocateOnlineServerNodesForBlock(blockId);
 
 				// If no servers allocated,
 				if (servers.Length == 0) {
-					throw new ApplicationException("Unable to assign block servesr for block: " + block_id);
+					throw new ApplicationException("Unable to assign block servesr for block: " + blockId);
 				}
 
 				// Update the database,
-				managerDb.SetBlockIdServerMap(block_id, servers);
+				managerDb.SetBlockIdServerMap(blockId, servers);
 
 				// Return the list,
 				return servers;

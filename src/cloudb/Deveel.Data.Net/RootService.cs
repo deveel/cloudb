@@ -350,7 +350,7 @@ namespace Deveel.Data.Net {
 
 			// Create the connection object (should be fairly lightweight)
 			INetworkCache localNetCache = MachineState.GetCacheForManager(manSrvs);
-			IPathConnection connection = new PathConnection(pathInfo, connector, manSrvs, localNetCache, serviceTracker);
+			IPathConnection connection = new PathConnection(this, pathInfo, connector, manSrvs, localNetCache, serviceTracker);
 
 			// Perform the commit,
 			return pathFunction.Commit(connection, proposal);
@@ -375,7 +375,7 @@ namespace Deveel.Data.Net {
 
 			// Create the connection object (should be fairly lightweight)
 			INetworkCache localNetCache = MachineState.GetCacheForManager(manSrvs);
-			IPathConnection connection = new PathConnection(pathInfo, connector, manSrvs, localNetCache, serviceTracker);
+			IPathConnection connection = new PathConnection(this, pathInfo, connector, manSrvs, localNetCache, serviceTracker);
 
 			// Generate and return the stats string,
 			return pathFunction.GetStats(connection, snapshot);
@@ -417,7 +417,7 @@ namespace Deveel.Data.Net {
 
 			// Create the connection object (should be fairly lightweight)
 			INetworkCache localNetCache = MachineState.GetCacheForManager(manSrvs);
-			IPathConnection connection = new PathConnection(pathInfo, connector, manSrvs, localNetCache, serviceTracker);
+			IPathConnection connection = new PathConnection(this, pathInfo, connector, manSrvs, localNetCache, serviceTracker);
 
 			// Make an initial empty database for the path,
 			// PENDING: We could keep a cached version of this image, but it's
@@ -1338,7 +1338,7 @@ namespace Deveel.Data.Net {
 					lock (accessLock) {
 						if (pathFunction == null) {
 							// Instantiate a new class object for the commit,
-							Type c = Type.GetType(pathInfo.PathType);
+							Type c = Type.GetType(pathInfo.PathType, true, true);
 							IPath processor = (IPath) Activator.CreateInstance(c, true);
 
 							// Attach it with the PathAccess object,
@@ -1375,37 +1375,59 @@ namespace Deveel.Data.Net {
 		#region PathConnection
 
 		private class PathConnection : IPathConnection {
+			private readonly RootService service;
 			private readonly PathInfo pathInfo;
-			private readonly ITreeSystem treeSystem;
+			private readonly NetworkTreeSystem treeSystem;
 
-			public PathConnection(PathInfo pathInfo, IServiceConnector connector, IServiceAddress[] managerServers,
+			public PathConnection(RootService service, PathInfo pathInfo, IServiceConnector connector, IServiceAddress[] managerServers,
 			                      INetworkCache cache, ServiceStatusTracker statusTracker) {
+				this.service = service;
 				this.pathInfo = pathInfo;
 				treeSystem = new NetworkTreeSystem(connector, managerServers, cache, statusTracker);
 			}
 
+			private static ApplicationException HandleIOError(IOException e) {
+				return new ApplicationException("IO Error: " + e.Message);
+			}
+
 			public DataAddress GetSnapshot() {
-				throw new NotImplementedException();
+				try {
+					return service.GetPathLast(pathInfo);
+				} catch (IOException e) {
+					throw HandleIOError(e);
+				}
 			}
 
 			public DataAddress[] GetSnapshots(DateTime start, DateTime end) {
-				throw new NotImplementedException();
+				try {
+					return service.GetHistoricalPathRoots(pathInfo, DateTimeUtil.GetMillis(start), DateTimeUtil.GetMillis(end));
+				} catch (IOException e) {
+					throw HandleIOError(e);
+				}
 			}
 
 			public DataAddress[] GetSnapshots(DataAddress rootNode) {
-				throw new NotImplementedException();
+				try {
+					return service.GetPathRootsSince(pathInfo, rootNode);
+				} catch (IOException e) {
+					throw HandleIOError(e);
+				}
 			}
 
 			public void Publish(DataAddress rootNode) {
-				throw new NotImplementedException();
+				try {
+					service.PostToPath(pathInfo, rootNode);
+				} catch (IOException e) {
+					throw HandleIOError(e);
+				}
 			}
 
 			public ITransaction CreateTransaction(DataAddress rootNode) {
-				throw new NotImplementedException();
+				return treeSystem.CreateTransaction(rootNode);
 			}
 
 			public DataAddress CommitTransaction(ITransaction transaction) {
-				throw new NotImplementedException();
+				return treeSystem.FlushTransaction(transaction);
 			}
 		}
 

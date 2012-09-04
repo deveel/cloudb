@@ -361,7 +361,8 @@ namespace Deveel.Data.Net {
 
 			internal BlockContainer(BlockId blockId, IBlockStore blockStore) {
 				this.blockId = blockId;
-				if (blockStore is FileBlockStore) {
+				if (blockStore is FileBlockStore ||
+					blockStore is MemoryBlockStore) {
 					isCompressed = false;
 				} else if (blockStore is CompressedBlockStore) {
 					isCompressed = true;

@@ -239,7 +239,7 @@ namespace Deveel.Data.Net {
 		private class TrackedService {
 			private readonly IServiceAddress serviceAddress;
 			private readonly ServiceType serviceType;
-			private readonly ServiceStatus currentStatus;
+			private ServiceStatus currentStatus;
 
 			public TrackedService(IServiceAddress serviceAddress, ServiceType serviceType, ServiceStatus currentStatus) {
 				this.serviceAddress = serviceAddress;
@@ -249,7 +249,7 @@ namespace Deveel.Data.Net {
 
 			public ServiceStatus CurrentStatus {
 				get { return currentStatus; }
-				set { throw new NotImplementedException(); }
+				set { currentStatus = value; }
 			}
 
 			public ServiceType ServiceType {
