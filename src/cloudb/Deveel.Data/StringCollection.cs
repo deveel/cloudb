@@ -190,10 +190,10 @@ namespace Deveel.Data {
 			version += 1;
 
 			// The number of byte entries to remove
-			long str_remove_size = foundItemStart - foundItemEnd;
+			long strRemoveSize = foundItemStart - foundItemEnd;
 			file.Position = foundItemEnd;
-			file.Shift(str_remove_size);
-			endPos = endPos + str_remove_size;
+			file.Shift(strRemoveSize);
+			endPos = endPos + strRemoveSize;
 
 			// If this removal leaves the set empty, we delete the file and update the
 			// internal state as necessary.
@@ -205,13 +205,13 @@ namespace Deveel.Data {
 		}
 
 		private String ReadString(long s, long e) {
-			long to_read = ((e - s) - 2) / 2;
+			long toRead = ((e - s) - 2) / 2;
 			// If it's too large
-			if (to_read > Int32.MaxValue)
+			if (toRead > Int32.MaxValue)
 				throw new ApplicationException("String too large to read.");
 
 			file.Position = s;
-			int sz = (int)to_read;
+			int sz = (int)toRead;
 			StringBuilder buf = new StringBuilder(sz);
 			for (int i = 0; i < sz; ++i)
 				buf.Append(fileReader.ReadChar());
@@ -246,11 +246,11 @@ namespace Deveel.Data {
 
 			int len = value.Length;
 			// Make room in the file for the value being inserted
-			long str_insert_size = ((long)len * 2) + 2;
-			long cur_position = file.Position;
-			file.Shift(str_insert_size);
+			long strInsertSize = ((long)len * 2) + 2;
+			long curPosition = file.Position;
+			file.Shift(strInsertSize);
 			// Change the end position
-			endPos = endPos + str_insert_size;
+			endPos = endPos + strInsertSize;
 
 			// Insert the characters
 			for (int i = 0; i < len; ++i) {
@@ -258,9 +258,9 @@ namespace Deveel.Data {
 				// Check if the character is 0x0FFFF, if it is then generate an error
 				if (c == StringDeliminator) {
 					// Revert any changes we made
-					file.Position = cur_position + str_insert_size;
-					file.Shift(-str_insert_size);
-					endPos = endPos - str_insert_size;
+					file.Position = curPosition + strInsertSize;
+					file.Shift(-strInsertSize);
+					endPos = endPos - strInsertSize;
 					// Throw a runtime exception (don't throw an IO exception because
 					// this will cause a critical stop condition).
 					throw new ApplicationException("Can not encode invalid UTF-16 character 0x0FFFF");
@@ -280,77 +280,77 @@ namespace Deveel.Data {
 			}
 
 			// How large is the area we are searching in characters?
-			long search_len = (end - start)/2;
+			long searchLen = (end - start)/2;
 			// Read the string from the middle of the area
-			long mid_pos = start + ((search_len/2)*2);
+			long midPos = start + ((searchLen/2)*2);
 			// Search to the end of the string
-			long str_end = -1;
-			long pos = mid_pos;
+			long strEnd = -1;
+			long pos = midPos;
 			file.Position = pos;
 			while (pos < end) {
 				char c = fileReader.ReadChar();
 				pos = pos + 2;
 				if (c == StringDeliminator) {
 					// This is the end of the string, break the while loop
-					str_end = pos;
+					strEnd = pos;
 					break;
 				}
 			}
 			// All strings must end with 0x0FFFF.  If this character isn't found before
 			// the end is reached then the format of the data is in error.
-			if (str_end == -1)
+			if (strEnd == -1)
 				throw new ApplicationException("Collection data error.");
 
 			// Search for the start of the string
-			long str_start = mid_pos - 2;
-			while (str_start >= start) {
-				file.Position = str_start;
+			long strStart = midPos - 2;
+			while (strStart >= start) {
+				file.Position = strStart;
 				char c = fileReader.ReadChar();
 				if (c == StringDeliminator) {
 					// This means we found the end of the previous string
 					// so the start is the next char.
 					break;
 				}
-				str_start = str_start - 2;
+				strStart = strStart - 2;
 			}
-			str_start = str_start + 2;
+			strStart = strStart + 2;
 
 			// Now str_start will point to the start of the string and str_end to the
 			// end (the char immediately after 0x0FFFF).
 			// Read the midpoint string,
-			string midValue = ReadString(str_start, str_end);
+			string midValue = ReadString(strStart, strEnd);
 
 			// Compare the values
 			int v = comparer.Compare(value, midValue);
 			// If str_start and str_end are the same as start and end, then the area
 			// we are searching represents only 1 string, which is a return state
-			bool lastStr = (str_start == start && str_end == end);
+			bool lastStr = (strStart == start && strEnd == end);
 
 			if (v < 0) {
 				// if value < mid_value
 				if (lastStr) {
 					// Position at the start if last str and value < this value
-					file.Position = str_start;
+					file.Position = strStart;
 					return false;
 				}
 				// We search the head
-				return SearchFor(value, start, str_start);
+				return SearchFor(value, start, strStart);
 			}
 			if (v > 0) {
 				// if value > mid_value
 				if (lastStr) {
 					// Position at the end if last str and value > this value
-					file.Position = str_end;
+					file.Position = strEnd;
 					return false;
 				}
 				// We search the tail
-				return SearchFor(value, str_end, end);
+				return SearchFor(value, strEnd, end);
 			}
 			// if value == mid_value
-			file.Position = str_start;
+			file.Position = strStart;
 			// Update internal state variables
-			foundItemStart = str_start;
-			foundItemEnd = str_end;
+			foundItemStart = strStart;
+			foundItemEnd = strEnd;
 			return true;
 		}
 
@@ -482,9 +482,9 @@ namespace Deveel.Data {
 			version += 1;
 
 			// Clear the list between the start and end,
-			long to_clear = startPos - endPos;
+			long toClear = startPos - endPos;
 			file.Position = endPos;
-			file.Shift(to_clear);
+			file.Shift(toClear);
 			endPos = startPos;
 
 			// If it's completely empty, we delete the file,
@@ -532,18 +532,18 @@ namespace Deveel.Data {
 		public int Count {
 			get {
 				UpdateInternalState();
-				int list_size = 0;
+				int listSize = 0;
 				long p = startPos;
 				long size = endPos;
 				file.Position = p;
-				while (list_size < Int32.MaxValue && p < size) {
+				while (listSize < Int32.MaxValue && p < size) {
 					char c = fileReader.ReadChar();
 					if (c == StringDeliminator)
-						++list_size;
+						++listSize;
 
 					p += 2;
 				}
-				return list_size;
+				return listSize;
 			}
 		}
 

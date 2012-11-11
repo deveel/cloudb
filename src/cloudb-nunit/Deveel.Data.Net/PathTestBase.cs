@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using System.Threading;
 
 using NUnit.Framework;
 
@@ -55,12 +56,12 @@ namespace Deveel.Data.Net {
 		protected override void OnTearDown() {
 			client.Disconnect();
 
-			NetworkProfile.StopService(LocalAddress, ServiceType.Block);
 			NetworkProfile.DeregisterBlock(LocalAddress);
-			NetworkProfile.StopService(LocalAddress, ServiceType.Root);
+			NetworkProfile.StopService(LocalAddress, ServiceType.Block);
 			NetworkProfile.DeregisterRoot(LocalAddress);
-			NetworkProfile.StopService(LocalAddress, ServiceType.Manager);
+			NetworkProfile.StopService(LocalAddress, ServiceType.Root);
 			NetworkProfile.DeregisterManager(LocalAddress);
+			NetworkProfile.StopService(LocalAddress, ServiceType.Manager);
 		}
 	}
 }

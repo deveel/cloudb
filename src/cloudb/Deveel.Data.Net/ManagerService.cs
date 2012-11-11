@@ -32,6 +32,8 @@ namespace Deveel.Data.Net {
 		private readonly BlockUpdateTask blockUpdateTask;
 
 		private readonly Random rng;
+		private Timer allocTimer;
+		private Timer blockUpdateTimer;
 
 		protected ManagerService(IServiceConnector connector, IServiceAddress address) {
 			this.connector = connector;
@@ -78,9 +80,16 @@ namespace Deveel.Data.Net {
 			managerDb.Initialize();
 
 			// Set the task where every 5 minutes we update a block service
-			new Timer(blockUpdateTask.Execute, null,
-			          rng.Next(8*1000) + (15*1000),
-			          rng.Next(30*1000) + (5*60*1000));
+			blockUpdateTimer = new Timer(blockUpdateTask.Execute, null,
+			                             rng.Next(8*1000) + (15*1000),
+			                             rng.Next(30*1000) + (5*60*1000));
+		}
+
+		protected override void OnStop() {
+			if (allocTimer != null)
+				allocTimer.Dispose();
+			if (blockUpdateTimer != null)
+				blockUpdateTimer.Dispose();
 		}
 
 		protected int UniqueManagerId {
@@ -700,9 +709,9 @@ namespace Deveel.Data.Net {
 				// new block being allocated against is. This notifies them that they
 				// can perform maintenance on all blocks preceding, such as compression.
 				long[] blockServersNotify = currentBlockIdServers;
-				if (blockServersNotify != null) {
+				if (blockServersNotify != null && blockServersNotify.Length > 0) {
 					NewBlockAllocInfo info = new NewBlockAllocInfo(blockId, blockServersNotify);
-					new Timer(NewBlockAllocTask, info, 500, Timeout.Infinite);
+					allocTimer = new Timer(NewBlockAllocTask, info, 500, Timeout.Infinite);
 				}
 
 				// Assert the block isn't already allocated,
@@ -715,13 +724,9 @@ namespace Deveel.Data.Net {
 				// given block_id
 				long[] servers = AllocateOnlineServerNodesForBlock(blockId);
 
-				// If no servers allocated,
-				if (servers.Length == 0) {
-					throw new ApplicationException("Unable to assign block servesr for block: " + blockId);
-				}
-
-				// Update the database,
-				managerDb.SetBlockIdServerMap(blockId, servers);
+				// Update the database if we have servers to allocate the block id,
+				if (servers.Length > 0)
+					managerDb.SetBlockIdServerMap(blockId, servers);
 
 				// Return the list,
 				return servers;
@@ -747,13 +752,15 @@ namespace Deveel.Data.Net {
 				}
 			}
 
-			// Set the new list
-			long[] newServerGuids = new long[serverList.Count];
-			for (int i = 0; i < serverList.Count; ++i) {
-				newServerGuids[i] = serverList[i];
-			}
+			if (serverList.Count > 0) {
+				// Set the new list
+				long[] newServerGuids = new long[serverList.Count];
+				for (int i = 0; i < serverList.Count; ++i) {
+					newServerGuids[i] = serverList[i];
+				}
 
-			managerDb.SetBlockIdServerMap(blockId, newServerGuids);
+				managerDb.SetBlockIdServerMap(blockId, newServerGuids);
+			}
 		}
 
 		private void InternalRemoveBlockServerMapping(BlockId blockId, long[] serverGuids) {
@@ -789,6 +796,7 @@ namespace Deveel.Data.Net {
 				InitCurrentAddressSpaceEnd();
 				currentBlockId = currentAddressSpaceEnd.BlockId;
 			}
+
 			long[] bservers = GetOnlineServersWithBlock(currentBlockId);
 			int okServerCount = 0;
 
@@ -818,12 +826,12 @@ namespace Deveel.Data.Net {
 				bool nextBlock = false;
 				lock (allocationLock) {
 					BlockId blockId = currentAddressSpaceEnd.BlockId;
-					int data_id = currentAddressSpaceEnd.DataId;
+					int dataId = currentAddressSpaceEnd.DataId;
 					DataAddress newAddressSpaceEnd = null;
 					if (currentBlockId.Equals(blockId)) {
 						blockId = blockId.Add(256);
-						data_id = 0;
-						newAddressSpaceEnd = new DataAddress(blockId, data_id);
+						dataId = 0;
+						newAddressSpaceEnd = new DataAddress(blockId, dataId);
 						nextBlock = true;
 					}
 

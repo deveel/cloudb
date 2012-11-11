@@ -86,5 +86,13 @@ namespace Deveel.Data.Net {
 				}
 			}
 		}
+
+		protected override void Dispose(bool disposing) {
+			if (disposing) {
+				Stop();
+			}
+
+			base.Dispose(disposing);
+		}
 	}
 }

@@ -11,13 +11,14 @@ namespace Deveel.Data {
 
 		[Test]
 		public void CreateTable() {
-			DbTransaction transaction = Session.CreateTransaction();
+			using (DbTransaction transaction = Session.CreateTransaction()) {
 
-			Assert.AreEqual(0, transaction.TableCount);
+				Assert.AreEqual(0, transaction.TableCount);
 
-			transaction.CreateTable("test_table");
+				transaction.CreateTable("test_table");
 
-			Assert.AreEqual(1, transaction.TableCount);
+				Assert.AreEqual(1, transaction.TableCount);
+			}
 		}
 	}
 }
