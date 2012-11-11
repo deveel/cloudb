@@ -142,12 +142,12 @@ namespace Deveel.Data {
 			// the file without touching the data.
 			int headerSize;
 			try {
-				MemoryStream bout = new MemoryStream(64);
-				BinaryWriter dout = new BinaryWriter(bout, Encoding.Unicode);
-				dout.Write(name);
-				dout.Flush();
-				dout.Close();
-				headerSize = (int) bout.Length;
+				MemoryStream stream = new MemoryStream(64);
+				BinaryWriter writer = new BinaryWriter(stream, Encoding.Unicode);
+				writer.Write(name);
+				writer.Flush();
+				headerSize = (int)stream.Length;
+				writer.Close();
 			} catch (IOException e) {
 				throw new ApplicationException(e.Message, e);
 			}

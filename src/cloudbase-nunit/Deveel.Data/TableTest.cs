@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 
 using NUnit.Framework;
 
@@ -16,8 +17,53 @@ namespace Deveel.Data {
 				Assert.AreEqual(0, transaction.TableCount);
 
 				transaction.CreateTable("test_table");
+				DbTable table = transaction.GetTable("test_table");
+				table.AddColumn("col1");
+				table.AddColumn("col2");
+				table.AddIndex("col1");
 
+				transaction.Commit();
+			}
+
+			using (DbTransaction transaction = Session.CreateTransaction()) {
 				Assert.AreEqual(1, transaction.TableCount);
+
+				DbTable table = transaction.GetTable("test_table");
+				Assert.IsNotNull(table);
+				Assert.AreEqual(2, table.ColumnCount);
+				Assert.AreEqual("col1", table.ColumnNames[0]);
+				Assert.AreEqual("col2", table.ColumnNames[1]);
+			}
+		}
+
+		[Test]
+		public void CreateAndPopulateTable500() {
+			CreateTable();
+
+			using (DbTransaction transaction = Session.CreateTransaction()) {
+				DbTable table = transaction.GetTable("test_table");
+
+				for (int i = 0; i < 500; i++) {
+					table.BeginInsert();
+					table.SetValue("col1", i.ToString(CultureInfo.InvariantCulture));
+					table.SetValue("col2", String.Format("val.{0}", i));
+					table.Complete();
+				}
+
+				transaction.Commit();
+			}
+
+			using (DbTransaction transaction = Session.CreateTransaction()) {
+				DbTable table = transaction.GetTable("test_table");
+
+				Assert.AreEqual(500, table.RowCount);
+
+				int i = 0;
+				foreach (DbRow row in table) {
+					Assert.AreEqual(i.ToString(CultureInfo.InvariantCulture), row["col1"]);
+					Assert.AreEqual(String.Format("val.{0}", i), row["col2"]);
+					i++;
+				}
 			}
 		}
 	}
