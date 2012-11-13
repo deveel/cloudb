@@ -40,8 +40,13 @@ namespace Deveel.Data {
 		public void CreateAndPopulateTable500() {
 			CreateTable();
 
+			DateTime start;
+			DateTime end;
+
 			using (DbTransaction transaction = Session.CreateTransaction()) {
 				DbTable table = transaction.GetTable("test_table");
+
+				start = DateTime.Now;
 
 				for (int i = 0; i < 500; i++) {
 					table.BeginInsert();
@@ -51,7 +56,11 @@ namespace Deveel.Data {
 				}
 
 				transaction.Commit();
+
+				end = DateTime.Now;
 			}
+
+			Console.Out.WriteLine("Time took for 500 inserts: {0}ms", (end - start).TotalSeconds);
 
 			using (DbTransaction transaction = Session.CreateTransaction()) {
 				DbTable table = transaction.GetTable("test_table");
@@ -64,6 +73,19 @@ namespace Deveel.Data {
 					Assert.AreEqual(String.Format("val.{0}", i), row["col2"]);
 					i++;
 				}
+			}
+		}
+
+		[Test]
+		public void CreatePopulateAndEmptyTable() {
+			CreateAndPopulateTable500();
+
+			using (DbTransaction transaction = Session.CreateTransaction()) {
+				DbTable table = transaction.GetTable("test_table");
+
+				Assert.AreEqual(500, table.RowCount);
+
+				Assert.IsTrue(table.Empty());
 			}
 		}
 	}

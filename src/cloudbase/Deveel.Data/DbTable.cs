@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -575,6 +576,12 @@ namespace Deveel.Data {
 			return GetCursor();
 		}
 
+		public void CopyRowsTo(ICollection<DbRow> rows) {
+			foreach (DbRow row in this) {
+				rows.Add(row);
+			}
+		}
+
 		public DbIndex GetIndex(string columnName) {
 			CheckColumnNameValid(columnName);
 
@@ -613,6 +620,48 @@ namespace Deveel.Data {
 			// Add this event to the transaction log,
 			AddTransactionEvent("deleteRow", rowid);
 			++currentVersion;
+		}
+
+		public int Delete(IEnumerable<DbRow> rows) {
+			IEnumerator<DbRow> enumerator = rows.GetEnumerator();
+			return Delete(enumerator);
+		}
+
+		public int Delete(IEnumerator<DbRow> rows) {
+			int deleteCount = 0;
+			while (rows.MoveNext()) {
+				DbRow row = rows.Current;
+				if (row == null)
+					continue;
+
+				long rowid = row.RowId;
+				IDataFile df = GetDataFile(rowIndexKey);
+				SortedIndex rowsIndex = new SortedIndex(df);
+				if (rowsIndex.ContainsSortKey(rowid)) {
+					// Remove the row from the main index,
+					RemoveRowFromRowSet(rowid);
+					// Remove the row from any indexes defined on the table,
+					RemoveRowFromIndexSet(rowid);
+					// Delete the row file
+					IDataFile rowFile = GetDataFile(GetRowIdKey(rowid));
+					rowFile.Delete();
+
+					// Add this event to the transaction log,
+					AddTransactionEvent("deleteRow", rowid);
+					deleteCount++;
+				}
+			}
+
+			++currentVersion;
+			return deleteCount;			
+		}
+
+		public bool Empty() {
+			ICollection<DbRow> rows = new Collection<DbRow>();
+			CopyRowsTo(rows);
+			long rowCount = RowCount;
+			int deleteCount = Delete(rows);
+			return rowCount == deleteCount;
 		}
 
 		public void BeginInsert() {
@@ -661,6 +710,22 @@ namespace Deveel.Data {
 					rowBuffer[col] = val;
 				}
 			}
+		}
+
+		public void BeginUpdate(long rowid) {
+			if (rowBufferId != 0)
+				throw new ApplicationException("State error: previous table operation not completed");
+
+			// Check row is currently indexed,
+			IDataFile df = GetDataFile(rowIndexKey);
+			SortedIndex rows = new SortedIndex(df);
+			if (!rows.ContainsSortKey(rowid))
+				throw new ApplicationException("Row being updated is not in the table");
+
+			if (rowBuffer == null)
+				rowBuffer = new Dictionary<string, string>();
+
+			rowBufferId = rowid;
 		}
 
 		public void SetValue(string column, string value) {
