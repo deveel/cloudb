@@ -52,3 +52,17 @@
 /src/cloudb-nunit/test-results/cloudb-nunit.csproj-Debug-2011-10-03.xml
 /src/cloudb-nunit/test-results/cloudb-nunit.csproj.test-cache
 /dist
+/src/packages/NUnit.2.6.0.12054/NUnit.2.6.0.12054.nupkg
+/src/packages/NUnit.2.6.0.12054/lib/nunit.framework.dll
+/src/packages/NUnit.2.6.0.12054/lib/nunit.framework.xml
+/src/packages/NUnit.2.6.0.12054/license.txt
+/src/packages/NUnit.2.6.1/NUnit.2.6.1.nupkg
+/src/packages/NUnit.2.6.1/lib/nunit.framework.dll
+/src/packages/NUnit.2.6.1/lib/nunit.framework.xml
+/src/packages/NUnit.2.6.1/license.txt
+/src/packages/deveel-cli.1.0.1/deveel-cli.1.0.1.nupkg
+/src/packages/deveel-cli.1.0.1/lib/net20/deveel-cli.dll
+/src/packages/deveelrl.1.0.0/deveelrl.1.0.0.nupkg
+/src/packages/deveelrl.1.0.0/lib/net20/deveelrl.dll
+/src/packages/dshell.0.6.7-beta/dshell.0.6.7-beta.nupkg
+/src/packages/dshell.0.6.7-beta/lib/net20/dshell.dll

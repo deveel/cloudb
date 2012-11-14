@@ -8,7 +8,7 @@
     <ProjectGuid>{A3BF19E0-EDC3-4557-AE72-2F246DD21588}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>cloudbase</RootNamespace>
+    <RootNamespace>Deveel.Data</RootNamespace>
     <AssemblyName>cloudbase</AssemblyName>
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
