@@ -66,10 +66,6 @@
     <Compile Include="Deveel.Data.Configuration\ConfigFormat.cs" />
     <Compile Include="Deveel.Data.Configuration\ConfigurationException.cs" />
     <Compile Include="Deveel.Data.Configuration\IConfigFormatter.cs" />
-    <Compile Include="Deveel.Data.Net.Client\PathStruct.cs" />
-    <Compile Include="Deveel.Data.Net.Client\PathValue.cs" />
-    <Compile Include="Deveel.Data.Net.Client\PathValueType.cs" />
-    <Compile Include="Deveel.Data.Net.Client\PathValue_Conversion.cs" />
     <Compile Include="Deveel.Data.Configuration\PropertiesConfigFormatter.cs" />
     <Compile Include="Deveel.Data.Configuration\XmlConfigFormatter.cs" />
     <Compile Include="Deveel.Data.Diagnostics\Analytics.cs" />
@@ -83,42 +79,20 @@
     <Compile Include="Deveel.Data.Diagnostics\ILogger.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LogEntry.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LogWriter.cs" />
-    <Compile Include="Deveel.Data.Net.Client\ClientRequestMessage.cs" />
-    <Compile Include="Deveel.Data.Net.Client\IAttributesHandler.cs" />
-    <Compile Include="Deveel.Data.Net.Client\IMessageProcessor.cs" />
-    <Compile Include="Deveel.Data.Net.Client\IPathTransaction.cs" />
-    <Compile Include="Deveel.Data.Net.Client\Message.cs" />
-    <Compile Include="Deveel.Data.Net.Client\MessageArgument.cs" />
-    <Compile Include="Deveel.Data.Net.Client\MessageArguments.cs" />
-    <Compile Include="Deveel.Data.Net.Client\MessageAttributes.cs" />
-    <Compile Include="Deveel.Data.Net.Client\MessageError.cs" />
-    <Compile Include="Deveel.Data.Net.Client\MessageStream.cs" />
-    <Compile Include="Deveel.Data.Net.Client\RequestMessage.cs" />
-    <Compile Include="Deveel.Data.Net.Client\ResponseMessage.cs" />
-    <Compile Include="Deveel.Data.Net.Client\MessageResponseCode.cs" />
-    <Compile Include="Deveel.Data.Net.Client\MessageType.cs" />
-    <Compile Include="Deveel.Data.Net.Client\RestFormat.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\BinaryMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\BinaryRpcMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\IJsonRpcTypeResolver.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\IJsonSerializable.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\IMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\IRestMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\IRpcMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\ITextMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\IXmlRpcTypeResolver.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\IXmlSerializable.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\JsonRpcMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\MessageSerializers.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\SerializerNameAttribute.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\MessageSerializerAttribute.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\TextMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\XmlMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\XmlRestMessageSerializer.cs" />
-    <Compile Include="Deveel.Data.Net.Serialization\XmlRpcMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Messaging\BinaryMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Messaging\BinaryRpcMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Messaging\IMessageProcessor.cs" />
+    <Compile Include="Deveel.Data.Net.Messaging\IMessageSerializer.cs" />
+    <Compile Include="Deveel.Data.Net.Messaging\Message.cs" />
+    <Compile Include="Deveel.Data.Net.Messaging\MessageArgument.cs" />
+    <Compile Include="Deveel.Data.Net.Messaging\MessageArguments.cs" />
+    <Compile Include="Deveel.Data.Net.Messaging\MessageError.cs" />
+    <Compile Include="Deveel.Data.Net.Messaging\MessageStream.cs" />
     <Compile Include="Deveel.Data.Net\AdminService.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Deveel.Data.Net\AuthenticationPoint.cs" />
+    <Compile Include="Deveel.Data.Net\BlockId.cs" />
     <Compile Include="Deveel.Data.Net\BlockReadException.cs" />
     <Compile Include="Deveel.Data.Net\BlockService.cs">
       <SubType>Component</SubType>
@@ -134,16 +108,6 @@
     <Compile Include="Deveel.Data.Net\DataAddress.cs" />
     <Compile Include="Deveel.Data.Net\FileSystemServiceFactory.cs" />
     <Compile Include="Deveel.Data.Net\HandleAttribute.cs" />
-    <Compile Include="Deveel.Data.Net.Client\RestPathClientService.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="Deveel.Data.Net.Client\TcpPathClientService.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="Deveel.Data.Net.Client\IPathContext.cs" />
-    <Compile Include="Deveel.Data.Net.Client\PathClientService.cs">
-      <SubType>Component</SubType>
-    </Compile>
     <Compile Include="Deveel.Data.Net\FileBlockStore.cs" />
     <Compile Include="Deveel.Data.Net\FileSystemBlockService.cs">
       <SubType>Component</SubType>
@@ -154,29 +118,42 @@
     <Compile Include="Deveel.Data.Net\FileSystemRootService.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Deveel.Data.Net\HttpAdminService.cs">
-      <SubType>Component</SubType>
+    <Compile Include="Deveel.Data.Net\HttpServiceAddress.cs">
+      <SubType>Code</SubType>
     </Compile>
     <Compile Include="Deveel.Data.Net\HttpServiceAddressHandler.cs" />
-    <Compile Include="Deveel.Data.Net\HttpServiceConnector.cs">
-      <SubType>Component</SubType>
-    </Compile>
     <Compile Include="Deveel.Data.Net\IBlockStore.cs" />
-    <Compile Include="Deveel.Data.Net\HttpServiceAddress.cs" />
-    <Compile Include="Deveel.Data.Net.Client\IRequestHandler.cs" />
+    <Compile Include="Deveel.Data.Net\InMemoryNetworkCache.cs" />
+    <Compile Include="Deveel.Data.Net\InvalidPathInfoException.cs" />
+    <Compile Include="Deveel.Data.Net\IServiceAuthenticator.cs" />
     <Compile Include="Deveel.Data.Net\IServiceFactory.cs" />
-    <Compile Include="Deveel.Data.Net.Client\RequestType.cs" />
+    <Compile Include="Deveel.Data.Net\MachineRoles.cs" />
+    <Compile Include="Deveel.Data.Net\MachineState.cs" />
     <Compile Include="Deveel.Data.Net\MemoryServiceFactory.cs" />
+    <Compile Include="Deveel.Data.Net\MessageCommunicator.cs" />
+    <Compile Include="Deveel.Data.Net\NoAuthenticationAuthenticator.cs" />
+    <Compile Include="Deveel.Data.Net\PasswordAuthenticator.cs" />
+    <Compile Include="Deveel.Data.Net\PathInfo.cs" />
     <Compile Include="Deveel.Data.Net\PathStats.cs" />
+    <Compile Include="Deveel.Data.Net\ReplicatedValueStore.cs" />
     <Compile Include="Deveel.Data.Net\ServiceConnector.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Deveel.Data.Net\ServiceMessageQueue.cs" />
+    <Compile Include="Deveel.Data.Net\ServiceNotConnectedException.cs" />
     <Compile Include="Deveel.Data.Net\ServiceProtocols.cs" />
     <Compile Include="Deveel.Data.Net\ServiceState.cs" />
     <Compile Include="Deveel.Data.Net\ServiceStatus.cs" />
-    <Compile Include="Deveel.Data.Net\TcpProxyAdminService.cs">
-      <SubType>Component</SubType>
-    </Compile>
+    <Compile Include="Deveel.Data.Net\ServiceStatusEventArgs.cs" />
+    <Compile Include="Deveel.Data.Net\ServiceStatusTracker.cs" />
+    <Compile Include="Deveel.Data.Util\Crc32.cs" />
+    <Compile Include="Deveel.Data.Util\DateTimeUtil.cs" />
+    <Compile Include="Deveel.Data.Util\StreamUtil.cs" />
+    <Compile Include="Deveel.Data\Binary.cs" />
+    <Compile Include="Deveel.Data\BinaryCollection.cs" />
+    <Compile Include="Deveel.Data\DataFileStream.cs" />
+    <Compile Include="Deveel.Data\IDataFile.cs" />
+    <Compile Include="Deveel.Data\IDataRange.cs" />
     <Compile Include="Deveel.Data\IIndexCursor.cs" />
     <Compile Include="Deveel.Data\IIndex.cs" />
     <Compile Include="Deveel.Data\IInteractiveEnumerator.cs">
@@ -190,7 +167,6 @@
     <Compile Include="Deveel.Data.Net\IServiceAddressHandler.cs" />
     <Compile Include="Deveel.Data.Net\IServiceConnector.cs" />
     <Compile Include="Deveel.Data.Net\MachineProfile.cs" />
-    <Compile Include="Deveel.Data.Net\ManagerCacheState.cs" />
     <Compile Include="Deveel.Data.Net\ManagerService.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -201,7 +177,6 @@
     <Compile Include="Deveel.Data.Net\MemoryManagerService.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Deveel.Data.Net\MemoryNetworkCache.cs" />
     <Compile Include="Deveel.Data.Net\MemoryRootService.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -210,10 +185,6 @@
     <Compile Include="Deveel.Data.Net\NetworkConfigSource.cs" />
     <Compile Include="Deveel.Data.Net\NetworkException.cs" />
     <Compile Include="Deveel.Data.Net\NetworkProfile.cs" />
-    <Compile Include="Deveel.Data.Net\NetworkProfile_Admin.cs" />
-    <Compile Include="Deveel.Data.Net\NetworkProfile_Block.cs" />
-    <Compile Include="Deveel.Data.Net\NetworkProfile_Manager.cs" />
-    <Compile Include="Deveel.Data.Net\NetworkProfile_Root.cs" />
     <Compile Include="Deveel.Data.Net\NetworkTreeSystem.cs" />
     <Compile Include="Deveel.Data.Net\NetworkWriteException.cs" />
     <Compile Include="Deveel.Data.Net\PathNameAttribute.cs" />
@@ -228,10 +199,6 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Deveel.Data.Net\TcpNetworkClient.cs" />
-    <Compile Include="Deveel.Data.Net\TcpProxyNetworkClient.cs" />
-    <Compile Include="Deveel.Data.Net\TcpProxyServiceConnector.cs">
-      <SubType>Component</SubType>
-    </Compile>
     <Compile Include="Deveel.Data.Net\TcpServiceConnector.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -240,6 +207,7 @@
     <Compile Include="Deveel.Data.Util\StrongPagedAccess.cs" />
     <Compile Include="Deveel.Data.Configuration\ConfigSource.cs" />
     <Compile Include="Deveel.Data\MemoryDatabase.cs" />
+    <Compile Include="Deveel.Data\NodeId.cs" />
     <Compile Include="Deveel.Data\SortedIndex.cs" />
     <Compile Include="Deveel.Data\TreeBranch.cs">
       <SubType>Code</SubType>
@@ -265,13 +233,16 @@
     <Compile Include="Deveel.Data.Net\ServiceType.cs" />
     <Compile Include="Deveel.Data.Net\SingleNodeSet.cs" />
     <Compile Include="Deveel.Data.Store\DataFile.cs" />
-    <Compile Include="Deveel.Data.Store\DataFileStream.cs" />
     <Compile Include="Deveel.Data.Store\JournalledFileStore.cs" />
     <Compile Include="Deveel.Data.Store\JournalledSystem.cs" />
     <Compile Include="Deveel.Data.Store\LoggingBufferManager.cs" />
     <Compile Include="Deveel.Data.Store\ScatteringStoreDataAccessor.cs" />
     <Compile Include="Deveel.Data.Store\StreamFile.cs" />
     <Compile Include="Deveel.Data\FileSystemDatabase.cs" />
+    <Compile Include="Deveel.Data\TreeReportNode.cs" />
+    <Compile Include="Deveel.Data\TreeSystemStack.cs" />
+    <Compile Include="Deveel.Data\TreeSystemTransaction_DataFile.cs" />
+    <Compile Include="Deveel.Data\TreeSystemTransaction_DataRange.cs" />
     <Compile Include="Deveel.Data\TreeWrite.cs" />
     <Compile Include="Deveel.Data.Util\ByteBuffer.cs" />
     <Compile Include="Deveel.Data.Util\CollectionsUtil.cs" />
@@ -290,7 +261,6 @@
     <Compile Include="Deveel.Data\KeyBase.cs" />
     <Compile Include="Deveel.Data.Caching\MemoryCache.cs" />
     <Compile Include="Deveel.Data\StringDictionary.cs" />
-    <Compile Include="Deveel.Data\SparseLeafNode.cs" />
     <Compile Include="Deveel.Data\StoreTreeSystem.cs" />
     <Compile Include="Deveel.Data\StringCollection.cs" />
     <Compile Include="Deveel.Data\StringData.cs" />
@@ -305,6 +275,7 @@
     <Compile Include="Deveel.Data\TreeSystemTransaction.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Deveel\Quadruple.cs" />
     <Compile Include="LitJson\IJsonWrapper.cs" />
     <Compile Include="LitJson\JsonData.cs" />
     <Compile Include="LitJson\JsonException.cs" />
@@ -336,9 +307,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Deveel.Data.Diagnostics\ChangeLog" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Deveel.Data.Net.Security\ChangeLog" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
