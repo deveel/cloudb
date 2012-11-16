@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cadmin.vs2010", "cadmin\cad
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudb-nunit.vs2010", "cloudb-nunit\cloudb-nunit.vs2010.csproj", "{05D455D6-1EA4-4C27-A4F2-797A518FE00A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudbase.vs2010", "cloudbase\cloudbase.vs2010.csproj", "{D6BFD98D-8803-4139-A7F7-6B4FB58EC327}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -37,6 +39,10 @@ Global
 		{05D455D6-1EA4-4C27-A4F2-797A518FE00A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{05D455D6-1EA4-4C27-A4F2-797A518FE00A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{05D455D6-1EA4-4C27-A4F2-797A518FE00A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D6BFD98D-8803-4139-A7F7-6B4FB58EC327}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D6BFD98D-8803-4139-A7F7-6B4FB58EC327}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D6BFD98D-8803-4139-A7F7-6B4FB58EC327}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D6BFD98D-8803-4139-A7F7-6B4FB58EC327}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
