@@ -1,0 +1,14 @@
+C:\dev\deveel\cloudb\src\cloudb.service.vs2010\bin\Debug\cloudb.service.dll
+C:\dev\deveel\cloudb\src\cloudb.service.vs2010\bin\Debug\cloudb.service.pdb
+C:\dev\deveel\cloudb\src\cloudb.service.vs2010\bin\Debug\cloudb.dll
+C:\dev\deveel\cloudb\src\cloudb.service.vs2010\bin\Debug\cloudb.pdb
+C:\dev\deveel\cloudb\src\cloudb.service.vs2010\obj\Debug\cloudb.service.vs2010.csprojResolveAssemblyReference.cache
+C:\dev\deveel\cloudb\src\cloudb.service.vs2010\obj\Debug\cloudb.service.dll
+C:\dev\deveel\cloudb\src\cloudb.service.vs2010\obj\Debug\cloudb.service.pdb
+C:\dev\deveel\cloudb\src\cloudb.service\bin\Debug\cloudb.service.dll
+C:\dev\deveel\cloudb\src\cloudb.service\bin\Debug\cloudb.service.pdb
+C:\dev\deveel\cloudb\src\cloudb.service\bin\Debug\cloudb.dll
+C:\dev\deveel\cloudb\src\cloudb.service\bin\Debug\cloudb.pdb
+C:\dev\deveel\cloudb\src\cloudb.service\obj\Debug\cloudb.service.vs2010.csprojResolveAssemblyReference.cache
+C:\dev\deveel\cloudb\src\cloudb.service\obj\Debug\cloudb.service.dll
+C:\dev\deveel\cloudb\src\cloudb.service\obj\Debug\cloudb.service.pdb

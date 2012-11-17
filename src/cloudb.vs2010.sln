@@ -17,6 +17,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudb-nunit.vs2010", "clou
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudbase.vs2010", "cloudbase\cloudbase.vs2010.csproj", "{D6BFD98D-8803-4139-A7F7-6B4FB58EC327}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudb.service.vs2010", "cloudb.service\cloudb.service.vs2010.csproj", "{682FA6A5-8786-4B75-BC04-DF35267D80DE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudbase-nunit.vs2010", "cloudbase-nunit\cloudbase-nunit.vs2010.csproj", "{FCA98A1D-E2D7-462D-87A7-EE489E4D8D1D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -43,6 +47,14 @@ Global
 		{D6BFD98D-8803-4139-A7F7-6B4FB58EC327}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D6BFD98D-8803-4139-A7F7-6B4FB58EC327}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D6BFD98D-8803-4139-A7F7-6B4FB58EC327}.Release|Any CPU.Build.0 = Release|Any CPU
+		{682FA6A5-8786-4B75-BC04-DF35267D80DE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{682FA6A5-8786-4B75-BC04-DF35267D80DE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{682FA6A5-8786-4B75-BC04-DF35267D80DE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{682FA6A5-8786-4B75-BC04-DF35267D80DE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FCA98A1D-E2D7-462D-87A7-EE489E4D8D1D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FCA98A1D-E2D7-462D-87A7-EE489E4D8D1D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FCA98A1D-E2D7-462D-87A7-EE489E4D8D1D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FCA98A1D-E2D7-462D-87A7-EE489E4D8D1D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

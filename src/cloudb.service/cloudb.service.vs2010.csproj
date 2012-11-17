@@ -1,0 +1,109 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>8.0.30703</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{682FA6A5-8786-4B75-BC04-DF35267D80DE}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Deveel.Data.Net</RootNamespace>
+    <AssemblyName>cloudb.service</AssemblyName>
+    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="ComponentAce.Compression.Libs.zlib\Adler32.cs" />
+    <Compile Include="Deveel.Data.Diagnostic\Analytics.cs" />
+    <Compile Include="Deveel.Data.Diagnostic\AnalyticsRecord.cs" />
+    <Compile Include="Deveel.Data.Net\AdminService.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Deveel.Data.Net\BlockService.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Deveel.Data.Net\ClientCommandEventArgs.cs" />
+    <Compile Include="Deveel.Data.Net\ClientConnection.cs" />
+    <Compile Include="Deveel.Data.Net\ClientConnectionEventArgs.cs" />
+    <Compile Include="Deveel.Data.Net\CompressedBlockStore.cs" />
+    <Compile Include="Deveel.Data.Net\FileBlockStore.cs" />
+    <Compile Include="Deveel.Data.Net\FileSystemBlockService.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Deveel.Data.Net\FileSystemManagerService.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Deveel.Data.Net\FileSystemRootService.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Deveel.Data.Net\FileSystemServiceFactory.cs" />
+    <Compile Include="Deveel.Data.Net\IBlockStore.cs" />
+    <Compile Include="Deveel.Data.Net\IServiceFactory.cs" />
+    <Compile Include="Deveel.Data.Net\ManagerService.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Deveel.Data.Net\MemoryBlockService.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Deveel.Data.Net\MemoryBlockStore.cs" />
+    <Compile Include="Deveel.Data.Net\MemoryManagerService.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Deveel.Data.Net\MemoryRootService.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Deveel.Data.Net\MemoryServiceFactory.cs" />
+    <Compile Include="Deveel.Data.Net\MessageCommunicator.cs" />
+    <Compile Include="Deveel.Data.Net\ReplicatedValueStore.cs" />
+    <Compile Include="Deveel.Data.Net\RootService.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Deveel.Data.Net\Service.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Deveel.Data.Net\TcpAdminService.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Deveel.Data.Util\DateTimeUtil.cs" />
+    <Compile Include="Deveel.Data.Util\Properties.cs" />
+    <Compile Include="Deveel.Data.Util\StrongPagedAccess.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\cloudb\cloudb.vs2010.csproj">
+      <Project>{A18511ED-5BA6-4811-B44F-F730FAD84CE8}</Project>
+      <Name>cloudb.vs2010</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

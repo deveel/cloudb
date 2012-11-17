@@ -21,11 +21,11 @@ namespace Deveel.Data.Net {
 	public sealed class DataAddress {
 		private readonly NodeId value;
 
-		internal DataAddress(NodeId value) {
+		public DataAddress(NodeId value) {
 			this.value = value;
 		}
 
-		internal DataAddress(BlockId blockId, int dataId) {
+		public DataAddress(BlockId blockId, int dataId) {
 			// TODO: Check for overflow?
 			long[] blockAddr = blockId.ReferenceAddress;
 			blockAddr[1] |= dataId & 0x0FFFF;

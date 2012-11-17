@@ -28,7 +28,7 @@ using Deveel.Data.Store;
 using Deveel.Data.Util;
 
 namespace Deveel.Data.Net {
-	internal class NetworkTreeSystem : ITreeSystem {
+	public sealed class NetworkTreeSystem : ITreeSystem {
 		private const short StoreLeafType = 0x019e0;
 		private const short StoreBranchType = 0x022e0;
 
@@ -90,7 +90,7 @@ namespace Deveel.Data.Net {
 
 		public long NodeHeapMaxSize {
 			get { return maxTransactionNodeHeapSize; }
-			internal set { maxTransactionNodeHeapSize = value; }
+			set { maxTransactionNodeHeapSize = value; }
 		}
 
 		public bool NotifyNodeChanged {
@@ -237,7 +237,7 @@ namespace Deveel.Data.Net {
 			return pathInfo;
 		}
 
-		internal DataAddress CreateDatabase() {
+		public DataAddress CreateDatabase() {
 			// The child reference is a sparse node element
 			NodeId childId = NodeId.CreateSpecialSparseNode((byte) 1, 4);
 
@@ -256,15 +256,15 @@ namespace Deveel.Data.Net {
 			return new DataAddress(rootId);
 		}
 
-		internal ITransaction CreateTransaction(DataAddress rootNode) {
+		public ITransaction CreateTransaction(DataAddress rootNode) {
 			return new NetworkTreeSystemTransaction(this, 0, rootNode);
 		}
 
-		internal ITransaction CreateTransaction() {
+		public ITransaction CreateTransaction() {
 			return new NetworkTreeSystemTransaction(this, 0);
 		}
 
-		internal DataAddress FlushTransaction(ITransaction transaction) {
+		public DataAddress FlushTransaction(ITransaction transaction) {
 			NetworkTreeSystemTransaction netTransaction = (NetworkTreeSystemTransaction) transaction;
 			try {
 				netTransaction.Checkout();
@@ -274,7 +274,7 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		internal DataAddress PerformCommit(String pathName, DataAddress proposal) {
+		public DataAddress PerformCommit(String pathName, DataAddress proposal) {
 			// Get the PathInfo object for the given path name,
 			PathInfo pathInfo = GetPathInfoFor(pathName);
 

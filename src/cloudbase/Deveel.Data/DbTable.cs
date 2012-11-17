@@ -903,7 +903,7 @@ namespace Deveel.Data {
 					return 1;
 				if (v == null)
 					return -1;
-				return String.Compare(v, value, StringComparison.Ordinal);
+				return v.CompareTo(value);
 			}
 		}
 

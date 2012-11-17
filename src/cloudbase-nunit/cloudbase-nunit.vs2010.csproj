@@ -5,11 +5,11 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{D6BFD98D-8803-4139-A7F7-6B4FB58EC327}</ProjectGuid>
+    <ProjectGuid>{FCA98A1D-E2D7-462D-87A7-EE489E4D8D1D}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Deveel.Data</RootNamespace>
-    <AssemblyName>cloudbase</AssemblyName>
+    <RootNamespace>cloudbase_nunit.vs2010</RootNamespace>
+    <AssemblyName>cloudbase-nunit.vs2010</AssemblyName>
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -31,28 +31,28 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="nunit.framework, Version=2.6.2.12296, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\NUnit.2.6.2\lib\nunit.framework.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Deveel.Data.Util\CollectionsUtil.cs" />
-    <Compile Include="Deveel.Data\CloudBasePath.cs" />
-    <Compile Include="Deveel.Data\DbFile.cs" />
-    <Compile Include="Deveel.Data\DbIndex.cs" />
-    <Compile Include="Deveel.Data\DbRootAddress.cs" />
-    <Compile Include="Deveel.Data\DbRow.cs" />
-    <Compile Include="Deveel.Data\DbRowCursor.cs" />
-    <Compile Include="Deveel.Data\DbSession.cs" />
-    <Compile Include="Deveel.Data\DbTable.cs" />
-    <Compile Include="Deveel.Data\DbTranaction_Tables.cs" />
-    <Compile Include="Deveel.Data\DbTransaction.cs" />
-    <Compile Include="Deveel.Data\DbTransaction_Files.cs" />
-    <Compile Include="Deveel.Data\Directory.cs" />
-    <Compile Include="Deveel.Data\TrustedAttribute.cs" />
+    <Compile Include="Deveel.Data\CloudBaseTestBase.cs" />
+    <Compile Include="Deveel.Data\TableTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\cloudb-nunit\cloudb-nunit.vs2010.csproj">
+      <Project>{05D455D6-1EA4-4C27-A4F2-797A518FE00A}</Project>
+      <Name>cloudb-nunit.vs2010</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\cloudbase\cloudbase.vs2010.csproj">
+      <Project>{D6BFD98D-8803-4139-A7F7-6B4FB58EC327}</Project>
+      <Name>cloudbase.vs2010</Name>
+    </ProjectReference>
     <ProjectReference Include="..\cloudb\cloudb.vs2010.csproj">
       <Project>{A18511ED-5BA6-4811-B44F-F730FAD84CE8}</Project>
       <Name>cloudb.vs2010</Name>

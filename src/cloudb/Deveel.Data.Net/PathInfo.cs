@@ -27,7 +27,7 @@ namespace Deveel.Data.Net {
 		private readonly IServiceAddress rootLeader;
 		private readonly IServiceAddress[] rootServers;
 
-		internal PathInfo(string pathName, string pathType, int versionNumber, IServiceAddress rootLeader,
+		public PathInfo(string pathName, string pathType, int versionNumber, IServiceAddress rootLeader,
 		                  IServiceAddress[] rootServers) {
 			this.pathName = pathName;
 			this.pathType = pathType;

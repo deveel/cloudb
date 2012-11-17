@@ -90,7 +90,7 @@ namespace Deveel.Data {
 		}
 
 		public void SetValue<T>(string  key, T value) where  T : IConvertible {
-			if (!(value == null) && !value.Equals(default(T))) {
+			if (value == null || value.Equals(default(T))) {
 				SetValue(key,  null);
 			} else {
 				SetValue(key, Convert.ToString(value));
@@ -253,7 +253,7 @@ namespace Deveel.Data {
 
 			public int Compare(string x, string y) {
 				// Compare the keys of the string
-				return String.Compare(KeyValuePart(x), KeyValuePart(y), StringComparison.Ordinal);
+				return KeyValuePart(x).CompareTo(KeyValuePart(y));
 			}
 
 			#endregion
@@ -263,7 +263,7 @@ namespace Deveel.Data {
 			#region Implementation of IComparer<string>
 
 			public int Compare(string x, string y) {
-				return String.Compare(x, y, StringComparison.Ordinal);
+				return x.CompareTo(y);
 			}
 
 			#endregion

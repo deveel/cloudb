@@ -128,7 +128,7 @@ namespace Deveel.Data {
 			#region Implementation of IComparer<string>
 
 			public int Compare(string x, string y) {
-				return String.Compare(x, y, StringComparison.Ordinal);
+				return x.CompareTo(y);
 			}
 
 			#endregion

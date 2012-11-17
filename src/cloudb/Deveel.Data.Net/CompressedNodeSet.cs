@@ -23,7 +23,7 @@ using System.IO.Compression;
 
 namespace Deveel.Data.Net {
 	public sealed class CompressedNodeSet : NodeSet {
-		internal CompressedNodeSet(NodeId[] nodeIds, byte[] buffer)
+		public CompressedNodeSet(NodeId[] nodeIds, byte[] buffer)
 			: base(nodeIds, buffer) {
 		}
 

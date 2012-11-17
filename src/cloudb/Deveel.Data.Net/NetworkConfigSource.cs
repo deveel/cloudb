@@ -219,7 +219,7 @@ namespace Deveel.Data.Net {
 			}
 		}
 
-		internal void Reload() {
+		public void Reload() {
 			if (String.IsNullOrEmpty(source))
 				return;
 			

@@ -17,6 +17,7 @@ namespace Deveel.Data {
 				Assert.AreEqual(0, transaction.TableCount);
 
 				transaction.CreateTable("test_table");
+
 				DbTable table = transaction.GetTable("test_table");
 				table.AddColumn("col1");
 				table.AddColumn("col2");

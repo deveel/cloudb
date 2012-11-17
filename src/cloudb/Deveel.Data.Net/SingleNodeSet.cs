@@ -21,15 +21,15 @@ using System.Collections.Generic;
 
 namespace Deveel.Data.Net {
 	public sealed class SingleNodeSet : NodeSet {
-		internal SingleNodeSet(BlockId blockId, int dataId, byte[] buffer)
+		public SingleNodeSet(BlockId blockId, int dataId, byte[] buffer)
 			: base(new NodeId[] { new DataAddress(blockId, dataId).Value}, buffer) {
 		}
 
-		internal SingleNodeSet(NodeId nodeId, byte[] buffer)
+		public SingleNodeSet(NodeId nodeId, byte[] buffer)
 			: base(new NodeId[] { nodeId}, buffer) {
 		}
 
-		internal SingleNodeSet(NodeId[] nodeIds, byte[] buffer)
+		public SingleNodeSet(NodeId[] nodeIds, byte[] buffer)
 			: base(nodeIds, buffer) {
 		}
 
