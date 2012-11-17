@@ -1,4 +1,21 @@
-﻿using System;
+﻿//
+//    This file is part of Deveel in The  Cloud (CloudB).
+//
+//    CloudB is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU Lesser General Public License as 
+//    published by the Free Software Foundation, either version 3 of 
+//    the License, or (at your option) any later version.
+//
+//    CloudB is distributed in the hope that it will be useful, but 
+//    WITHOUT ANY WARRANTY; without even the implied warranty of 
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//    GNU Lesser General Public License for more details.
+//
+//    You should have received a copy of the GNU Lesser General Public License
+//    along with CloudB. If not, see <http://www.gnu.org/licenses/>.
+//
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -205,7 +222,7 @@ namespace Deveel.Data {
 			// While there is data to copy,
 			while (size > 0) {
 				// Read an amount of data from the source
-				int toRead = (int) Math.Min((long) buf.Length, size);
+				int toRead = (int) Math.Min(buf.Length, size);
 				// Read it into the buffer
 				source.Read(buf, 0, toRead);
 				// Write from the buffer out to the target

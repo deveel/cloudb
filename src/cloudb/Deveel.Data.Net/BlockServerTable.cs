@@ -1,4 +1,21 @@
-﻿using System;
+﻿//
+//    This file is part of Deveel in The  Cloud (CloudB).
+//
+//    CloudB is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU Lesser General Public License as 
+//    published by the Free Software Foundation, either version 3 of 
+//    the License, or (at your option) any later version.
+//
+//    CloudB is distributed in the hope that it will be useful, but 
+//    WITHOUT ANY WARRANTY; without even the implied warranty of 
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//    GNU Lesser General Public License for more details.
+//
+//    You should have received a copy of the GNU Lesser General Public License
+//    along with CloudB. If not, see <http://www.gnu.org/licenses/>.
+//
+
+using System;
 using System.Collections.Generic;
 
 namespace Deveel.Data.Net {
@@ -7,8 +24,8 @@ namespace Deveel.Data.Net {
 			: base(data, 16) {
 		}
 
-		public long[] this[long block_id] {
-			get { return Get(block_id); }
+		public long[] this[long blockId] {
+			get { return Get(blockId); }
 		}
 
 		public long LastBlockId {
@@ -171,9 +188,9 @@ namespace Deveel.Data.Net {
 			}
 
 			public override bool Equals(Object ob) {
-				Record dest_ob = (Record)ob;
-				return (dest_ob.BlockId == BlockId &&
-						dest_ob.ServerId == ServerId);
+				Record destOb = (Record)ob;
+				return (destOb.BlockId == BlockId &&
+						destOb.ServerId == ServerId);
 			}
 		}
 	}

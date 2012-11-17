@@ -1,9 +1,26 @@
-﻿using System;
+﻿//
+//    This file is part of Deveel in The  Cloud (CloudB).
+//
+//    CloudB is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU Lesser General Public License as 
+//    published by the Free Software Foundation, either version 3 of 
+//    the License, or (at your option) any later version.
+//
+//    CloudB is distributed in the hope that it will be useful, but 
+//    WITHOUT ANY WARRANTY; without even the implied warranty of 
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//    GNU Lesser General Public License for more details.
+//
+//    You should have received a copy of the GNU Lesser General Public License
+//    along with CloudB. If not, see <http://www.gnu.org/licenses/>.
+//
+
+using System;
 
 namespace Deveel.Data {
 	public class TreeBranch : ITreeNode {
-		private NodeId nodeId;
-		private long[] children;
+		private readonly NodeId nodeId;
+		private readonly long[] children;
 		private int childrenCount;
 
 		public TreeBranch(NodeId nodeId, int maxChildrenCount) {
@@ -120,13 +137,13 @@ namespace Deveel.Data {
 			children[(childIndex*5) + 2] = count;
 		}
 
-		internal void SetKeyToLeft(Key key, int child_i) {
+		internal void SetKeyToLeft(Key key, int childIndex) {
 			CheckReadOnly();
-			if (child_i >= ChildCount)
-				throw new ArgumentOutOfRangeException("child_i", "Key request out of bounds.");
+			if (childIndex >= ChildCount)
+				throw new ArgumentOutOfRangeException("childIndex", "Key request out of bounds.");
 
-			children[(child_i*5) - 2] = key.GetEncoded(1);
-			children[(child_i*5) - 1] = key.GetEncoded(2);
+			children[(childIndex*5) - 2] = key.GetEncoded(1);
+			children[(childIndex*5) - 1] = key.GetEncoded(2);
 		}
 
 		public NodeId GetChild(int n) {
@@ -297,9 +314,9 @@ namespace Deveel.Data {
 			children[(n*5) + 1] = childPointer.Low;
 		}
 
-		internal void SetChild(NodeId child_pointer, int n) {
+		internal void SetChild(NodeId childPointer, int n) {
 			CheckReadOnly();
-			SetChildOverride(child_pointer, n);
+			SetChildOverride(childPointer, n);
 		}
 
 		public void Set(NodeId child1, long child1Count, Key key, NodeId child2, long child2Count) {

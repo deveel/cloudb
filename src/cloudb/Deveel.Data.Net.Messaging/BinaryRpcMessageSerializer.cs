@@ -1,11 +1,28 @@
-﻿using System;
+﻿//
+//    This file is part of Deveel in The  Cloud (CloudB).
+//
+//    CloudB is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU Lesser General Public License as 
+//    published by the Free Software Foundation, either version 3 of 
+//    the License, or (at your option) any later version.
+//
+//    CloudB is distributed in the hope that it will be useful, but 
+//    WITHOUT ANY WARRANTY; without even the implied warranty of 
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//    GNU Lesser General Public License for more details.
+//
+//    You should have received a copy of the GNU Lesser General Public License
+//    along with CloudB. If not, see <http://www.gnu.org/licenses/>.
+//
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
 namespace Deveel.Data.Net.Messaging {
 	public sealed class BinaryRpcMessageSerializer : BinaryMessageSerializer {
-		private static readonly Dictionary<byte, Type> typeCodes;
+		private static readonly Dictionary<byte, Type> TypeCodes;
 
 		public BinaryRpcMessageSerializer(Encoding encoding)
 			: base(encoding) {
@@ -16,31 +33,31 @@ namespace Deveel.Data.Net.Messaging {
 		}
 		
 		static BinaryRpcMessageSerializer() {
-			typeCodes = new Dictionary<byte, Type>();
-			typeCodes[0] = typeof(DBNull);
+			TypeCodes = new Dictionary<byte, Type>();
+			TypeCodes[0] = typeof(DBNull);
 
-			typeCodes[1] = typeof(byte);
-			typeCodes[2] = typeof(short);
-			typeCodes[3] = typeof(int);
-			typeCodes[4] = typeof(long);
-			typeCodes[5] = typeof(float);
-			typeCodes[6] = typeof(double);
+			TypeCodes[1] = typeof(byte);
+			TypeCodes[2] = typeof(short);
+			TypeCodes[3] = typeof(int);
+			TypeCodes[4] = typeof(long);
+			TypeCodes[5] = typeof(float);
+			TypeCodes[6] = typeof(double);
 
-			typeCodes[11] = typeof(DateTime);
-			typeCodes[12] = typeof(TimeSpan);
+			TypeCodes[11] = typeof(DateTime);
+			TypeCodes[12] = typeof(TimeSpan);
 
-			typeCodes[22] = typeof(char);
-			typeCodes[23] = typeof(string);
+			TypeCodes[22] = typeof(char);
+			TypeCodes[23] = typeof(string);
 
-			typeCodes[33] = typeof(bool);
+			TypeCodes[33] = typeof(bool);
 
-			typeCodes[57] = typeof(Array);
+			TypeCodes[57] = typeof(Array);
 
 			// extensions ...
-			typeCodes[101] = typeof(IServiceAddress);
-			typeCodes[102] = typeof(DataAddress);
-			typeCodes[103] = typeof(NodeSet);
-			typeCodes[104] = typeof(MessageError);
+			TypeCodes[101] = typeof(IServiceAddress);
+			TypeCodes[102] = typeof(DataAddress);
+			TypeCodes[103] = typeof(NodeSet);
+			TypeCodes[104] = typeof(MessageError);
 		}
 
 		public bool SupportsMessageStream {
@@ -49,7 +66,7 @@ namespace Deveel.Data.Net.Messaging {
 		
 		private static Type GetType(byte code) {
 			Type type;
-			if (typeCodes.TryGetValue(code, out type))
+			if (TypeCodes.TryGetValue(code, out type))
 				return type;
 			return null;
 		}
@@ -58,7 +75,7 @@ namespace Deveel.Data.Net.Messaging {
 			if (type.IsArray)
 				return 57;
 			
-			foreach(KeyValuePair<byte, Type> pair in typeCodes) {
+			foreach(KeyValuePair<byte, Type> pair in TypeCodes) {
 				if (pair.Value == type ||
 				    ((pair.Value.IsInterface || pair.Value.IsAbstract) && 
 				     pair.Value.IsAssignableFrom(type)))

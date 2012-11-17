@@ -1,4 +1,21 @@
-﻿using System;
+﻿//
+//    This file is part of Deveel in The  Cloud (CloudB).
+//
+//    CloudB is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU Lesser General Public License as 
+//    published by the Free Software Foundation, either version 3 of 
+//    the License, or (at your option) any later version.
+//
+//    CloudB is distributed in the hope that it will be useful, but 
+//    WITHOUT ANY WARRANTY; without even the implied warranty of 
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//    GNU Lesser General Public License for more details.
+//
+//    You should have received a copy of the GNU Lesser General Public License
+//    along with CloudB. If not, see <http://www.gnu.org/licenses/>.
+//
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
@@ -51,12 +68,12 @@ namespace Deveel.Data {
 				collection.Remove(key);
 			} else {
 				// Get the current value for this key in the set
-				String cur_val = GetValue(key);
+				string curVal = GetValue(key);
 				// If there's a value currently stored,
-				if (cur_val != null) {
+				if (curVal != null) {
 					// If we are setting the key to the same value, we exit the function
 					// early because nothing needs to be done,
-					if (cur_val.Equals(value))
+					if (curVal.Equals(value))
 						return;
 
 					// Otherwise remove the existing key
@@ -73,7 +90,7 @@ namespace Deveel.Data {
 		}
 
 		public void SetValue<T>(string  key, T value) where  T : IConvertible {
-			if (value == null || value.Equals(default(T))) {
+			if (!(value == null) && !value.Equals(default(T))) {
 				SetValue(key,  null);
 			} else {
 				SetValue(key, Convert.ToString(value));
@@ -236,7 +253,7 @@ namespace Deveel.Data {
 
 			public int Compare(string x, string y) {
 				// Compare the keys of the string
-				return KeyValuePart(x).CompareTo(KeyValuePart(y));
+				return String.Compare(KeyValuePart(x), KeyValuePart(y), StringComparison.Ordinal);
 			}
 
 			#endregion
@@ -246,7 +263,7 @@ namespace Deveel.Data {
 			#region Implementation of IComparer<string>
 
 			public int Compare(string x, string y) {
-				return x.CompareTo(y);
+				return String.Compare(x, y, StringComparison.Ordinal);
 			}
 
 			#endregion

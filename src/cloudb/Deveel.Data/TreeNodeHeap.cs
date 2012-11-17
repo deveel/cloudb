@@ -1,4 +1,21 @@
-﻿using System;
+﻿//
+//    This file is part of Deveel in The  Cloud (CloudB).
+//
+//    CloudB is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU Lesser General Public License as 
+//    published by the Free Software Foundation, either version 3 of 
+//    the License, or (at your option) any later version.
+//
+//    CloudB is distributed in the hope that it will be useful, but 
+//    WITHOUT ANY WARRANTY; without even the implied warranty of 
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//    GNU Lesser General Public License for more details.
+//
+//    You should have received a copy of the GNU Lesser General Public License
+//    along with CloudB. If not, see <http://www.gnu.org/licenses/>.
+//
+
+using System;
 using System.Collections.Generic;
 
 using Deveel.Data.Store;
@@ -110,31 +127,31 @@ namespace Deveel.Data {
 			}
 			PutInHash(node);
 			// Return pointer to node
-			return (ITreeNode) node;
+			return node;
 		}
 
 		public void Delete(NodeId pointer) {
-			int hash_index = CalcHashValue(pointer);
-			IHashNode hash_node = hash[hash_index];
+			int hashIndex = CalcHashValue(pointer);
+			IHashNode hashNode = hash[hashIndex];
 			IHashNode previous = null;
-			while (hash_node != null &&
-			       !(hash_node.Id.Equals(pointer))) {
-				previous = hash_node;
-				hash_node = hash_node.NextHash;
+			while (hashNode != null &&
+			       !(hashNode.Id.Equals(pointer))) {
+				previous = hashNode;
+				hashNode = hashNode.NextHash;
 			}
-			if (hash_node == null)
+			if (hashNode == null)
 				throw new InvalidOperationException("Node not found!");
 
 			if (previous == null) {
-				hash[hash_index] = hash_node.NextHash;
+				hash[hashIndex] = hashNode.NextHash;
 			} else {
-				previous.NextHash = hash_node.NextHash;
+				previous.NextHash = hashNode.NextHash;
 			}
 
 			// Remove from the double linked list structure,
 			// If removed node at head.
-			if (hashStart == hash_node) {
-				hashStart = hash_node.Next;
+			if (hashStart == hashNode) {
+				hashStart = hashNode.Next;
 				if (hashStart != null) {
 					hashStart.Previous = null;
 				} else {
@@ -142,23 +159,23 @@ namespace Deveel.Data {
 				}
 			}
 				// If removed node at end.
-			else if (hashEnd == hash_node) {
-				hashEnd = hash_node.Previous;
+			else if (hashEnd == hashNode) {
+				hashEnd = hashNode.Previous;
 				if (hashEnd != null) {
 					hashEnd.Next = null;
 				} else {
 					hashStart = null;
 				}
 			} else {
-				hash_node.Previous.Next = hash_node.Next;
-				hash_node.Next.Previous = hash_node.Previous;
+				hashNode.Previous.Next = hashNode.Next;
+				hashNode.Next.Previous = hashNode.Previous;
 			}
 
 			// Update the 'memory_used' variable
-			memoryUsed -= hash_node.MemoryAmount;
+			memoryUsed -= hashNode.MemoryAmount;
 
 			// KEEP STATS
-			if (hash_node is TreeBranch) {
+			if (hashNode is TreeBranch) {
 				--totalBranchNodeCount;
 			} else {
 				--totalLeafNodeCount;
@@ -289,9 +306,9 @@ namespace Deveel.Data {
 			private IHashNode next;
 			private IHashNode previous;
 
-			private byte[] data;
+			private readonly byte[] data;
 
-			private NodeId nodeId;
+			private readonly NodeId nodeId;
 			private int size;
 
 			public HeapTreeLeaf(TreeSystemTransaction transaction, NodeId nodeId, int maxCapacity) {
@@ -301,13 +318,13 @@ namespace Deveel.Data {
 				data = new byte[maxCapacity];
 			}
 
-			public HeapTreeLeaf(TreeSystemTransaction transaction, NodeId nodeId, TreeLeaf to_copy, int capacity) {
+			public HeapTreeLeaf(TreeSystemTransaction transaction, NodeId nodeId, TreeLeaf toCopy, int capacity) {
 				this.nodeId = nodeId;
-				this.size = to_copy.Length;
+				size = toCopy.Length;
 				this.transaction = transaction;
 				// Copy the data into an array in this leaf.
-				this.data = new byte[capacity];
-				to_copy.Read(0, data, 0, size);
+				data = new byte[capacity];
+				toCopy.Read(0, data, 0, size);
 			}
 
 			public override int Length {

@@ -1,4 +1,21 @@
-﻿using System;
+﻿//
+//    This file is part of Deveel in The  Cloud (CloudB).
+//
+//    CloudB is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU Lesser General Public License as 
+//    published by the Free Software Foundation, either version 3 of 
+//    the License, or (at your option) any later version.
+//
+//    CloudB is distributed in the hope that it will be useful, but 
+//    WITHOUT ANY WARRANTY; without even the implied warranty of 
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//    GNU Lesser General Public License for more details.
+//
+//    You should have received a copy of the GNU Lesser General Public License
+//    along with CloudB. If not, see <http://www.gnu.org/licenses/>.
+//
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
@@ -11,7 +28,7 @@ namespace Deveel.Data {
 		private const short StoreLeafType = 0x019EC;
 		private const short StoreBranchType = 0x022EB;
 
-		private volatile ErrorStateException critical_stop_error = null;
+		private volatile ErrorStateException criticalStopError;
 
 		private readonly List<VersionInfo> versions;
 
@@ -635,31 +652,31 @@ namespace Deveel.Data {
 			CheckErrorState();
 
 			// Create the header node
-			TreeReportNode header_node = new TreeReportNode("header", headerId);
+			TreeReportNode headerNode = new TreeReportNode("header", headerId);
 
 			// Get the header area
-			IArea header_area = nodeStore.GetArea(headerId);
-			header_area.Position = 8;
+			IArea headerArea = nodeStore.GetArea(headerId);
+			headerArea.Position = 8;
 			// Read the versions list,
-			long version_list_ref = header_area.ReadInt8();
+			long versionListRef = headerArea.ReadInt8();
 
 			// Create the version node
-			TreeReportNode versions_node =
-				new TreeReportNode("versions list", version_list_ref);
+			TreeReportNode versionsNode =
+				new TreeReportNode("versions list", versionListRef);
 			// Set this as a child to the header
-			header_node.ChildNodes.Add(versions_node);
+			headerNode.ChildNodes.Add(versionsNode);
 
 			// Read the versions list area
 			// magic(int), versions count(int), list of version id objects.
-			IArea versions_area = nodeStore.GetArea(version_list_ref);
-			if (versions_area.ReadInt4() != 0x01433)
+			IArea versionsArea = nodeStore.GetArea(versionListRef);
+			if (versionsArea.ReadInt4() != 0x01433)
 				throw new IOException("Incorrect magic value 0x01433");
 
-			int versCount = versions_area.ReadInt4();
+			int versCount = versionsArea.ReadInt4();
 			// For each id from the versions area, read in the associated VersionInfo
 			// object into the 'vers' array.
 			for (int i = 0; i < versCount; ++i) {
-				long vInfoRef = versions_area.ReadInt8();
+				long vInfoRef = versionsArea.ReadInt8();
 				// Set up the information in our node
 				TreeReportNode vInfoNode = new TreeReportNode("version", vInfoRef);
 
@@ -690,11 +707,11 @@ namespace Deveel.Data {
 				vInfoNode.ChildNodes.Add(CreateDiagnosticRootGraph(Key.Head, rootNodeId));
 
 				// Add this to the version list node
-				versions_node.ChildNodes.Add(vInfoNode);
+				versionsNode.ChildNodes.Add(vInfoNode);
 			}
 
 			// Return the header node
-			return header_node;
+			return headerNode;
 		}
 
 		private TreeReportNode CreateDiagnosticRootGraph(Key leftKey, NodeId id) {
@@ -793,8 +810,8 @@ namespace Deveel.Data {
 				lock (referenceCountLock) {
 					// Assert this is a leaf
 						leafArea.Position = 0;
-						short node_type = leafArea.ReadInt2();
-					if (node_type != StoreLeafType)
+						short nodeType = leafArea.ReadInt2();
+					if (nodeType != StoreLeafType)
 						throw new IOException("Can only link to a leaf node.");
 
 					leafArea.Position = 4;
@@ -823,15 +840,15 @@ namespace Deveel.Data {
 		}
 
 		public ErrorStateException SetErrorState(Exception error) {
-			critical_stop_error = new ErrorStateException(error.Message, error);
-			return critical_stop_error;
+			criticalStopError = new ErrorStateException(error.Message, error);
+			return criticalStopError;
 		}
 
 		public void CheckErrorState() {
-			if (critical_stop_error != null) {
+			if (criticalStopError != null) {
 				// We wrap the critical stop error a second time to ensure the stack
 				// trace accurately reflects where the failure originated.
-				throw new ErrorStateException(critical_stop_error.Message, critical_stop_error);
+				throw new ErrorStateException(criticalStopError.Message, criticalStopError);
 			}
 		}
 

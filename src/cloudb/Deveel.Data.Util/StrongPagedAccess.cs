@@ -1,4 +1,21 @@
-﻿using System;
+﻿//
+//    This file is part of Deveel in The  Cloud (CloudB).
+//
+//    CloudB is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU Lesser General Public License as 
+//    published by the Free Software Foundation, either version 3 of 
+//    the License, or (at your option) any later version.
+//
+//    CloudB is distributed in the hope that it will be useful, but 
+//    WITHOUT ANY WARRANTY; without even the implied warranty of 
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//    GNU Lesser General Public License for more details.
+//
+//    You should have received a copy of the GNU Lesser General Public License
+//    along with CloudB. If not, see <http://www.gnu.org/licenses/>.
+//
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -13,26 +30,26 @@ namespace Deveel.Data.Util {
 		public StrongPagedAccess(Stream input, int pageSize) {
 			this.input = input;
 			this.pageSize = pageSize;
-			this.cache = new Dictionary<long, byte[]>();
+			cache = new Dictionary<long, byte[]>();
 		}
 
-		private byte[] FetchPage(long page_no) {
+		private byte[] FetchPage(long pageNo) {
 			byte[] page;
-			if (!cache.TryGetValue(page_no, out page)) {
+			if (!cache.TryGetValue(pageNo, out page)) {
 				page = new byte[pageSize];
-				input.Seek(page_no * pageSize, SeekOrigin.Begin);
+				input.Seek(pageNo * pageSize, SeekOrigin.Begin);
 				int n = 0;
 				int sz = pageSize;
 				while (sz > 0) {
-					int read_count = input.Read(page, n, sz);
-					if (read_count == 0) {
+					int readCount = input.Read(page, n, sz);
+					if (readCount == 0) {
 						// eof
 						break;
 					}
-					n += read_count;
-					sz -= read_count;
+					n += readCount;
+					sz -= readCount;
 				}
-				cache.Add(page_no, page);
+				cache.Add(pageNo, page);
 				++cacheMiss;
 			} else {
 				++cacheHit;

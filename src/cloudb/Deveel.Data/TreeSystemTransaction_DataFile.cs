@@ -1,4 +1,21 @@
-﻿using System;
+﻿//
+//    This file is part of Deveel in The  Cloud (CloudB).
+//
+//    CloudB is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU Lesser General Public License as 
+//    published by the Free Software Foundation, either version 3 of 
+//    the License, or (at your option) any later version.
+//
+//    CloudB is distributed in the hope that it will be useful, but 
+//    WITHOUT ANY WARRANTY; without even the implied warranty of 
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+//    GNU Lesser General Public License for more details.
+//
+//    You should have received a copy of the GNU Lesser General Public License
+//    along with CloudB. If not, see <http://www.gnu.org/licenses/>.
+//
+
+using System;
 using System.IO;
 
 namespace Deveel.Data {
@@ -23,23 +40,19 @@ namespace Deveel.Data {
 			// Tree stack
 			private readonly TreeSystemStack stack;
 
-			// A small buffer used for converting primitives
-			private readonly byte[] convert_buffer;
-
 			// True if locally, this transaction is read only
-			private readonly bool file_read_only;
+			private readonly bool fileReadOnly;
 
-			internal DataFile(TreeSystemTransaction transaction, Key key, bool file_read_only) {
-				this.stack = new TreeSystemStack(transaction);
+			internal DataFile(TreeSystemTransaction transaction, Key key, bool fileReadOnly) {
+				stack = new TreeSystemStack(transaction);
 				this.transaction = transaction;
 				this.key = key;
-				this.p = 0;
-				this.convert_buffer = new byte[8];
+				p = 0;
 
-				this.version = -1;
-				this.file_read_only = file_read_only;
-				this.start = -1;
-				this.end = -1;
+				version = -1;
+				this.fileReadOnly = fileReadOnly;
+				start = -1;
+				end = -1;
 			}
 
 			public TreeSystemTransaction Transaction {
@@ -102,7 +115,7 @@ namespace Deveel.Data {
 				// Either the transaction is read only or the file is read only
 				if (transaction.readOnly)
 					throw new ApplicationException("Read only transaction.");
-				if (file_read_only) {
+				if (fileReadOnly) {
 					throw new ApplicationException("Read only data file.");
 				}
 
@@ -471,7 +484,7 @@ namespace Deveel.Data {
 					Position = initSpos + size;
 					target.Position = initTpos + size;
 					// Reset version to force a bound update
-					this.version = -1;
+					version = -1;
 					target.version = -1;
 					target.UpdateLowestSizeChangedKey();
 					target.Transaction.FlushCache();
