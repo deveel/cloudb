@@ -134,7 +134,6 @@
     <Compile Include="Deveel.Data.Net\IPathConnection.cs" />
     <Compile Include="Deveel.Data.Net\IPath.cs" />
     <Compile Include="Deveel.Data.Net\INetworkCache.cs" />
-    <Compile Include="Deveel.Data.Net\IService.cs" />
     <Compile Include="Deveel.Data.Net\IServiceAddress.cs" />
     <Compile Include="Deveel.Data.Net\IServiceAddressHandler.cs" />
     <Compile Include="Deveel.Data.Net\IServiceConnector.cs" />

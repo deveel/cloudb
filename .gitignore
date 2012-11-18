@@ -66,3 +66,6 @@
 /src/packages/deveelrl.1.0.0/lib/net20/deveelrl.dll
 /src/packages/dshell.0.6.7-beta/dshell.0.6.7-beta.nupkg
 /src/packages/dshell.0.6.7-beta/lib/net20/dshell.dll
+/src/cloudb-service/obj
+/src/cloudb-service/bin
+/src/packages

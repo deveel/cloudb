@@ -49,6 +49,10 @@
       <Project>{05D455D6-1EA4-4C27-A4F2-797A518FE00A}</Project>
       <Name>cloudb-nunit.vs2010</Name>
     </ProjectReference>
+    <ProjectReference Include="..\cloudb-service\cloudb-service.vs2010.csproj">
+      <Project>{682FA6A5-8786-4B75-BC04-DF35267D80DE}</Project>
+      <Name>cloudb-service.vs2010</Name>
+    </ProjectReference>
     <ProjectReference Include="..\cloudbase\cloudbase.vs2010.csproj">
       <Project>{D6BFD98D-8803-4139-A7F7-6B4FB58EC327}</Project>
       <Name>cloudbase.vs2010</Name>

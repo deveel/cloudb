@@ -33,6 +33,10 @@
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="cloudb">
+      <HintPath>..\packages\cloudb.1.5.3\lib\net20\cloudb.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="deveel-cli, Version=1.0.4518.40754, Culture=neutral, PublicKeyToken=c897ff68d9dd9baa, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\deveel-cli.1.0.1\lib\net20\deveel-cli.dll</HintPath>
@@ -70,13 +74,9 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\cloudb.service\cloudb.service.vs2010.csproj">
+    <ProjectReference Include="..\cloudb-service\cloudb-service.vs2010.csproj">
       <Project>{682FA6A5-8786-4B75-BC04-DF35267D80DE}</Project>
-      <Name>cloudb.service.vs2010</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\cloudb\cloudb.csproj">
-      <Project>{A18511ED-5BA6-4811-B44F-F730FAD84CE8}</Project>
-      <Name>cloudb</Name>
+      <Name>cloudb-service.vs2010</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

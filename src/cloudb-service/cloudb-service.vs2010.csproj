@@ -61,6 +61,7 @@
     </Compile>
     <Compile Include="Deveel.Data.Net\FileSystemServiceFactory.cs" />
     <Compile Include="Deveel.Data.Net\IBlockStore.cs" />
+    <Compile Include="Deveel.Data.Net\IService.cs" />
     <Compile Include="Deveel.Data.Net\IServiceFactory.cs" />
     <Compile Include="Deveel.Data.Net\ManagerService.cs">
       <SubType>Component</SubType>

@@ -67,9 +67,7 @@
   <ItemGroup>
     <Compile Include="Deveel.Data.Configuration\PropertiesConfigSourceTest.cs" />
     <Compile Include="Deveel.Data.Diagnostics\SimpleConsoleLogger.cs" />
-    <Compile Include="Deveel.Data.Net\FakeAdminService.cs">
-      <SubType>Component</SubType>
-    </Compile>
+    <Compile Include="Deveel.Data.Net\FakeAdminService.cs" />
     <Compile Include="Deveel.Data.Net\FakeNetworkTest.cs" />
     <Compile Include="Deveel.Data.Net\FakeServiceAddress.cs" />
     <Compile Include="Deveel.Data.Net\FakeServiceAddressHandler.cs" />
@@ -110,9 +108,9 @@
     <None Include="Deveel.Data.Net\ChangeLog" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\cloudb.service\cloudb.service.vs2010.csproj">
+    <ProjectReference Include="..\cloudb-service\cloudb-service.vs2010.csproj">
       <Project>{682FA6A5-8786-4B75-BC04-DF35267D80DE}</Project>
-      <Name>cloudb.service.vs2010</Name>
+      <Name>cloudb-service.vs2010</Name>
     </ProjectReference>
     <ProjectReference Include="..\cloudb\cloudb.csproj">
       <Project>{A18511ED-5BA6-4811-B44F-F730FAD84CE8}</Project>
