@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+    <metadata>
+        <id>cloudbase</id>
+        <version>0.9.1</version>
+        <title>CloudBase Data Model</title>
+        <authors>antonello</authors>
+        <owners>Deveel</owners>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>CloudBase is the Key/Value data model for the CloudB distributed database system</description>
+        <copyright>(c) 2010-2012 Deveel</copyright>
+        <tags>cloud database distributed data keyvalue file deveel cloudbase cluster sharded</tags>
+        <dependencies>
+            <group targetFramework=".NETFramework2.0">
+                <dependency id="cloudb" version="1.5.3" />
+            </group>
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="bin\Release\cloudbase.dll" target="lib\net20\cloudbase.dll" />
+    </files>
+</package>

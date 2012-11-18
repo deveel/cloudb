@@ -8,8 +8,8 @@
     <ProjectGuid>{FCA98A1D-E2D7-462D-87A7-EE489E4D8D1D}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>cloudbase_nunit.vs2010</RootNamespace>
-    <AssemblyName>cloudbase-nunit.vs2010</AssemblyName>
+    <RootNamespace>Deveel.Data</RootNamespace>
+    <AssemblyName>cloudbase-nunit</AssemblyName>
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>

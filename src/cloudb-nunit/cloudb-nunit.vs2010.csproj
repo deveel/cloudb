@@ -56,6 +56,12 @@
   <PropertyGroup>
     <StartupObject />
   </PropertyGroup>
+  <PropertyGroup>
+    <RootNamespace>Deveel.Data</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyName>cloudb-nunit</AssemblyName>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="nunit.framework">
       <HintPath>..\packages\NUnit.2.6.2\lib\nunit.framework.dll</HintPath>
