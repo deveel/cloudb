@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+    <metadata>
+        <id>cloudb-nunit</id>
+        <version>0.5.4.1</version>
+        <title>CloudB NUnit Foundation Library</title>
+        <authors>antonello</authors>
+        <owners>Deveel</owners>
+        <licenseUrl>http://www.gnu.org/licenses/lgpl-3.0.txt</licenseUrl>
+        <projectUrl>http://github.com/deveel/cloudb</projectUrl>
+        <requireLicenseAcceptance>true</requireLicenseAcceptance>
+        <description>Foundation library for designing NUnit based tests for CloudB path types (data models)</description>
+        <releaseNotes>References to CloudB Service library fixed to NuGet package</releaseNotes>
+        <copyright>(c) 2012 Deveel</copyright>
+        <dependencies>
+            <group targetFramework=".NETFramework2.0">
+                <dependency id="cloudb" version="1.5.3" />
+                <dependency id="cloudb-service" version="8.1.0" />
+            </group>
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="bin\Release\cloudb-nunit.dll" target="lib\net20\cloudb-nunit.dll" />
+    </files>
+</package>

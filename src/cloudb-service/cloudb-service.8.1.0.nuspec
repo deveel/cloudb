@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+    <metadata>
+        <id>cloudb-service</id>
+        <version>8.1.0</version>
+        <title>CloudB Service Library</title>
+        <authors>antonello</authors>
+        <owners>Deveel</owners>
+        <licenseUrl>http://www.gnu.org/licenses/lgpl-3.0.txt</licenseUrl>
+        <projectUrl>http://github.com/deveel/cloudb</projectUrl>
+        <requireLicenseAcceptance>true</requireLicenseAcceptance>
+        <description>This library allows the creation of Manager, Root and Block services for a CoudB network infrastructure: applications which want to expose a machine through a specific network protocol (eg. TCP/IP, HTTP, etc.) will reference this library for all the major storage and operational features.</description>
+        <copyright>(c) 2012 Deveel</copyright>
+        <tags>cloudb service network distributed database ddb cluster deveel</tags>
+        <dependencies>
+            <group targetFramework=".NETFramework2.0">
+                <dependency id="cloudb" version="1.5.3" />
+            </group>
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="bin\Release\cloudb-service.dll" target="lib\net20\cloudb-service.dll" />
+    </files>
+</package>
