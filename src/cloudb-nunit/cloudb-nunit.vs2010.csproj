@@ -63,9 +63,9 @@
     <AssemblyName>cloudb-nunit</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="cloudb, Version=1.5.3.5484, Culture=neutral, PublicKeyToken=f41361e30c6e84d7, processorArchitecture=MSIL">
+    <Reference Include="cloudb, Version=1.5.4.19003, Culture=neutral, PublicKeyToken=f41361e30c6e84d7, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\cloudb.1.5.3\lib\net20\cloudb.dll</HintPath>
+      <HintPath>..\packages\cloudb.1.5.4\lib\net20\cloudb.dll</HintPath>
     </Reference>
     <Reference Include="cloudb-service">
       <HintPath>..\packages\cloudb-service.8.1.0\lib\net20\cloudb-service.dll</HintPath>
