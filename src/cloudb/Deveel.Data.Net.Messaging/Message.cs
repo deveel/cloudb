@@ -90,7 +90,7 @@ namespace Deveel.Data.Net.Messaging {
 		}
 
 		private static MessageError GetError(Message message) {
-			foreach (var argument in message.Arguments) {
+			foreach (MessageArgument argument in message.Arguments) {
 				if (argument.Value is MessageError)
 					return (argument.Value as MessageError);
 			}

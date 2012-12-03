@@ -1,110 +1,164 @@
 <?xml version="1.0"?>
-<project default="build" name="kernel" xmlns="http://nant.sf.net/release/0.91-alpha2/nant.xsd">
-	<include buildfile="../common.build"/>
-	<target name="build">
-		<echo message="building cloudb core component to ${output}/cloudb.dll from sources ${sources} ..."/>
-		<csc debug="${debug}" optimize="${not debug}" output="${output}/cloudb.dll" target="library" define="${define}" keyfile="cloudb.snk">
+<project default="build" name="cloudb">
+	<include buildfile="..\common.build" />
+	<target name="build" depends="init">
+		<property name="sp.build.dir" value="${basedir}/bin/${name}_${build.number.version}${basedir.suffix}" readonly="true" />
+		<property name="sp.build.obj" value="${basedir}/obj/${name}_${build.number.version}${basedir.suffix}" readonly="true" />
+		<property name="build.dir" value="${sp.build.dir}/cloudb" />
+		<property name="build.obj" value="${sp.build.obj}/cloudb" />
+		<property name="main.build.dir" value="${build.dir}" readonly="true" />
+		<echo message="building cloudb core component to ${build.obj}/cloudb.dll from sources ${sources} ..." />
+		<mkdir dir="${build.dir}" />
+		<mkdir dir="${build.obj}" />
+		<property name="tmp.cs" value="${build.obj}/tmp-assembly-info.cs" />
+		<asminfo output="${tmp.cs}" language="CSharp">
+			<attributes>
+				<attribute type="AssemblyTitleAttribute" value="cloudb" />
+				<attribute type="AssemblyVersionAttribute" value="${build.number.version}" />
+				<attribute type="AssemblyDescriptionAttribute" value="CloudB Kernel Library" />
+				<attribute type="AssemblyCopyrightAttribute" value="Copyright (c) 2010-2012 Deveel" />
+				<attribute type="ComVisibleAttribute" value="false" />
+				<attribute type="CLSCompliantAttribute" value="true" />
+				<attribute type="SecurityPermissionAttribute" value="SecurityAction.RequestMinimum, UnmanagedCode = true" asis="true" />
+				<attribute type="AssemblyCompanyAttribute" value="Deveel" />
+			</attributes>
+			<imports>
+				<import namespace="System" />
+				<import namespace="System.Reflection" />
+				<import namespace="System.Runtime.CompilerServices" />
+				<import namespace="System.Runtime.InteropServices" />
+				<import namespace="System.Security.Permissions" />
+			</imports>
+		</asminfo>
+		<csc debug="${build.debug}" optimize="${not build.debug}" output="${build.obj}/${name}.dll" target="library" define="${define}" keyfile="cloudb.snk">
 			<references>
-				<include name="System.dll"/>
+				<include name="System.dll" />
 			</references>
 			<sources basedir="${sources}">
-				<include name="Properties/AssemblyInfo.cs"/>
-				<include name="ComponentAce.Compression.Libs.zlib/*.cs"/>
-				<include name="Deveel.Data/*.cs"/>
-				<include name="Deveel.Data.Caching/*.cs"/>
-				<include name="Deveel.Data.Configuration/*.cs"/>
-				<include name="Deveel.Data.Diagnostics/*.cs"/>
-				<include name="Deveel.Data.Net/*.cs"/>
-				<include name="Deveel.Data.Net.Client/*.cs"/>
-				<include name="Deveel.Data.Net.Security/*.cs"/>
-				<include name="Deveel.Data.Net.Serialization/*.cs"/>
-				<include name="Deveel.Data.Store/*.cs"/>
-				<include name="Deveel.Data.Util/*.cs"/>
-				<include name="LitJson/*.cs"/>
+				<exclude name="Properties/AssemblyInfo.cs" />
+				<include name="${tmp.cs}" />
+				<include name="ComponentAce.Compression.Libs.zlib/*.cs" />
+				<include name="Deveel/*.cs" />
+				<include name="Deveel.Data/*.cs" />
+				<include name="Deveel.Data.Caching/*.cs" />
+				<include name="Deveel.Data.Configuration/*.cs" />
+				<include name="Deveel.Data.Diagnostics/*.cs" />
+				<include name="Deveel.Data.Net/*.cs" />
+				<include name="Deveel.Data.Net.Messaging/*.cs" />
+				<include name="Deveel.Data.Net.Security/*.cs" />
+				<include name="Deveel.Data.Net.Serialization/*.cs" />
+				<include name="Deveel.Data.Store/*.cs" />
+				<include name="Deveel.Data.Util/*.cs" />
+				<include name="LitJson/*.cs" />
 			</sources>
 		</csc>
-		<call target="-core-test" unless="${notest}"/>
+		<copy todir="${build.dir}" flatten="true">
+			<fileset basedir="${build.obj}">
+				<include name="${name}.dll" />
+				<include name="${name}.pdb" />
+				<include name="${name}.xml" />
+			</fileset>
+		</copy>
+		<zip zipfile="${sp.build.dir}/cloudb-${build.number.version}-${platform}.zip">
+			<fileset basedir="${build.dir}" prefix="cloudb">
+				<include name="**/*" />
+			</fileset>
+		</zip>
+		<call target="post-build" />
+	</target>
+	<target name="post-debug">
+		<nuget-pack id="cloudb" version="${build.number.version}-debug" title="CloudB Foundation Library" authors="antonello" owners="antonello" outdir="${build.dir}/.nuget" property="nuget.package" description="Foundation library of the CloudB distributed database system that can be used to model data and route connections to service instances">
+			<content type="lib" framework="net20" basedir="${build.dir}">
+				<include name="cloudb.*" />
+				<exclude name="*.pdb" />
+			</content>
+			<framework-assemblies>
+				<assembly name="System" />
+				<assembly name="System.Data" />
+				<assembly name="System.Xml" />
+			</framework-assemblies>
+		</nuget-pack>
+		<nuget-publish>
+			<packages>
+				<include name="${nuget.package}" />
+			</packages>
+			<feeds>
+				<local-feed path="C:\.nuget\.local\.feed" />
+			</feeds>
+		</nuget-publish>
+	</target>
+	<target name="post-release">
+		<nuget-pack id="cloudb" version="${build.number.version}" title="CloudB Foundation Library" authors="antonello" owners="antonello" outdir="${build.dir}/.nuget" property="nuget.package" description="Foundation library of the CloudB distributed database system that can be used to model data and route connections to service instances">
+			<content type="lib" framework="net20" basedir="${build.dir}">
+				<include name="cloudb.*" />
+				<exclude name="*.pdb" />
+			</content>
+			<framework-assemblies>
+				<assembly name="System" />
+				<assembly name="System.Data" />
+				<assembly name="System.Xml" />
+			</framework-assemblies>
+		</nuget-pack>
+		<nuget-publish>
+			<packages>
+				<include name="${nuget.package}" />
+			</packages>
+			<feeds>
+				<local-feed path="..\.nuget\.local\.feed" />
+				<server-feed apikey-file="..\.nuget\api.key" />
+			</feeds>
+		</nuget-publish>
 	</target>
 	<target name="test" unless="${notest}" depends="build">
-		<call target="-core-test"/>
+		<call target="-core-test" />
 	</target>
 	<target name="-core-test">
-		<echo message="compiling the nunit test library for the kernel component."/>
-		<echo message="nunit reference from ${path::get-full-path(libs+'/../nunit')}"/>
+		<echo message="compiling the nunit test library for the kernel component." />
+		<echo message="nunit reference from ${path::get-full-path(libs+'/../nunit')}" />
 		<csc output="${output}\cloudb-nunit.dll" target="library" define="${define}" platform="${platform}">
 			<references>
-				<include name="${libs}/../nunit/nunit.framework.dll"/>
-				<include name="${output}\cloudb.dll"/>
+				<include name="${libs}/../nunit/nunit.framework.dll" />
+				<include name="${output}\cloudb.dll" />
 			</references>
 			<sources basedir="${sources}\..\cloudb-nunit">
-				<include name="Deveel.Data\*.cs"/>
-				<include name="Deveel.Data.Configuration\*.cs"/>
-				<include name="Deveel.Data.Diagnostics\*.cs"/>
-				<include name="Deveel.Data.Net\*.cs"/>
-				<include name="Deveel.Data.Net.Client\*.cs"/>
+				<include name="Deveel.Data\*.cs" />
+				<include name="Deveel.Data.Configuration\*.cs" />
+				<include name="Deveel.Data.Diagnostics\*.cs" />
+				<include name="Deveel.Data.Net\*.cs" />
+				<include name="Deveel.Data.Net.Client\*.cs" />
 			</sources>
 		</csc>
-		<copy file="${libs}/../nunit/nunit.framework.dll" todir="${output}"/>
-		<exec program="${libs}/../nunit/nunit-console.exe" commandline="${output}/cloudb-nunit.dll /nologo /exclude:KnownUnstable"/>
-	</target>
-	<target name="-package-all" depends="build">
-		<tar destfile="${package.name}.tar.gz" compression="GZip">
-			<fileset prefix="src" basedir="${sources}">
-				<include name="ComponentAce.Compression.Libs.zlib/*.cs"/>
-				<include name="Deveel.Data/*.cs"/>
-				<include name="Deveel.Data.Caching/*.cs"/>
-				<include name="Deveel.Data.Configuration/*.cs"/>
-				<include name="Deveel.Data.Diagnostics/*.cs"/>
-				<include name="Deveel.Data.Net/*.cs"/>
-				<include name="Deveel.Data.Net.Client/*.cs"/>
-				<include name="Deveel.Data.Store/*.cs"/>
-				<include name="Deveel.Data.Util/*.cs"/>
-				<include name="Properties/AssemblyInfo.cs"/>
-				<include name="cloudb.csproj"/>
-				<include name="default.build"/>
-			</fileset>
-			<fileset prefix="bin" basedir="${output}">
-				<include name="cloudb.dll"/>
-			</fileset>
-		</tar>
-		<zip zipfile="${dist-path}/${package.name}.zip"/>
-	</target>
-	<target name="-package-bin" depends="build">
-		<tar destfile="${dist-path}/cloudb-${version}-bin.tar.gz">
-			<fileset basedir="${output}">
-				<include name="cloudb.dll"/>
-			</fileset>
-		</tar>
-		<zip zipfile="${dist-path}/cloudb-${version}-bin.zip"/>
+		<copy file="${libs}/../nunit/nunit.framework.dll" todir="${output}" />
+		<exec program="${libs}/../nunit/nunit-console.exe" commandline="${output}/cloudb-nunit.dll /nologo /exclude:KnownUnstable" />
 	</target>
 	<target name="-package-src">
 		<tar destfile="${dist-path}/${package.name}.tar.gz" compression="GZip">
 			<fileset basedir="${sources}">
-				<include name="ComponentAce.Compression.Libs.zlib/*.cs"/>
-				<include name="Deveel.Data/*.cs"/>
-				<include name="Deveel.Data.Caching/*.cs"/>
-				<include name="Deveel.Data.Configuration/*.cs"/>
-				<include name="Deveel.Data.Diagnostics/*.cs"/>
-				<include name="Deveel.Data.Net/*.cs"/>
-				<include name="Deveel.Data.Net.Client/*.cs"/>
-				<include name="Deveel.Data.Net.Serialization/*.cs"/>
-				<include name="Deveel.Data.Store/*.cs"/>
-				<include name="Deveel.Data.Util/*.cs"/>
-				<include name="LitJson/*.cs"/>
-				<include name="Properties/AssemblyInfo.cs"/>
-				<include name="cloudb.csproj"/>
-				<include name="kernel.build"/>
-				<include name="cloudb.snk"/>
+				<include name="ComponentAce.Compression.Libs.zlib/*.cs" />
+				<include name="Deveel.Data/*.cs" />
+				<include name="Deveel.Data.Caching/*.cs" />
+				<include name="Deveel.Data.Configuration/*.cs" />
+				<include name="Deveel.Data.Diagnostics/*.cs" />
+				<include name="Deveel.Data.Net/*.cs" />
+				<include name="Deveel.Data.Net.Client/*.cs" />
+				<include name="Deveel.Data.Net.Serialization/*.cs" />
+				<include name="Deveel.Data.Store/*.cs" />
+				<include name="Deveel.Data.Util/*.cs" />
+				<include name="LitJson/*.cs" />
+				<include name="Properties/AssemblyInfo.cs" />
+				<include name="cloudb.csproj" />
+				<include name="kernel.build" />
+				<include name="cloudb.snk" />
 			</fileset>
 		</tar>
-		<zip zipfile="${dist-path}/${package.name}.zip"/>
+		<zip zipfile="${dist-path}/${package.name}.zip" />
 	</target>
 	<target name="clean">
-		<delete file="${output}/cloudb.dll"/>
+		<delete file="${output}/cloudb.dll" />
 		<if test="${not notest}">
-			<delete file="${output}/cloudb-nunit.dll"/>
-			<delete file="${output}/nunit.framework.dll"/>
-			<delete dir="${output}/test-results"/>
+			<delete file="${output}/cloudb-nunit.dll" />
+			<delete file="${output}/nunit.framework.dll" />
+			<delete dir="${output}/test-results" />
 		</if>
 	</target>
 </project>

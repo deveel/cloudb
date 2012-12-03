@@ -234,7 +234,7 @@ namespace Deveel.Data.Net {
 			// Manager servers status,
 			MachineProfile[] managers = context.Network.GetManagerServers();
 			if (managers.Length > 0) {
-				foreach (var manager in managers) {
+				foreach (MachineProfile manager in managers) {
 					ColumnValue[] row = new ColumnValue[3];
 					row[0] = new ColumnValue("UP");
 					row[1] = new ColumnValue("Manager");
@@ -351,7 +351,7 @@ namespace Deveel.Data.Net {
 
 				TableRenderer table = new TableRenderer(columns, Out);
 
-				foreach (var machine in machines) {
+				foreach (MachineProfile machine in machines) {
 					ColumnValue[] row = new ColumnValue[4];
 					if (machine.IsError) {
 						row[3] = new ColumnValue(" ERROR: " + machine.ErrorMessage);

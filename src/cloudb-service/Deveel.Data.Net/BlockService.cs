@@ -237,7 +237,7 @@ namespace Deveel.Data.Net {
 				LinkedListNode<BlockContainer> node = blockContainerAccessList.First;
 
 				while (node != null) {
-					var next = node.Next;
+					LinkedListNode<BlockContainer> next = node.Next;
 					if (node.Value == container) {
 						// Found, so move it to the front,
 						blockContainerAccessList.Remove(node);

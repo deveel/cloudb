@@ -37,7 +37,7 @@ namespace Deveel.Data.Net {
 
 			// Check the root leader in the root servers list,
 			bool found = false;
-			foreach (var server in rootServers) {
+			foreach (IServiceAddress server in rootServers) {
 				if (server.Equals(rootLeader)) {
 					found = true;
 					break;

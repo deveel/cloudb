@@ -12,11 +12,13 @@
     <AssemblyName>cloudbase-nunit</AssemblyName>
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
+    <DebugSymbols>True</DebugSymbols>
     <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
+    <Optimize>False</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
@@ -24,13 +26,22 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
+    <Optimize>True</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="cloudb">
+      <HintPath>..\packages\cloudb.1.5.4\lib\net20\cloudb.dll</HintPath>
+    </Reference>
+    <Reference Include="cloudb-nunit">
+      <HintPath>..\packages\cloudb-nunit.0.5.4.1\lib\net20\cloudb-nunit.dll</HintPath>
+    </Reference>
+    <Reference Include="cloudb-service">
+      <HintPath>..\packages\cloudb-service.8.1.0\lib\net20\cloudb-service.dll</HintPath>
+    </Reference>
     <Reference Include="nunit.framework">
       <HintPath>..\packages\NUnit.2.6.2\lib\nunit.framework.dll</HintPath>
     </Reference>
@@ -44,24 +55,13 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\cloudb-nunit\cloudb-nunit.vs2010.csproj">
-      <Project>{05D455D6-1EA4-4C27-A4F2-797A518FE00A}</Project>
-      <Name>cloudb-nunit.vs2010</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\cloudb-service\cloudb-service.vs2010.csproj">
-      <Project>{682FA6A5-8786-4B75-BC04-DF35267D80DE}</Project>
-      <Name>cloudb-service.vs2010</Name>
-    </ProjectReference>
     <ProjectReference Include="..\cloudbase\cloudbase.vs2010.csproj">
       <Project>{D6BFD98D-8803-4139-A7F7-6B4FB58EC327}</Project>
       <Name>cloudbase.vs2010</Name>
     </ProjectReference>
-    <ProjectReference Include="..\cloudb\cloudb.vs2010.csproj">
-      <Project>{A18511ED-5BA6-4811-B44F-F730FAD84CE8}</Project>
-      <Name>cloudb.vs2010</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

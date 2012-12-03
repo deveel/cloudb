@@ -25,9 +25,6 @@
 		<property name="kernel" value="true" />
 	</target>
 	<target name="cadmin">
-		<if test="${not kernel}">
-			<call target="kernel" />
-		</if>
 		<nant buildfile="./cadmin/cadmin.build" target="build" inheritall="false">
 			<properties>
 				<property name="notest" value="${notest}" readonly="true" />
@@ -44,9 +41,6 @@
 		</nant>
 	</target>
 	<target name="log4net">
-		<if test="${not kernel}">
-			<call target="kernel" />
-		</if>
 		<echo message="Building CloudB log4net logger component" />
 		<nant buildfile="./cloudb-log4net/log4net.build" target="build" inheritall="false">
 			<properties>
@@ -63,9 +57,6 @@
 		</nant>
 	</target>
 	<target name="mnode">
-		<if test="${not kernel}">
-			<call target="kernel" />
-		</if>
 		<nant buildfile="./mnode/mnode.build" target="build" inheritall="false">
 			<properties>
 				<property name="notest" value="${notest}" readonly="true" verbose="false" />
@@ -145,4 +136,32 @@
 			</properties>
 		</nant>
 	</target>
+	<target name="build-extras" depends="build">
+		<foreach item="File" property="buildfile">
+			<in>
+				<items basedir="${basedir}">
+					<include name="*/*.build" />
+				</items>
+			</in>
+			<do>
+				<property name="build.name" value="${path::get-file-name-without-extension(buildfile)}" />
+				<property name="build.dir" value="${sp.build.dir}/${build.name}" />
+				<property name="build.obj" value="${sp.build.obj}/${build.name}" />
+				<mkdir dir="${build.dir}" />
+				<mkdir dir="${build.obj}" />
+				<copy todir="${build.dir}">
+					<fileset basedir="${main.build.dir}">
+						<include name="*" />
+					</fileset>
+				</copy>
+				<nant buildfile="${buildfile}" />
+				<zip zipfile="${sp.build.dir}/${build.name}-${build.number.version}.zip">
+					<fileset basedir="${build.dir}" prefix="${build.name}">
+						<include name="**/*" />
+					</fileset>
+				</zip>
+			</do>
+		</foreach>
+	</target>
+	<target name="build-all" depends="build build-extras" />
 </project>
