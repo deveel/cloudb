@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+    <metadata>
+        <id>cloudb</id>
+        <version>1.5.0</version>
+        <title>CloudB Foundation Library</title>
+        <authors>Antonello Provenzano</authors>
+        <owners>Deveel</owners>
+        <licenseUrl>http://www.gnu.org/licenses/lgpl-3.0.txt</licenseUrl>
+        <projectUrl>http://github/deveel/cloudb</projectUrl>
+        <requireLicenseAcceptance>true</requireLicenseAcceptance>
+        <description>Foundation library of the CloudB distributed database system that can be used to model data and route connections to service instances</description>
+        <summary />
+        <releaseNotes>Service Replication
+Binary collections
+Bug fixes</releaseNotes>
+        <copyright>(c) 2012 Deveel</copyright>
+        <tags>cloudb database ddb cluster distributed deveel</tags>
+    </metadata>
+    <files />
+</package>

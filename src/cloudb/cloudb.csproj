@@ -17,8 +17,7 @@
     <OldToolsVersion>3.5</OldToolsVersion>
     <UpgradeBackupLocation />
     <IsWebBootstrapper>false</IsWebBootstrapper>
-    <SourceAnalysisOverrideSettingsFile>C:\Documents and Settings\aprovenzano\Application Data\ICSharpCode/SharpDevelop3.0\Settings.SourceAnalysis</SourceAnalysisOverrideSettingsFile>
-    <SignAssembly>true</SignAssembly>
+    <SignAssembly>True</SignAssembly>
     <DelaySign>False</DelaySign>
     <AssemblyOriginatorKeyFile>cloudb.snk</AssemblyOriginatorKeyFile>
     <PublishUrl>publish\</PublishUrl>
@@ -35,11 +34,13 @@
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
+    <DebugSymbols>True</DebugSymbols>
     <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
+    <Optimize>False</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>TRACE;DEBUG</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
@@ -48,7 +49,7 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
+    <Optimize>True</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
@@ -68,8 +69,6 @@
     <Compile Include="Deveel.Data.Configuration\IConfigFormatter.cs" />
     <Compile Include="Deveel.Data.Configuration\PropertiesConfigFormatter.cs" />
     <Compile Include="Deveel.Data.Configuration\XmlConfigFormatter.cs" />
-    <Compile Include="Deveel.Data.Diagnostics\Analytics.cs" />
-    <Compile Include="Deveel.Data.Diagnostics\AnalyticsRecord.cs" />
     <Compile Include="Deveel.Data.Diagnostics\CompositeLogger.cs" />
     <Compile Include="Deveel.Data.Diagnostics\Logger.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LoggerTypeNameAttribute.cs" />
@@ -88,56 +87,34 @@
     <Compile Include="Deveel.Data.Net.Messaging\MessageArguments.cs" />
     <Compile Include="Deveel.Data.Net.Messaging\MessageError.cs" />
     <Compile Include="Deveel.Data.Net.Messaging\MessageStream.cs" />
-    <Compile Include="Deveel.Data.Net\AdminService.cs">
-      <SubType>Component</SubType>
-    </Compile>
     <Compile Include="Deveel.Data.Net\AuthenticationPoint.cs" />
     <Compile Include="Deveel.Data.Net\BlockId.cs" />
     <Compile Include="Deveel.Data.Net\BlockReadException.cs" />
-    <Compile Include="Deveel.Data.Net\BlockService.cs">
-      <SubType>Component</SubType>
-    </Compile>
     <Compile Include="Deveel.Data.Net\BlockServerElement.cs" />
     <Compile Include="Deveel.Data.Net\BlockServerTable.cs" />
-    <Compile Include="Deveel.Data.Net\ClientCommandEventArgs.cs" />
-    <Compile Include="Deveel.Data.Net\ClientConnection.cs" />
-    <Compile Include="Deveel.Data.Net\ClientConnectionEventArgs.cs" />
     <Compile Include="Deveel.Data.Net\CommitFaultException.cs" />
-    <Compile Include="Deveel.Data.Net\CompressedBlockStore.cs" />
     <Compile Include="Deveel.Data.Net\CompressedNodeSet.cs" />
     <Compile Include="Deveel.Data.Net\DataAddress.cs" />
-    <Compile Include="Deveel.Data.Net\FileSystemServiceFactory.cs" />
     <Compile Include="Deveel.Data.Net\HandleAttribute.cs" />
-    <Compile Include="Deveel.Data.Net\FileBlockStore.cs" />
-    <Compile Include="Deveel.Data.Net\FileSystemBlockService.cs">
-      <SubType>Component</SubType>
+    <Compile Include="Deveel.Data.Net\HttpServiceAddress.cs">
+      <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Deveel.Data.Net\FileSystemManagerService.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="Deveel.Data.Net\FileSystemRootService.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="Deveel.Data.Net\IBlockStore.cs" />
+    <Compile Include="Deveel.Data.Net\HttpServiceAddressHandler.cs" />
     <Compile Include="Deveel.Data.Net\InMemoryNetworkCache.cs" />
     <Compile Include="Deveel.Data.Net\InvalidPathInfoException.cs" />
     <Compile Include="Deveel.Data.Net\IServiceAuthenticator.cs" />
-    <Compile Include="Deveel.Data.Net\IServiceFactory.cs" />
+    <Compile Include="Deveel.Data.Net\MachineRoles.cs" />
     <Compile Include="Deveel.Data.Net\MachineState.cs" />
-    <Compile Include="Deveel.Data.Net\MemoryServiceFactory.cs" />
-    <Compile Include="Deveel.Data.Net\MessageCommunicator.cs" />
     <Compile Include="Deveel.Data.Net\NoAuthenticationAuthenticator.cs" />
     <Compile Include="Deveel.Data.Net\PasswordAuthenticator.cs" />
     <Compile Include="Deveel.Data.Net\PathInfo.cs" />
     <Compile Include="Deveel.Data.Net\PathStats.cs" />
-    <Compile Include="Deveel.Data.Net\ReplicatedValueStore.cs" />
     <Compile Include="Deveel.Data.Net\ServiceConnector.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Deveel.Data.Net\ServiceMessageQueue.cs" />
     <Compile Include="Deveel.Data.Net\ServiceNotConnectedException.cs" />
     <Compile Include="Deveel.Data.Net\ServiceProtocols.cs" />
-    <Compile Include="Deveel.Data.Net\MachineRoles.cs" />
     <Compile Include="Deveel.Data.Net\ServiceState.cs" />
     <Compile Include="Deveel.Data.Net\ServiceStatus.cs" />
     <Compile Include="Deveel.Data.Net\ServiceStatusEventArgs.cs" />
@@ -147,6 +124,7 @@
     <Compile Include="Deveel.Data.Util\StreamUtil.cs" />
     <Compile Include="Deveel.Data\Binary.cs" />
     <Compile Include="Deveel.Data\BinaryCollection.cs" />
+    <Compile Include="Deveel.Data\DataFileStream.cs" />
     <Compile Include="Deveel.Data\IDataFile.cs" />
     <Compile Include="Deveel.Data\IDataRange.cs" />
     <Compile Include="Deveel.Data\IIndexCursor.cs" />
@@ -157,24 +135,10 @@
     <Compile Include="Deveel.Data.Net\IPathConnection.cs" />
     <Compile Include="Deveel.Data.Net\IPath.cs" />
     <Compile Include="Deveel.Data.Net\INetworkCache.cs" />
-    <Compile Include="Deveel.Data.Net\IService.cs" />
     <Compile Include="Deveel.Data.Net\IServiceAddress.cs" />
     <Compile Include="Deveel.Data.Net\IServiceAddressHandler.cs" />
     <Compile Include="Deveel.Data.Net\IServiceConnector.cs" />
     <Compile Include="Deveel.Data.Net\MachineProfile.cs" />
-    <Compile Include="Deveel.Data.Net\ManagerService.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="Deveel.Data.Net\MemoryBlockService.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="Deveel.Data.Net\MemoryBlockStore.cs" />
-    <Compile Include="Deveel.Data.Net\MemoryManagerService.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="Deveel.Data.Net\MemoryRootService.cs">
-      <SubType>Component</SubType>
-    </Compile>
     <Compile Include="Deveel.Data.Net\NetworkAdminException.cs" />
     <Compile Include="Deveel.Data.Net\NetworkClient.cs" />
     <Compile Include="Deveel.Data.Net\NetworkConfigSource.cs" />
@@ -185,21 +149,13 @@
     <Compile Include="Deveel.Data.Net\PathNameAttribute.cs" />
     <Compile Include="Deveel.Data.Net\PathProfile.cs" />
     <Compile Include="Deveel.Data.Net\PathRootTable.cs" />
-    <Compile Include="Deveel.Data.Net\RootService.cs">
-      <SubType>Component</SubType>
-    </Compile>
     <Compile Include="Deveel.Data.Net\ServiceAddresses.cs" />
     <Compile Include="Deveel.Data.Net\TcpServiceAddressHandler.cs" />
-    <Compile Include="Deveel.Data.Net\TcpAdminService.cs">
-      <SubType>Component</SubType>
-    </Compile>
     <Compile Include="Deveel.Data.Net\TcpNetworkClient.cs" />
     <Compile Include="Deveel.Data.Net\TcpServiceConnector.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="ComponentAce.Compression.Libs.zlib\Adler32.cs" />
     <Compile Include="Deveel.Data.Util\ProductInfo.cs" />
-    <Compile Include="Deveel.Data.Util\StrongPagedAccess.cs" />
     <Compile Include="Deveel.Data.Configuration\ConfigSource.cs" />
     <Compile Include="Deveel.Data\MemoryDatabase.cs" />
     <Compile Include="Deveel.Data\NodeId.cs" />
@@ -220,14 +176,11 @@
     <Compile Include="Deveel.Data.Store\IStoreDataAccessor.cs" />
     <Compile Include="Deveel.Data.Net\Node.cs" />
     <Compile Include="Deveel.Data.Net\NodeSet.cs" />
-    <Compile Include="Deveel.Data.Net\Service.cs">
-      <SubType>Component</SubType>
-    </Compile>
     <Compile Include="Deveel.Data.Net\TcpServiceAddress.cs" />
     <Compile Include="Deveel.Data.Net\ServiceException.cs" />
     <Compile Include="Deveel.Data.Net\ServiceType.cs" />
     <Compile Include="Deveel.Data.Net\SingleNodeSet.cs" />
-    <Compile Include="Deveel.Data\DataFileStream.cs" />
+    <Compile Include="Deveel.Data.Store\DataFile.cs" />
     <Compile Include="Deveel.Data.Store\JournalledFileStore.cs" />
     <Compile Include="Deveel.Data.Store\JournalledSystem.cs" />
     <Compile Include="Deveel.Data.Store\LoggingBufferManager.cs" />
@@ -302,15 +255,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Deveel.Data.Diagnostics\ChangeLog" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Deveel.Data.Net.Security\ChangeLog" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Deveel.Data\ChangeLog" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Deveel.Data.Store\ChangeLog" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />

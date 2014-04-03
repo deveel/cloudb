@@ -14,29 +14,30 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <AssemblyOriginatorKeyFile>cloudb-nunit.snk</AssemblyOriginatorKeyFile>
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
-    <TargetFrameworkProfile />
     <ProjectGuid>{05D455D6-1EA4-4C27-A4F2-797A518FE00A}</ProjectGuid>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>10.0.0</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>Full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
-    <ConsolePause>false</ConsolePause>
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <StartAction>Program</StartAction>
+    <StartProgram>..\libs\nunit\nunit.exe</StartProgram>
+    <RegisterForComInterop>False</RegisterForComInterop>
+    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
+    <BaseAddress>4194304</BaseAddress>
+    <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
+    <Optimize>True</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+    <RegisterForComInterop>False</RegisterForComInterop>
+    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
+    <BaseAddress>4194304</BaseAddress>
+    <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <StartAction>Program</StartAction>
@@ -54,15 +55,23 @@
     <OutputType>Library</OutputType>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject />
+    <RootNamespace>Deveel.Data</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyName>cloudb-nunit</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="nunit.framework, Version=2.6.1.12217, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\NUnit.2.6.1\lib\nunit.framework.dll</HintPath>
+    <Reference Include="cloudb-service">
+      <HintPath>..\packages\cloudb-service.8.1.0\lib\net20\cloudb-service.dll</HintPath>
+    </Reference>
+    <Reference Include="nunit.framework">
+      <HintPath>..\packages\NUnit.2.6.2\lib\nunit.framework.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Xml" />
+    <Reference Include="cloudb">
+      <HintPath>..\packages\cloudb.1.5.4\lib\net20\cloudb.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Deveel.Data.Configuration\PropertiesConfigSourceTest.cs" />
@@ -74,18 +83,20 @@
     <Compile Include="Deveel.Data.Net\FakeServiceAddress.cs" />
     <Compile Include="Deveel.Data.Net\FakeServiceAddressHandler.cs" />
     <Compile Include="Deveel.Data.Net\FakeServiceConnector.cs" />
+    <Compile Include="Deveel.Data.Net\HttpMessageFormat.cs" />
     <Compile Include="Deveel.Data.Net\NetworkServiceTestBase.cs" />
-    <Compile Include="Deveel.Data.Net\PathTestBase.cs" />
-    <Compile Include="Deveel.Data\BinaryCollectionTest.cs" />
-    <Compile Include="Deveel.Data\StoreType.cs" />
     <Compile Include="Deveel.Data.Net\NetworkTestBase.cs" />
+    <Compile Include="Deveel.Data.Net\PathTestBase.cs" />
     <Compile Include="Deveel.Data.Net\TcpNetworkTest.cs" />
     <Compile Include="Deveel.Data.Diagnostics\LoggerTest.cs" />
     <Compile Include="Deveel.Data.Configuration\ConfigSourceTest.cs" />
+    <Compile Include="Deveel.Data\BinaryCollectionTest.cs" />
     <Compile Include="Deveel.Data\ShardedDataTestBase.cs" />
+    <Compile Include="Deveel.Data\StoreType.cs" />
     <Compile Include="Deveel.Data\StringDataTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <None Include="cloudb-nunit.snk" />
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
@@ -107,15 +118,9 @@
   <ItemGroup>
     <None Include="Deveel.Data.Net\ChangeLog" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\cloudb\cloudb.csproj">
-      <Project>{A18511ED-5BA6-4811-B44F-F730FAD84CE8}</Project>
-      <Name>cloudb</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

@@ -1,23 +1,28 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudb-nunit", "cloudb-nunit\cloudb-nunit.csproj", "{05D455D6-1EA4-4C27-A4F2-797A518FE00A}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cadmin", "cadmin\cadmin.csproj", "{4A3AFA6E-1390-43D6-949D-45E9AE8A7ADB}"
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.30110.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudb", "cloudb\cloudb.csproj", "{A18511ED-5BA6-4811-B44F-F730FAD84CE8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "mnode", "mnode\mnode.csproj", "{E49F2ED4-E772-4BCD-8C60-7EBC0DBBD69C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudb", "cloudb\cloudb.csproj", "{A18511ED-5BA6-4811-B44F-F730FAD84CE8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cadmin", "cadmin\cadmin.csproj", "{4A3AFA6E-1390-43D6-949D-45E9AE8A7ADB}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nant", "nant", "{A1B48D81-68A3-4594-B779-F3C06BD5DC3F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudb-nunit", "cloudb-nunit\cloudb-nunit.csproj", "{05D455D6-1EA4-4C27-A4F2-797A518FE00A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudbase", "cloudbase\cloudbase.csproj", "{D6BFD98D-8803-4139-A7F7-6B4FB58EC327}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudbase-nunit", "cloudbase-nunit\cloudbase-nunit.csproj", "{FCA98A1D-E2D7-462D-87A7-EE489E4D8D1D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudb-service", "cloudb-service\cloudb-service.csproj", "{682FA6A5-8786-4B75-BC04-DF35267D80DE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{0C2F945F-C0EE-4EB4-B327-41EE34E12727}"
 	ProjectSection(SolutionItems) = preProject
-		common.build = common.build
-		package.build = package.build
+		.nuget\NuGet.Config = .nuget\NuGet.Config
+		.nuget\NuGet.exe = .nuget\NuGet.exe
+		.nuget\NuGet.targets = .nuget\NuGet.targets
 	EndProjectSection
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudbase", "cloudbase\cloudbase.csproj", "{A3BF19E0-EDC3-4557-AE72-2F246DD21588}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cloudbase-nunit", "cloudbase-nunit\cloudbase-nunit.csproj", "{AECB127F-0026-408E-AE77-37DD30121560}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -25,32 +30,39 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{05D455D6-1EA4-4C27-A4F2-797A518FE00A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{05D455D6-1EA4-4C27-A4F2-797A518FE00A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{05D455D6-1EA4-4C27-A4F2-797A518FE00A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{05D455D6-1EA4-4C27-A4F2-797A518FE00A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4A3AFA6E-1390-43D6-949D-45E9AE8A7ADB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4A3AFA6E-1390-43D6-949D-45E9AE8A7ADB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4A3AFA6E-1390-43D6-949D-45E9AE8A7ADB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4A3AFA6E-1390-43D6-949D-45E9AE8A7ADB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E49F2ED4-E772-4BCD-8C60-7EBC0DBBD69C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E49F2ED4-E772-4BCD-8C60-7EBC0DBBD69C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E49F2ED4-E772-4BCD-8C60-7EBC0DBBD69C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E49F2ED4-E772-4BCD-8C60-7EBC0DBBD69C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A18511ED-5BA6-4811-B44F-F730FAD84CE8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A18511ED-5BA6-4811-B44F-F730FAD84CE8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A18511ED-5BA6-4811-B44F-F730FAD84CE8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A18511ED-5BA6-4811-B44F-F730FAD84CE8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A3BF19E0-EDC3-4557-AE72-2F246DD21588}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A3BF19E0-EDC3-4557-AE72-2F246DD21588}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A3BF19E0-EDC3-4557-AE72-2F246DD21588}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A3BF19E0-EDC3-4557-AE72-2F246DD21588}.Release|Any CPU.Build.0 = Release|Any CPU
-		{AECB127F-0026-408E-AE77-37DD30121560}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{AECB127F-0026-408E-AE77-37DD30121560}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{AECB127F-0026-408E-AE77-37DD30121560}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{AECB127F-0026-408E-AE77-37DD30121560}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E49F2ED4-E772-4BCD-8C60-7EBC0DBBD69C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E49F2ED4-E772-4BCD-8C60-7EBC0DBBD69C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E49F2ED4-E772-4BCD-8C60-7EBC0DBBD69C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E49F2ED4-E772-4BCD-8C60-7EBC0DBBD69C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4A3AFA6E-1390-43D6-949D-45E9AE8A7ADB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4A3AFA6E-1390-43D6-949D-45E9AE8A7ADB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4A3AFA6E-1390-43D6-949D-45E9AE8A7ADB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4A3AFA6E-1390-43D6-949D-45E9AE8A7ADB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{05D455D6-1EA4-4C27-A4F2-797A518FE00A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{05D455D6-1EA4-4C27-A4F2-797A518FE00A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{05D455D6-1EA4-4C27-A4F2-797A518FE00A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{05D455D6-1EA4-4C27-A4F2-797A518FE00A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D6BFD98D-8803-4139-A7F7-6B4FB58EC327}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D6BFD98D-8803-4139-A7F7-6B4FB58EC327}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D6BFD98D-8803-4139-A7F7-6B4FB58EC327}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D6BFD98D-8803-4139-A7F7-6B4FB58EC327}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FCA98A1D-E2D7-462D-87A7-EE489E4D8D1D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FCA98A1D-E2D7-462D-87A7-EE489E4D8D1D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FCA98A1D-E2D7-462D-87A7-EE489E4D8D1D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FCA98A1D-E2D7-462D-87A7-EE489E4D8D1D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{682FA6A5-8786-4B75-BC04-DF35267D80DE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{682FA6A5-8786-4B75-BC04-DF35267D80DE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{682FA6A5-8786-4B75-BC04-DF35267D80DE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{682FA6A5-8786-4B75-BC04-DF35267D80DE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = preSolution
+		StartupItem = cloudb\cloudb.vs2010.csproj
 	EndGlobalSection
 EndGlobal

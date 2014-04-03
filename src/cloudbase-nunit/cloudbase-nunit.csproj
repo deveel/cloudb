@@ -5,18 +5,20 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{AECB127F-0026-408E-AE77-37DD30121560}</ProjectGuid>
+    <ProjectGuid>{FCA98A1D-E2D7-462D-87A7-EE489E4D8D1D}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>cloudbase_nunit</RootNamespace>
+    <RootNamespace>Deveel.Data</RootNamespace>
     <AssemblyName>cloudbase-nunit</AssemblyName>
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
+    <DebugSymbols>True</DebugSymbols>
     <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
+    <Optimize>False</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
@@ -24,15 +26,18 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
+    <Optimize>True</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="cloudb-service">
+      <HintPath>..\packages\cloudb-service.8.1.0\lib\net20\cloudb-service.dll</HintPath>
+    </Reference>
     <Reference Include="nunit.framework">
-      <HintPath>..\packages\NUnit.2.6.1\lib\nunit.framework.dll</HintPath>
+      <HintPath>..\packages\NUnit.2.6.2\lib\nunit.framework.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
@@ -45,22 +50,20 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\cloudb-nunit\cloudb-nunit.csproj">
-      <Project>{05D455D6-1EA4-4C27-A4F2-797A518FE00A}</Project>
+      <Project>{05d455d6-1ea4-4c27-a4f2-797a518fe00a}</Project>
       <Name>cloudb-nunit</Name>
     </ProjectReference>
     <ProjectReference Include="..\cloudbase\cloudbase.csproj">
-      <Project>{A3BF19E0-EDC3-4557-AE72-2F246DD21588}</Project>
+      <Project>{D6BFD98D-8803-4139-A7F7-6B4FB58EC327}</Project>
       <Name>cloudbase</Name>
     </ProjectReference>
     <ProjectReference Include="..\cloudb\cloudb.csproj">
-      <Project>{A18511ED-5BA6-4811-B44F-F730FAD84CE8}</Project>
+      <Project>{a18511ed-5ba6-4811-b44f-f730fad84ce8}</Project>
       <Name>cloudb</Name>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
