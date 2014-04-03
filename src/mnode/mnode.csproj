@@ -10,10 +10,11 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Deveel.Data.Net</RootNamespace>
     <AssemblyName>mnode</AssemblyName>
-    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
     <RestorePackages>true</RestorePackages>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>True</DebugSymbols>
@@ -35,8 +36,13 @@
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="cloudb">
-      <HintPath>..\packages\cloudb.1.5.3\lib\net20\cloudb.dll</HintPath>
+    <Reference Include="cloudb, Version=1.5.4.0, Culture=neutral, PublicKeyToken=f41361e30c6e84d7, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\cloudb.1.5.4.2\lib\net20\cloudb.dll</HintPath>
+    </Reference>
+    <Reference Include="deveel-cli, Version=1.0.4518.40754, Culture=neutral, PublicKeyToken=c897ff68d9dd9baa, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\deveel-cli.1.0.1\lib\net20\deveel-cli.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration.Install" />
@@ -44,9 +50,6 @@
     <Reference Include="System.ServiceProcess" />
     <Reference Include="System.Xml" />
     <Reference Include="Mono.Posix" Condition="'$(OS)' != 'Windows_NT'" />
-    <Reference Include="deveel-cli">
-      <HintPath>..\packages\deveel-cli.1.0.1\lib\net20\deveel-cli.dll</HintPath>
-    </Reference>
     <Reference Include="System.Configuration" />
   </ItemGroup>
   <ItemGroup>
@@ -80,6 +83,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="app.config" />
     <None Include="Deveel.Data.Net\ChangeLog" />
     <None Include="packages.config" />
   </ItemGroup>
