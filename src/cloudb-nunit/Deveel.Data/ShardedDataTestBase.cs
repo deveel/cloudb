@@ -37,7 +37,7 @@ namespace Deveel.Data {
 			if (storeType == StoreType.FileSystem) {
 				string testPath = TestPath;
 				if (Directory.Exists(testPath))
-					Directory.Delete(testPath);
+					Directory.Delete(testPath, true);
 
 				Directory.CreateDirectory(testPath);
 				return new FileSystemDatabase(testPath);

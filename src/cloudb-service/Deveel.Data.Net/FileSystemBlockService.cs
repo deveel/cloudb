@@ -235,14 +235,13 @@ namespace Deveel.Data.Net {
 
 		private class CompressionThread {
 			private readonly FileSystemBlockService service;
-			private readonly Thread thread;
 			private bool finished;
 			private bool hasFinished;
 
 			public CompressionThread(FileSystemBlockService service) {
 				this.service = service;
 
-				thread = new Thread(Execute);
+				var thread = new Thread(Execute);
 				thread.IsBackground = true;
 				thread.Name = "BlockService::Compression";
 				thread.Start();
@@ -267,7 +266,7 @@ namespace Deveel.Data.Net {
 					lock (this) {
 
 						// Wait 2 seconds,
-						Monitor.Wait(2000);
+						Monitor.Wait(this, 2000);
 
 						// Any new block containers added, we need to process,
 						List<BlockContainer> newItems = new List<BlockContainer>();
